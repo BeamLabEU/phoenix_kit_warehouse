@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias Andi.Warehouse
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
   alias PhoenixKitWarehouse.GoodsIssue
   alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.InternalOrders
@@ -355,7 +355,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       io = create_posted_internal_order!(admin.uuid)
-      customer_order = Andi.Fixtures.insert_order!()
+      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
 
       {:ok, issue} =
         GoodsIssues.create_goods_issue(%{

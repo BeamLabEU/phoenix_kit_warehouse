@@ -18,7 +18,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveCommentsAndModalTest do
 
   import Phoenix.LiveViewTest
 
-  alias Andi.Warehouse
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
   alias PhoenixKitWarehouse.Comments
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitCatalogue.Catalogue

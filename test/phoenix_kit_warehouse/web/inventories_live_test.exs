@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias Andi.Warehouse
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitCatalogue.Catalogue
 

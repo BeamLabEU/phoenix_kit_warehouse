@@ -17,7 +17,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
   import Phoenix.LiveViewTest
   import Ecto.Query
 
-  alias Andi.Warehouse
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKit.Activity.Entry

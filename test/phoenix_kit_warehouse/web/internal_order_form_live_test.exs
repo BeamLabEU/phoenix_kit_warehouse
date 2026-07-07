@@ -251,7 +251,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       order = create_draft()
-      customer_order = Andi.Fixtures.insert_order!()
+      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
 
       {:ok, lv, _html} = live(conn, edit_path(order.uuid))
 
@@ -274,7 +274,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
     test "removing an attached reference detaches it", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
-      customer_order = Andi.Fixtures.insert_order!()
+      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
 
       {:ok, order} =
         InternalOrders.create_internal_order(%{
@@ -304,8 +304,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       order = create_draft()
-      order1 = Andi.Fixtures.insert_order!()
-      order2 = Andi.Fixtures.insert_order!()
+      order1 = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      order2 = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
 
       {:ok, lv, _html} = live(conn, items_path(order.uuid))
 
