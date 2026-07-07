@@ -25,9 +25,24 @@ defmodule PhoenixKitWarehouseTest do
              ]
     end
 
-    test "admin_tabs/0 and settings_tabs/0 are stubbed to [] until Plan 4" do
-      assert PhoenixKitWarehouse.admin_tabs() == []
-      assert PhoenixKitWarehouse.settings_tabs() == []
+    test "admin_tabs/0 returns 31 tabs, all under module_key() permission" do
+      tabs = PhoenixKitWarehouse.admin_tabs()
+      assert length(tabs) == 31
+      assert Enum.all?(tabs, &(&1.permission == "warehouse"))
+    end
+
+    test "admin_tabs/0's root tab hosts StockLive directly (no redirect stub)" do
+      root = Enum.find(PhoenixKitWarehouse.admin_tabs(), &(&1.id == :warehouse))
+      assert root.match == :exact
+      assert root.live_view == {PhoenixKitWarehouse.Web.StockLive, :index}
+      assert root.path == "andi/warehouse"
+    end
+
+    test "admin_tabs/0 preserves every hidden CRUD tab's priority from today's config.exs" do
+      tabs = PhoenixKitWarehouse.admin_tabs()
+      hidden = Enum.reject(tabs, & &1.visible)
+      assert length(hidden) == 25
+      assert Enum.all?(hidden, &(&1.visible == false))
     end
   end
 
