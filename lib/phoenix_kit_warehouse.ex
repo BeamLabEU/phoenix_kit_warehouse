@@ -29,6 +29,7 @@ defmodule PhoenixKitWarehouse do
   alias PhoenixKitWarehouse.Web.InternalOrderFormLive
   alias PhoenixKitWarehouse.Web.InternalOrderIndexLive
   alias PhoenixKitWarehouse.Web.StockLive
+  alias PhoenixKitWarehouse.Web.SettingsLive
   alias PhoenixKitWarehouse.Web.SupplierOrderFormLive
   alias PhoenixKitWarehouse.Web.SupplierOrderIndexLive
 
@@ -479,5 +480,22 @@ defmodule PhoenixKitWarehouse do
   end
 
   @impl PhoenixKit.Module
-  def settings_tabs, do: []
+  def settings_tabs do
+    [
+      %Tab{
+        id: :warehouse_settings,
+        label: "Warehouse",
+        icon: "hero-building-storefront",
+        path: "warehouse",
+        priority: 920,
+        level: :admin,
+        parent: :admin_settings,
+        permission: module_key(),
+        match: :exact,
+        live_view: {SettingsLive, :index},
+        gettext_backend: PhoenixKitWarehouse.Gettext,
+        gettext_domain: "default"
+      }
+    ]
+  end
 end

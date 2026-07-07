@@ -44,6 +44,13 @@ defmodule PhoenixKitWarehouseTest do
       assert length(hidden) == 25
       assert Enum.all?(hidden, &(&1.visible == false))
     end
+
+    test "settings_tabs/0 returns the warehouse-location settings page" do
+      [tab] = PhoenixKitWarehouse.settings_tabs()
+      assert tab.id == :warehouse_settings
+      assert tab.permission == "warehouse"
+      assert tab.live_view == {PhoenixKitWarehouse.Web.SettingsLive, :index}
+    end
   end
 
   describe "enabled?/0, enable_system/0, disable_system/0" do
