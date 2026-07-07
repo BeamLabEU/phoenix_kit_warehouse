@@ -40,7 +40,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
-    comments_available? = Comments.available?(:supplier_order)
+    comments_available? = Comments.available?()
 
     socket =
       socket

@@ -41,7 +41,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
 
     catalogue_summaries = load_catalogue_summaries(Catalogue.list_catalogues(status: "active"))
 
-    comments_available? = Comments.available?(:internal_order)
+    comments_available? = Comments.available?()
 
     socket =
       socket

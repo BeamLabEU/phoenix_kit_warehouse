@@ -39,7 +39,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
-    comments_available? = Comments.available?(:goods_issue)
+    comments_available? = Comments.available?()
 
     socket =
       socket
@@ -173,7 +173,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
     on_hand_map =
       item_uuids
-      |> Warehouse.stock_for_items()
+      |> StockLedger.stock_for_items()
       |> Map.new(&{&1.item_uuid, &1.quantity})
 
     assign(socket, :on_hand_map, on_hand_map)

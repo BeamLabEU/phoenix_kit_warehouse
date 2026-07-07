@@ -43,9 +43,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
-    stock_map = Warehouse.stock_map()
+    stock_map = StockLedger.stock_map()
 
-    comments_available? = Comments.available?(:inventory)
+    comments_available? = Comments.available?()
 
     catalogue_summaries = load_catalogue_summaries(Catalogue.list_catalogues(status: "active"))
 

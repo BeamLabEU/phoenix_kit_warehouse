@@ -40,7 +40,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
-    comments_available? = Comments.available?(:goods_receipt)
+    comments_available? = Comments.available?()
 
     socket =
       socket
