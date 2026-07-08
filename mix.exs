@@ -67,6 +67,11 @@ defmodule PhoenixKitWarehouse.MixProject do
 
   defp deps do
     [
+      # The warehouse DB tables ship in core migration V140, which is not yet
+      # on Hex (latest published = 1.7.179 = V139). Until a core release
+      # containing V140 is published, consumers must point at a local checkout:
+      #   PHOENIX_KIT_PATH=../phoenix_kit mix deps.get
+      # Once that release is published, raise this constraint to that version.
       pk_dep(:phoenix_kit, "~> 1.7 and >= 1.7.165"),
       pk_dep(:phoenix_kit_catalogue, "~> 0.10.0"),
       pk_dep(:phoenix_kit_locations, "~> 0.2.0"),
