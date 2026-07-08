@@ -269,7 +269,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       page_title={dgettext("default", "Warehouse")}
       current_path={
         assigns[:url_path] || assigns[:current_path] ||
-          PhoenixKit.Utils.Routes.path("/admin/andi/warehouse")
+          PhoenixKit.Utils.Routes.path("/admin/warehouse")
       }
       current_locale={assigns[:current_locale]}
     >

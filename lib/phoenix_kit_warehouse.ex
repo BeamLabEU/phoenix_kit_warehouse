@@ -106,6 +106,16 @@ defmodule PhoenixKitWarehouse do
   def children, do: [{Task.Supervisor, name: PhoenixKitWarehouse.TaskSupervisor}]
 
   @impl PhoenixKit.Module
+  def permission_metadata do
+    %{
+      key: module_key(),
+      label: "Warehouse",
+      icon: "hero-building-storefront",
+      description: "Warehouse stock, stocktakes, and document management"
+    }
+  end
+
+  @impl PhoenixKit.Module
   def admin_tabs do
     [
       # --- Root: "In stock" — hosts StockLive directly, not a redirect stub.
@@ -115,7 +125,7 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default",
         icon: "hero-building-storefront",
-        path: "andi/warehouse",
+        path: "warehouse",
         match: :exact,
         priority: 153,
         level: :admin,
@@ -129,7 +139,7 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default",
         icon: "hero-clipboard-document-check",
-        path: "andi/warehouse/inventories",
+        path: "warehouse/inventories",
         parent: :warehouse,
         priority: 155,
         level: :admin,
@@ -143,7 +153,7 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default",
         icon: "hero-document-text",
-        path: "andi/warehouse/internal-orders",
+        path: "warehouse/internal-orders",
         parent: :warehouse,
         priority: 156,
         level: :admin,
@@ -157,7 +167,7 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default",
         icon: "hero-truck",
-        path: "andi/warehouse/supplier-orders",
+        path: "warehouse/supplier-orders",
         parent: :warehouse,
         priority: 157,
         level: :admin,
@@ -171,7 +181,7 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default",
         icon: "hero-arrow-down-tray",
-        path: "andi/warehouse/goods-receipts",
+        path: "warehouse/goods-receipts",
         parent: :warehouse,
         priority: 158,
         level: :admin,
@@ -185,7 +195,7 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default",
         icon: "hero-arrow-up-tray",
-        path: "andi/warehouse/goods-issues",
+        path: "warehouse/goods-issues",
         parent: :warehouse,
         priority: 159,
         level: :admin,
@@ -204,7 +214,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_inventory_new,
         label: "New Inventory",
-        path: "andi/warehouse/inventory/new",
+        path: "warehouse/inventory/new",
         parent: :warehouse,
         priority: 562,
         level: :admin,
@@ -215,7 +225,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_inventory_edit,
         label: "Edit Inventory",
-        path: "andi/warehouse/inventory/:uuid",
+        path: "warehouse/inventory/:uuid",
         parent: :warehouse,
         priority: 563,
         level: :admin,
@@ -226,7 +236,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_inventory_items,
         label: "Inventory Items",
-        path: "andi/warehouse/inventory/:uuid/items",
+        path: "warehouse/inventory/:uuid/items",
         parent: :warehouse,
         priority: 564,
         level: :admin,
@@ -237,7 +247,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_inventory_files,
         label: "Inventory Files",
-        path: "andi/warehouse/inventory/:uuid/files",
+        path: "warehouse/inventory/:uuid/files",
         parent: :warehouse,
         priority: 565,
         level: :admin,
@@ -248,7 +258,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_inventory_comments,
         label: "Inventory Comments",
-        path: "andi/warehouse/inventory/:uuid/comments",
+        path: "warehouse/inventory/:uuid/comments",
         parent: :warehouse,
         priority: 566,
         level: :admin,
@@ -259,7 +269,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_internal_order_new,
         label: "New Internal Order",
-        path: "andi/warehouse/internal-orders/new",
+        path: "warehouse/internal-orders/new",
         parent: :warehouse,
         priority: 570,
         level: :admin,
@@ -270,7 +280,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_internal_order_edit,
         label: "Edit Internal Order",
-        path: "andi/warehouse/internal-orders/:uuid",
+        path: "warehouse/internal-orders/:uuid",
         parent: :warehouse,
         priority: 571,
         level: :admin,
@@ -281,7 +291,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_internal_order_items,
         label: "Internal Order Items",
-        path: "andi/warehouse/internal-orders/:uuid/items",
+        path: "warehouse/internal-orders/:uuid/items",
         parent: :warehouse,
         priority: 572,
         level: :admin,
@@ -292,7 +302,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_internal_order_files,
         label: "Internal Order Files",
-        path: "andi/warehouse/internal-orders/:uuid/files",
+        path: "warehouse/internal-orders/:uuid/files",
         parent: :warehouse,
         priority: 573,
         level: :admin,
@@ -303,7 +313,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_internal_order_comments,
         label: "Internal Order Comments",
-        path: "andi/warehouse/internal-orders/:uuid/comments",
+        path: "warehouse/internal-orders/:uuid/comments",
         parent: :warehouse,
         priority: 574,
         level: :admin,
@@ -314,7 +324,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_supplier_order_new,
         label: "New Supplier Order",
-        path: "andi/warehouse/supplier-orders/new",
+        path: "warehouse/supplier-orders/new",
         parent: :warehouse,
         priority: 580,
         level: :admin,
@@ -325,7 +335,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_supplier_order_edit,
         label: "Edit Supplier Order",
-        path: "andi/warehouse/supplier-orders/:uuid",
+        path: "warehouse/supplier-orders/:uuid",
         parent: :warehouse,
         priority: 581,
         level: :admin,
@@ -336,7 +346,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_supplier_order_lines,
         label: "Supplier Order Lines",
-        path: "andi/warehouse/supplier-orders/:uuid/lines",
+        path: "warehouse/supplier-orders/:uuid/lines",
         parent: :warehouse,
         priority: 582,
         level: :admin,
@@ -347,7 +357,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_supplier_order_files,
         label: "Supplier Order Files",
-        path: "andi/warehouse/supplier-orders/:uuid/files",
+        path: "warehouse/supplier-orders/:uuid/files",
         parent: :warehouse,
         priority: 583,
         level: :admin,
@@ -358,7 +368,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_supplier_order_comments,
         label: "Supplier Order Comments",
-        path: "andi/warehouse/supplier-orders/:uuid/comments",
+        path: "warehouse/supplier-orders/:uuid/comments",
         parent: :warehouse,
         priority: 584,
         level: :admin,
@@ -369,7 +379,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_receipt_new,
         label: "New Goods Receipt",
-        path: "andi/warehouse/goods-receipts/new",
+        path: "warehouse/goods-receipts/new",
         parent: :warehouse,
         priority: 591,
         level: :admin,
@@ -380,7 +390,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_receipt_edit,
         label: "Goods Receipt",
-        path: "andi/warehouse/goods-receipts/:uuid",
+        path: "warehouse/goods-receipts/:uuid",
         parent: :warehouse,
         priority: 592,
         level: :admin,
@@ -391,7 +401,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_receipt_lines,
         label: "Goods Receipt Lines",
-        path: "andi/warehouse/goods-receipts/:uuid/lines",
+        path: "warehouse/goods-receipts/:uuid/lines",
         parent: :warehouse,
         priority: 593,
         level: :admin,
@@ -402,7 +412,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_receipt_files,
         label: "Goods Receipt Files",
-        path: "andi/warehouse/goods-receipts/:uuid/files",
+        path: "warehouse/goods-receipts/:uuid/files",
         parent: :warehouse,
         priority: 594,
         level: :admin,
@@ -413,7 +423,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_receipt_comments,
         label: "Goods Receipt Comments",
-        path: "andi/warehouse/goods-receipts/:uuid/comments",
+        path: "warehouse/goods-receipts/:uuid/comments",
         parent: :warehouse,
         priority: 595,
         level: :admin,
@@ -424,7 +434,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_issue_new,
         label: "New Goods Issue",
-        path: "andi/warehouse/goods-issues/new",
+        path: "warehouse/goods-issues/new",
         parent: :warehouse,
         priority: 601,
         level: :admin,
@@ -435,7 +445,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_issue_edit,
         label: "Goods Issue",
-        path: "andi/warehouse/goods-issues/:uuid",
+        path: "warehouse/goods-issues/:uuid",
         parent: :warehouse,
         priority: 602,
         level: :admin,
@@ -446,7 +456,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_issue_lines,
         label: "Goods Issue Lines",
-        path: "andi/warehouse/goods-issues/:uuid/lines",
+        path: "warehouse/goods-issues/:uuid/lines",
         parent: :warehouse,
         priority: 603,
         level: :admin,
@@ -457,7 +467,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_issue_files,
         label: "Goods Issue Files",
-        path: "andi/warehouse/goods-issues/:uuid/files",
+        path: "warehouse/goods-issues/:uuid/files",
         parent: :warehouse,
         priority: 604,
         level: :admin,
@@ -468,7 +478,7 @@ defmodule PhoenixKitWarehouse do
       %Tab{
         id: :warehouse_goods_issue_comments,
         label: "Goods Issue Comments",
-        path: "andi/warehouse/goods-issues/:uuid/comments",
+        path: "warehouse/goods-issues/:uuid/comments",
         parent: :warehouse,
         priority: 605,
         level: :admin,

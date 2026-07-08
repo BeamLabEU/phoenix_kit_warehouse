@@ -182,7 +182,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
         {:noreply,
          push_navigate(socket,
-           to: Routes.path("/admin/andi/warehouse/inventory/#{doc.uuid}")
+           to: Routes.path("/admin/warehouse/inventory/#{doc.uuid}")
          )}
 
       {:error, _changeset} ->
@@ -611,7 +611,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       {:noreply,
        socket
        |> put_flash(:info, dgettext("default", "Stocktake conducted"))
-       |> push_navigate(to: Routes.path("/admin/andi/warehouse"))}
+       |> push_navigate(to: Routes.path("/admin/warehouse"))}
     else
       {:error, :not_draft} ->
         {:noreply,
@@ -824,28 +824,28 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
         <.link
-          patch={Routes.path("/admin/andi/warehouse/inventory/#{@doc_uuid}")}
+          patch={Routes.path("/admin/warehouse/inventory/#{@doc_uuid}")}
           class={["tab", @active_tab == :general && "tab-active"]}
         >
           {dgettext("default", "General")}
         </.link>
         <.link
           :if={@doc_uuid}
-          patch={Routes.path("/admin/andi/warehouse/inventory/#{@doc_uuid}/items")}
+          patch={Routes.path("/admin/warehouse/inventory/#{@doc_uuid}/items")}
           class={["tab", @active_tab == :items && "tab-active"]}
         >
           {dgettext("default", "Items")}
         </.link>
         <.link
           :if={@doc_uuid}
-          patch={Routes.path("/admin/andi/warehouse/inventory/#{@doc_uuid}/files")}
+          patch={Routes.path("/admin/warehouse/inventory/#{@doc_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
           {dgettext("default", "Files")}
         </.link>
         <.link
           :if={@doc_uuid}
-          patch={Routes.path("/admin/andi/warehouse/inventory/#{@doc_uuid}/comments")}
+          patch={Routes.path("/admin/warehouse/inventory/#{@doc_uuid}/comments")}
           class={["tab", @active_tab == :comments && "tab-active"]}
         >
           {dgettext("default", "Comments")}
@@ -1150,7 +1150,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
             <% else %>
               <div class="alert alert-warning">
                 {dgettext(
-                  "andi",
+                  "default",
                   "Comments module is disabled. Enable it in PhoenixKit settings."
                 )}
               </div>

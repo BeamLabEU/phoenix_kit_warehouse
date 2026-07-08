@@ -6,7 +6,7 @@ defmodule PhoenixKitWarehouse.DocRefs do
   queries when rendering index pages.
 
   Returned maps have the shape:
-    %{label: "#IO-N", path: "/admin/andi/warehouse/internal-orders/<uuid>",
+    %{label: "#IO-N", path: "/admin/warehouse/internal-orders/<uuid>",
       uuid: "<uuid>", kind: :internal_order}
 
   `label`, `uuid`, and `kind` are always present; `path` is always absolute.
@@ -54,8 +54,8 @@ defmodule PhoenixKitWarehouse.DocRefs do
 
   Each element must have shape `%{"type" => type, "uuid" => uuid}` where
   `type` is one of:
-    - `"order"`          — top-level Andi order
-    - `"sub_order"`      — Andi sub-order (parent_uuid not nil)
+    - `"order"`          — host-registered order kind
+    - `"sub_order"`      — host-registered sub-order kind
     - `"internal_order"` — warehouse internal order
     - `"supplier_order"` — warehouse supplier order
     - `"goods_receipt"`  — warehouse goods receipt
@@ -301,7 +301,7 @@ defmodule PhoenixKitWarehouse.DocRefs do
   defp build_internal_order_ref(%{uuid: uuid, number: number}) do
     %{
       label: "#IO-#{number}",
-      path: Routes.path("/admin/andi/warehouse/internal-orders/#{uuid}"),
+      path: Routes.path("/admin/warehouse/internal-orders/#{uuid}"),
       uuid: uuid,
       kind: :internal_order
     }
@@ -310,7 +310,7 @@ defmodule PhoenixKitWarehouse.DocRefs do
   defp build_supplier_order_ref(%{uuid: uuid, number: number}) do
     %{
       label: "#SO-#{number}",
-      path: Routes.path("/admin/andi/warehouse/supplier-orders/#{uuid}"),
+      path: Routes.path("/admin/warehouse/supplier-orders/#{uuid}"),
       uuid: uuid,
       kind: :supplier_order
     }
@@ -319,7 +319,7 @@ defmodule PhoenixKitWarehouse.DocRefs do
   defp build_goods_receipt_ref(%{uuid: uuid, number: number}) do
     %{
       label: "#GR-#{number}",
-      path: Routes.path("/admin/andi/warehouse/goods-receipts/#{uuid}"),
+      path: Routes.path("/admin/warehouse/goods-receipts/#{uuid}"),
       uuid: uuid,
       kind: :goods_receipt
     }
@@ -328,7 +328,7 @@ defmodule PhoenixKitWarehouse.DocRefs do
   defp build_goods_issue_ref(%{uuid: uuid, number: number}) do
     %{
       label: "#GI-#{number}",
-      path: Routes.path("/admin/andi/warehouse/goods-issues/#{uuid}"),
+      path: Routes.path("/admin/warehouse/goods-issues/#{uuid}"),
       uuid: uuid,
       kind: :goods_issue
     }

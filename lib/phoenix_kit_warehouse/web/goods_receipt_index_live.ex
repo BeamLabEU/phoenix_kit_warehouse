@@ -224,7 +224,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
       page_title={dgettext("default", "Warehouse")}
       current_path={
         assigns[:url_path] || assigns[:current_path] ||
-          PhoenixKit.Utils.Routes.path("/admin/andi/warehouse")
+          PhoenixKit.Utils.Routes.path("/admin/warehouse")
       }
       current_locale={assigns[:current_locale]}
     >
@@ -278,7 +278,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
 
           <:toolbar_actions>
             <.link
-              navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-receipts/new")}
+              navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/new")}
               class="btn btn-primary btn-sm"
             >
               <.icon name="hero-plus" class="w-4 h-4" />
@@ -325,7 +325,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
           <:card_header :let={entry}>
             <.link
               navigate={
-                PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-receipts/#{entry.uuid}")
+                PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/#{entry.uuid}")
               }
               class="font-medium font-mono text-sm after:absolute after:inset-0 after:z-0"
             >
@@ -387,7 +387,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
                     <.table_row_menu_link
                       navigate={
                         PhoenixKit.Utils.Routes.path(
-                          "/admin/andi/warehouse/goods-receipts/#{entry.uuid}"
+                          "/admin/warehouse/goods-receipts/#{entry.uuid}"
                         )
                       }
                       icon="hero-pencil-square"
@@ -462,7 +462,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
 
     ~H"""
     <.link
-      navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-receipts/#{@entry.uuid}")}
+      navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/#{@entry.uuid}")}
       class="font-medium font-mono after:absolute after:inset-0 after:z-0"
     >
       #GR-{@entry.number}

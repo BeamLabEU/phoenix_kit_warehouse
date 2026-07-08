@@ -7,7 +7,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   `Andi.Warehouse.InventoryColumnConfig`.
 
   The "In stock" default view has been moved to `Warehouse.StockLive` at
-  `/admin/andi/warehouse`. The shared tab bar lives in
+  `/admin/warehouse`. The shared tab bar lives in
   `AndiWeb.Components.WarehouseHeader`.
 
   Admin-chrome pattern: `use PhoenixKitWeb, :live_view`, self-wrapping render/1
@@ -214,7 +214,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
       page_title={dgettext("default", "Warehouse")}
       current_path={
         assigns[:url_path] || assigns[:current_path] ||
-          PhoenixKit.Utils.Routes.path("/admin/andi/warehouse")
+          PhoenixKit.Utils.Routes.path("/admin/warehouse")
       }
       current_locale={assigns[:current_locale]}
     >
@@ -268,7 +268,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
           <:toolbar_actions>
             <.link
-              navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/inventory/new")}
+              navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/new")}
               class="btn btn-primary btn-sm"
             >
               <.icon name="hero-plus" class="w-4 h-4" />
@@ -314,7 +314,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
           <:card_header :let={entry}>
             <.link
-              navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/inventory/#{entry.uuid}")}
+              navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{entry.uuid}")}
               class="font-medium font-mono text-sm after:absolute after:inset-0 after:z-0"
             >
               #{entry.number}
@@ -379,7 +379,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
                   <.table_row_menu id={"doc-menu-#{doc.uuid}"}>
                     <.table_row_menu_link
                       navigate={
-                        PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/inventory/#{doc.uuid}")
+                        PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{doc.uuid}")
                       }
                       icon="hero-pencil-square"
                       label={dgettext("default", "Edit")}
@@ -453,7 +453,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
     ~H"""
     <.link
-      navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/inventory/#{@entry.uuid}")}
+      navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{@entry.uuid}")}
       class="font-medium font-mono after:absolute after:inset-0 after:z-0"
     >
       #{@entry.number}

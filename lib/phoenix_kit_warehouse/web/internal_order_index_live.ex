@@ -212,7 +212,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
       page_title={dgettext("default", "Warehouse")}
       current_path={
         assigns[:url_path] || assigns[:current_path] ||
-          PhoenixKit.Utils.Routes.path("/admin/andi/warehouse")
+          PhoenixKit.Utils.Routes.path("/admin/warehouse")
       }
       current_locale={assigns[:current_locale]}
     >
@@ -266,7 +266,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
 
           <:toolbar_actions>
             <.link
-              navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/internal-orders/new")}
+              navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/new")}
               class="btn btn-primary btn-sm"
             >
               <.icon name="hero-plus" class="w-4 h-4" />
@@ -313,7 +313,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
           <:card_header :let={entry}>
             <.link
               navigate={
-                PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/internal-orders/#{entry.uuid}")
+                PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/#{entry.uuid}")
               }
               class="font-medium font-mono text-sm after:absolute after:inset-0 after:z-0"
             >
@@ -375,7 +375,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
                     <.table_row_menu_link
                       navigate={
                         PhoenixKit.Utils.Routes.path(
-                          "/admin/andi/warehouse/internal-orders/#{entry.uuid}"
+                          "/admin/warehouse/internal-orders/#{entry.uuid}"
                         )
                       }
                       icon="hero-pencil-square"
@@ -450,7 +450,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
 
     ~H"""
     <.link
-      navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/internal-orders/#{@entry.uuid}")}
+      navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/#{@entry.uuid}")}
       class="font-medium font-mono after:absolute after:inset-0 after:z-0"
     >
       #IO-{@entry.number}

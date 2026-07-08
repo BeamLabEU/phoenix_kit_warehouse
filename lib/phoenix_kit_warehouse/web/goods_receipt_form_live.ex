@@ -131,14 +131,14 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       {:ok, receipt} ->
         {:noreply,
          push_navigate(socket,
-           to: Routes.path("/admin/andi/warehouse/goods-receipts/#{receipt.uuid}")
+           to: Routes.path("/admin/warehouse/goods-receipts/#{receipt.uuid}")
          )}
 
       {:error, _changeset} ->
         {:noreply,
          socket
          |> put_flash(:error, dgettext("default", "Failed to create draft goods receipt"))
-         |> push_navigate(to: Routes.path("/admin/andi/warehouse/goods-receipts"))}
+         |> push_navigate(to: Routes.path("/admin/warehouse/goods-receipts"))}
     end
   end
 
@@ -565,7 +565,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       {:noreply,
        socket
        |> put_flash(:info, dgettext("default", "Goods receipt posted — stock updated"))
-       |> push_navigate(to: Routes.path("/admin/andi/warehouse/goods-receipts"))}
+       |> push_navigate(to: Routes.path("/admin/warehouse/goods-receipts"))}
     else
       {:error, :not_draft} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
@@ -687,28 +687,28 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
         <.link
-          patch={Routes.path("/admin/andi/warehouse/goods-receipts/#{@receipt_uuid}")}
+          patch={Routes.path("/admin/warehouse/goods-receipts/#{@receipt_uuid}")}
           class={["tab", @active_tab == :general && "tab-active"]}
         >
           {dgettext("default", "General")}
         </.link>
         <.link
           :if={@receipt_uuid}
-          patch={Routes.path("/admin/andi/warehouse/goods-receipts/#{@receipt_uuid}/lines")}
+          patch={Routes.path("/admin/warehouse/goods-receipts/#{@receipt_uuid}/lines")}
           class={["tab", @active_tab == :lines && "tab-active"]}
         >
           {dgettext("default", "Lines")}
         </.link>
         <.link
           :if={@receipt_uuid}
-          patch={Routes.path("/admin/andi/warehouse/goods-receipts/#{@receipt_uuid}/files")}
+          patch={Routes.path("/admin/warehouse/goods-receipts/#{@receipt_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
           {dgettext("default", "Files")}
         </.link>
         <.link
           :if={@receipt_uuid}
-          patch={Routes.path("/admin/andi/warehouse/goods-receipts/#{@receipt_uuid}/comments")}
+          patch={Routes.path("/admin/warehouse/goods-receipts/#{@receipt_uuid}/comments")}
           class={["tab", @active_tab == :comments && "tab-active"]}
         >
           {dgettext("default", "Comments")}
@@ -950,7 +950,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
             <% else %>
               <div class="alert alert-warning">
                 {dgettext(
-                  "andi",
+                  "default",
                   "Comments module is disabled. Enable it in PhoenixKit settings."
                 )}
               </div>

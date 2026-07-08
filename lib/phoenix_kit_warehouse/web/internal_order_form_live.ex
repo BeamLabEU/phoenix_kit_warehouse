@@ -146,14 +146,14 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       {:ok, order} ->
         {:noreply,
          push_navigate(socket,
-           to: Routes.path("/admin/andi/warehouse/internal-orders/#{order.uuid}")
+           to: Routes.path("/admin/warehouse/internal-orders/#{order.uuid}")
          )}
 
       {:error, _changeset} ->
         {:noreply,
          socket
          |> put_flash(:error, dgettext("default", "Failed to create draft internal order"))
-         |> push_navigate(to: Routes.path("/admin/andi/warehouse/internal-orders"))}
+         |> push_navigate(to: Routes.path("/admin/warehouse/internal-orders"))}
     end
   end
 
@@ -608,7 +608,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       {:noreply,
        socket
        |> put_flash(:info, dgettext("default", "Internal order conducted"))
-       |> push_navigate(to: Routes.path("/admin/andi/warehouse/internal-orders"))}
+       |> push_navigate(to: Routes.path("/admin/warehouse/internal-orders"))}
     else
       {:error, :not_draft} ->
         {:noreply,
@@ -667,7 +667,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               cond do
                 n > 0 and m > 0 ->
                   dgettext(
-                    "andi",
+                    "default",
                     "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier.",
                     n: n,
                     m: m
@@ -678,7 +678,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
 
                 m > 0 ->
                   dgettext(
-                    "andi",
+                    "default",
                     "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers).",
                     m: m
                   )
@@ -690,7 +690,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
             socket =
               socket
               |> put_flash(:info, msg)
-              |> push_navigate(to: Routes.path("/admin/andi/warehouse/supplier-orders"))
+              |> push_navigate(to: Routes.path("/admin/warehouse/supplier-orders"))
 
             {:noreply, socket}
 
@@ -732,7 +732,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
                dgettext("default", "Goods issue #%{number} created", number: goods_issue.number)
              )
              |> push_navigate(
-               to: Routes.path("/admin/andi/warehouse/goods-issues/#{goods_issue.uuid}")
+               to: Routes.path("/admin/warehouse/goods-issues/#{goods_issue.uuid}")
              )}
 
           {:error, _reason} ->
@@ -853,7 +853,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               class="btn btn-secondary btn-sm"
             >
               <.icon name="hero-truck" class="w-4 h-4" /> {dgettext(
-                "andi",
+                "default",
                 "Generate supplier orders"
               )}
             </button>
@@ -866,7 +866,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               class="btn btn-accent btn-sm"
             >
               <.icon name="hero-arrow-up-on-square" class="w-4 h-4" /> {dgettext(
-                "andi",
+                "default",
                 "Issue to production"
               )}
             </button>
@@ -877,28 +877,28 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
         <.link
-          patch={Routes.path("/admin/andi/warehouse/internal-orders/#{@order_uuid}")}
+          patch={Routes.path("/admin/warehouse/internal-orders/#{@order_uuid}")}
           class={["tab", @active_tab == :general && "tab-active"]}
         >
           {dgettext("default", "General")}
         </.link>
         <.link
           :if={@order_uuid}
-          patch={Routes.path("/admin/andi/warehouse/internal-orders/#{@order_uuid}/items")}
+          patch={Routes.path("/admin/warehouse/internal-orders/#{@order_uuid}/items")}
           class={["tab", @active_tab == :items && "tab-active"]}
         >
           {dgettext("default", "Items")}
         </.link>
         <.link
           :if={@order_uuid}
-          patch={Routes.path("/admin/andi/warehouse/internal-orders/#{@order_uuid}/files")}
+          patch={Routes.path("/admin/warehouse/internal-orders/#{@order_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
           {dgettext("default", "Files")}
         </.link>
         <.link
           :if={@order_uuid}
-          patch={Routes.path("/admin/andi/warehouse/internal-orders/#{@order_uuid}/comments")}
+          patch={Routes.path("/admin/warehouse/internal-orders/#{@order_uuid}/comments")}
           class={["tab", @active_tab == :comments && "tab-active"]}
         >
           {dgettext("default", "Comments")}
@@ -1135,7 +1135,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
             <% else %>
               <div class="alert alert-warning">
                 {dgettext(
-                  "andi",
+                  "default",
                   "Comments module is disabled. Enable it in PhoenixKit settings."
                 )}
               </div>

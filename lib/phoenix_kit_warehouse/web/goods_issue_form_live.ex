@@ -130,14 +130,14 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       {:ok, issue} ->
         {:noreply,
          push_navigate(socket,
-           to: Routes.path("/admin/andi/warehouse/goods-issues/#{issue.uuid}")
+           to: Routes.path("/admin/warehouse/goods-issues/#{issue.uuid}")
          )}
 
       {:error, _changeset} ->
         {:noreply,
          socket
          |> put_flash(:error, dgettext("default", "Failed to create draft goods issue"))
-         |> push_navigate(to: Routes.path("/admin/andi/warehouse/goods-issues"))}
+         |> push_navigate(to: Routes.path("/admin/warehouse/goods-issues"))}
     end
   end
 
@@ -318,7 +318,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       {:noreply,
        socket
        |> put_flash(:info, dgettext("default", "Goods issue posted — stock updated"))
-       |> push_navigate(to: Routes.path("/admin/andi/warehouse/goods-issues"))}
+       |> push_navigate(to: Routes.path("/admin/warehouse/goods-issues"))}
     else
       {:error, :not_draft} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
@@ -332,7 +332,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
            socket,
            :error,
            dgettext(
-             "andi",
+             "default",
              "Insufficient stock for: %{item}. Reduce quantity or check stock levels.",
              item: item_name
            )
@@ -657,28 +657,28 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
         <.link
-          patch={Routes.path("/admin/andi/warehouse/goods-issues/#{@issue_uuid}")}
+          patch={Routes.path("/admin/warehouse/goods-issues/#{@issue_uuid}")}
           class={["tab", @active_tab == :general && "tab-active"]}
         >
           {dgettext("default", "General")}
         </.link>
         <.link
           :if={@issue_uuid}
-          patch={Routes.path("/admin/andi/warehouse/goods-issues/#{@issue_uuid}/lines")}
+          patch={Routes.path("/admin/warehouse/goods-issues/#{@issue_uuid}/lines")}
           class={["tab", @active_tab == :lines && "tab-active"]}
         >
           {dgettext("default", "Lines")}
         </.link>
         <.link
           :if={@issue_uuid}
-          patch={Routes.path("/admin/andi/warehouse/goods-issues/#{@issue_uuid}/files")}
+          patch={Routes.path("/admin/warehouse/goods-issues/#{@issue_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
           {dgettext("default", "Files")}
         </.link>
         <.link
           :if={@issue_uuid}
-          patch={Routes.path("/admin/andi/warehouse/goods-issues/#{@issue_uuid}/comments")}
+          patch={Routes.path("/admin/warehouse/goods-issues/#{@issue_uuid}/comments")}
           class={["tab", @active_tab == :comments && "tab-active"]}
         >
           {dgettext("default", "Comments")}
@@ -909,7 +909,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
             <% else %>
               <div class="alert alert-warning">
                 {dgettext(
-                  "andi",
+                  "default",
                   "Comments module is disabled. Enable it in PhoenixKit settings."
                 )}
               </div>

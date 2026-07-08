@@ -19,42 +19,42 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseHeader do
       <div role="tablist" class="tabs tabs-border">
         <.link
           role="tab"
-          navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse")}
+          navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse")}
           class={["tab", @active == :stock && "tab-active"]}
         >
           {dgettext("default", "In stock")}
         </.link>
         <.link
           role="tab"
-          navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/inventories")}
+          navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventories")}
           class={["tab", @active == :inventories && "tab-active"]}
         >
           {dgettext("default", "Stocktakes")}
         </.link>
         <.link
           role="tab"
-          navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/internal-orders")}
+          navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders")}
           class={["tab", @active == :internal_orders && "tab-active"]}
         >
           {dgettext("default", "Internal Orders")}
         </.link>
         <.link
           role="tab"
-          navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/supplier-orders")}
+          navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders")}
           class={["tab", @active == :supplier_orders && "tab-active"]}
         >
           {dgettext("default", "Supplier Orders")}
         </.link>
         <.link
           role="tab"
-          navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-receipts")}
+          navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts")}
           class={["tab", @active == :goods_receipts && "tab-active"]}
         >
           {dgettext("default", "Goods Receipt")}
         </.link>
         <.link
           role="tab"
-          navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-issues")}
+          navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-issues")}
           class={["tab", @active == :goods_issues && "tab-active"]}
         >
           {dgettext("default", "Goods Issue")}

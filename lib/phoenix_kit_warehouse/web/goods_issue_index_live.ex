@@ -220,7 +220,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
       page_title={dgettext("default", "Warehouse")}
       current_path={
         assigns[:url_path] || assigns[:current_path] ||
-          PhoenixKit.Utils.Routes.path("/admin/andi/warehouse")
+          PhoenixKit.Utils.Routes.path("/admin/warehouse")
       }
       current_locale={assigns[:current_locale]}
     >
@@ -274,7 +274,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
 
           <:toolbar_actions>
             <.link
-              navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-issues/new")}
+              navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-issues/new")}
               class="btn btn-primary btn-sm"
             >
               <.icon name="hero-plus" class="w-4 h-4" />
@@ -321,7 +321,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
           <:card_header :let={entry}>
             <.link
               navigate={
-                PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-issues/#{entry.uuid}")
+                PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-issues/#{entry.uuid}")
               }
               class="font-medium font-mono text-sm after:absolute after:inset-0 after:z-0"
             >
@@ -386,7 +386,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
                     <.table_row_menu_link
                       navigate={
                         PhoenixKit.Utils.Routes.path(
-                          "/admin/andi/warehouse/goods-issues/#{entry.uuid}"
+                          "/admin/warehouse/goods-issues/#{entry.uuid}"
                         )
                       }
                       icon="hero-pencil-square"
@@ -461,7 +461,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
 
     ~H"""
     <.link
-      navigate={PhoenixKit.Utils.Routes.path("/admin/andi/warehouse/goods-issues/#{@entry.uuid}")}
+      navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-issues/#{@entry.uuid}")}
       class="font-medium font-mono after:absolute after:inset-0 after:z-0"
     >
       #GI-{@entry.number}
