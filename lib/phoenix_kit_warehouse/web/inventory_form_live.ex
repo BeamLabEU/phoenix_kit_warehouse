@@ -43,18 +43,14 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
-    stock_map = StockLedger.stock_map()
-
     comments_available? = Comments.available?()
-
-    catalogue_summaries = load_catalogue_summaries(Catalogue.list_catalogues(status: "active"))
 
     socket =
       socket
       |> assign(:locale, locale)
       |> assign(:current_user, current_user)
       |> assign(:admin?, admin?)
-      |> assign(:stock_map, stock_map)
+      |> assign(:stock_map, %{})
       |> assign(:show_add_picker_modal, false)
       # Will be set in handle_params
       |> assign(:doc, nil)
@@ -72,7 +68,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:location_name, nil)
       |> assign(:page_title, dgettext("default", "Stocktake"))
       # Add-picker tree state
-      |> assign(:catalogue_summaries, catalogue_summaries)
+      |> assign(:catalogue_summaries, [])
       |> assign(:expanded_catalogues, MapSet.new())
       |> assign(:expanded_categories, MapSet.new())
       |> assign(:loaded_categories, %{})
@@ -90,6 +86,18 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   def handle_params(params, _uri, socket) do
     locale = socket.assigns.locale
     action = socket.assigns.live_action
+
+    socket =
+      if socket.assigns.catalogue_summaries == [] do
+        catalogue_summaries =
+          load_catalogue_summaries(Catalogue.list_catalogues(status: "active"))
+
+        socket
+        |> assign(:stock_map, StockLedger.stock_map())
+        |> assign(:catalogue_summaries, catalogue_summaries)
+      else
+        socket
+      end
 
     case action do
       :new ->

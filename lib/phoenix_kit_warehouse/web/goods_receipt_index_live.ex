@@ -37,9 +37,19 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
       |> assign(:sort_by, "number")
       |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(GoodsReceiptColumnConfig)
+      |> assign(:receipts, [])
 
-    {:ok, assign_receipts(socket)}
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    socket =
+      socket
+      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(GoodsReceiptColumnConfig)
+      |> assign_receipts()
+
+    {:noreply, socket}
   end
 
   def __view_config_changed__(socket) do

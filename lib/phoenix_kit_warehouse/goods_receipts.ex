@@ -290,14 +290,24 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
   @doc """
   Updates a draft goods receipt. Returns `{:error, :not_draft}` when not in
   draft status.
-  """
-  def update_draft(%GoodsReceipt{status: "draft"} = receipt, attrs) do
-    receipt
-    |> GoodsReceipt.changeset(attrs)
-    |> repo().update()
-  end
 
-  def update_draft(%GoodsReceipt{}, _attrs), do: {:error, :not_draft}
+  Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
+  just the in-memory struct) so a stale tab cannot overwrite a receipt that
+  was posted concurrently by another tab/user.
+  """
+  def update_draft(%GoodsReceipt{uuid: uuid}, attrs) do
+    multi =
+      uuid
+      |> lock_status_step("draft", :not_draft)
+      |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
+        GoodsReceipt.changeset(locked, attrs)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{update: updated}} -> {:ok, updated}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
 
   @doc """
   Manually attaches a traceability reference to a goods receipt.

@@ -67,13 +67,33 @@ defmodule PhoenixKitWarehouse.DocRefs do
   def refs_for(source_refs) when is_list(source_refs) do
     source_refs
     |> Enum.map(fn
-      %{"type" => "order", "uuid" => uuid} -> resolve_or_plain("order", uuid, :order)
-      %{"type" => "sub_order", "uuid" => uuid} -> resolve_or_plain("sub_order", uuid, :sub_order)
-      %{"type" => "internal_order", "uuid" => uuid} -> internal_order_ref(uuid)
-      %{"type" => "supplier_order", "uuid" => uuid} -> supplier_order_ref(uuid)
-      %{"type" => "goods_receipt", "uuid" => uuid} -> goods_receipt_ref(uuid)
-      %{"type" => "goods_issue", "uuid" => uuid} -> goods_issue_ref(uuid)
-      _ -> nil
+      %{"type" => "order", "uuid" => uuid} ->
+        resolve_or_plain("order", uuid, :order)
+
+      %{"type" => "sub_order", "uuid" => uuid} ->
+        resolve_or_plain("sub_order", uuid, :sub_order)
+
+      %{"type" => "internal_order", "uuid" => uuid} ->
+        internal_order_ref(uuid)
+
+      %{"type" => "supplier_order", "uuid" => uuid} ->
+        supplier_order_ref(uuid)
+
+      %{"type" => "goods_receipt", "uuid" => uuid} ->
+        goods_receipt_ref(uuid)
+
+      %{"type" => "goods_issue", "uuid" => uuid} ->
+        goods_issue_ref(uuid)
+
+      # Any other host-registered source kind (SourceKinds is generic): delegate
+      # rather than drop it, so a custom-kind ref still renders — and stays
+      # removable, since its `kind` string equals the stored `"type"`. The kind
+      # is kept as a string (never String.to_atom on stored data).
+      %{"type" => type, "uuid" => uuid} when is_binary(type) and is_binary(uuid) ->
+        resolve_or_plain(type, uuid, type)
+
+      _ ->
+        nil
     end)
     |> Enum.filter(& &1)
   end

@@ -107,14 +107,24 @@ defmodule PhoenixKitWarehouse.InternalOrders do
   @doc """
   Updates a draft internal order. Returns `{:error, :not_draft}` when not in
   draft status.
-  """
-  def update_draft(%InternalOrder{status: "draft"} = order, attrs) do
-    order
-    |> InternalOrder.changeset(attrs)
-    |> repo().update()
-  end
 
-  def update_draft(%InternalOrder{}, _attrs), do: {:error, :not_draft}
+  Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
+  just the in-memory struct) so a stale tab cannot overwrite an order that
+  was posted concurrently by another tab/user.
+  """
+  def update_draft(%InternalOrder{uuid: uuid}, attrs) do
+    multi =
+      uuid
+      |> lock_status_step("draft", :not_draft)
+      |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
+        InternalOrder.changeset(locked, attrs)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{update: updated}} -> {:ok, updated}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
 
   @doc """
   Manually attaches a traceability reference to an internal order.
@@ -326,19 +336,10 @@ defmodule PhoenixKitWarehouse.InternalOrders do
 
   defp lines_for_ref(_ref, _actor_uuid), do: []
 
-  defp parse_decimal(nil), do: Decimal.new(0)
-  defp parse_decimal(""), do: Decimal.new(0)
-  defp parse_decimal(%Decimal{} = d), do: d
-
-  defp parse_decimal(s) when is_binary(s) do
-    case Decimal.parse(s) do
-      {d, _} -> d
-      :error -> Decimal.new(0)
-    end
-  end
-
-  defp parse_decimal(n) when is_integer(n), do: Decimal.new(n)
-  defp parse_decimal(_), do: Decimal.new(0)
+  # Delegates to the shared, comma-aware coercion (StockLedger.to_decimal/1) so
+  # "1,5" (et/ru decimals) parses to 1.5 instead of silently truncating to 1
+  # (Decimal.parse/1 partially matches at the comma).
+  defp parse_decimal(value), do: StockLedger.to_decimal(value)
 
   # ---------------------------------------------------------------------------
   # Private helpers

@@ -51,24 +51,42 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
+    socket =
+      socket
+      |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> assign(:locale, locale)
+      |> assign(:stock_items, [])
+      |> assign(:stock_view, "grouped")
+      |> assign(:search, "")
+      |> assign(:sort_by, "item")
+      |> assign(:sort_dir, :asc)
+      |> assign(:current_user_uuid, user_uuid)
+
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    user_uuid = socket.assigns.current_user_uuid
+
     stock_view =
       (is_binary(user_uuid) &&
          Map.get(ViewConfigs.get_view_config(user_uuid, "warehouse_stock"), "stock_view")) ||
         "grouped"
 
+    # Computed once here (was: once for `:stock_items` in mount, then again
+    # inside assign_stock_rows/1 — 2x per mount cycle). assign_stock_rows/2
+    # reuses this result instead of re-querying.
+    items = build_stock_items()
+
     socket =
       socket
-      |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:locale, locale)
-      |> assign(:stock_items, build_stock_items())
       |> assign(:stock_view, stock_view)
-      |> assign(:search, "")
-      |> assign(:sort_by, "item")
-      |> assign(:sort_dir, :asc)
-      |> assign(:current_user_uuid, user_uuid)
+      |> assign(:stock_items, items)
       |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(StockColumnConfig)
+      |> assign_stock_rows(items)
 
-    {:ok, assign_stock_rows(socket)}
+    {:noreply, socket}
   end
 
   # Re-run the pipeline after a filter value change or a column save (called by
@@ -132,11 +150,18 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   # Pipeline
   # ---------------------------------------------------------------------------
 
-  defp assign_stock_rows(socket) do
+  # Re-queries current stock — used by search/sort/filter event handlers,
+  # which should reflect any stock changes since the page loaded.
+  defp assign_stock_rows(socket), do: assign_stock_rows(socket, build_stock_items())
+
+  # Builds :stock_rows from an already-fetched item list — used by
+  # handle_params/3, which fetches `items` once for both :stock_items and
+  # :stock_rows instead of querying twice.
+  defp assign_stock_rows(socket, items) do
     locale = socket.assigns.locale
 
     rows =
-      build_stock_items()
+      items
       |> enrich_stock(locale)
       |> apply_global_search(socket.assigns.search)
       |> apply_column_filters(socket.assigns.active_filters, socket.assigns.filter_values)

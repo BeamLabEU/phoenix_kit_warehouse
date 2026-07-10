@@ -8,19 +8,26 @@ db_name =
     "phoenix_kit_warehouse_test"
 
 db_check =
-  case System.cmd("psql", ["-lqt"], stderr_to_stdout: true) do
-    {output, 0} ->
-      exists =
-        output
-        |> String.split("\n")
-        |> Enum.any?(fn line ->
-          line |> String.split("|") |> List.first("") |> String.trim() == db_name
-        end)
+  try do
+    case System.cmd("psql", ["-lqt"], stderr_to_stdout: true) do
+      {output, 0} ->
+        exists =
+          output
+          |> String.split("\n")
+          |> Enum.any?(fn line ->
+            line |> String.split("|") |> List.first("") |> String.trim() == db_name
+          end)
 
-      if exists, do: :exists, else: :not_found
+        if exists, do: :exists, else: :not_found
 
-    _ ->
-      :try_connect
+      _ ->
+        :try_connect
+    end
+  rescue
+    # `psql` client not on PATH — don't crash the whole suite. Fall back to a
+    # direct connection probe below, which degrades to excluding :integration
+    # when no database is reachable.
+    _ -> :try_connect
   end
 
 repo_available =

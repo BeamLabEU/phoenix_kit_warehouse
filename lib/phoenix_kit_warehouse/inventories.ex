@@ -149,14 +149,24 @@ defmodule PhoenixKitWarehouse.Inventories do
   @doc """
   Updates a draft document. Returns `{:error, :not_draft}` if the document
   is not in `draft` status.
-  """
-  def update_draft(%InventoryDocument{status: "draft"} = doc, attrs) do
-    doc
-    |> InventoryDocument.draft_changeset(attrs)
-    |> repo().update()
-  end
 
-  def update_draft(%InventoryDocument{}, _attrs), do: {:error, :not_draft}
+  Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
+  just the in-memory struct) so a stale tab cannot overwrite a document that
+  was posted concurrently by another tab/user.
+  """
+  def update_draft(%InventoryDocument{uuid: uuid}, attrs) do
+    multi =
+      uuid
+      |> lock_status_step("draft", :not_draft)
+      |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
+        InventoryDocument.draft_changeset(locked, attrs)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{update: updated}} -> {:ok, updated}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
 
   @doc "Returns `{:ok, doc}` or `{:error, :not_found}`."
   def get_document(uuid) do

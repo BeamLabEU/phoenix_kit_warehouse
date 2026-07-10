@@ -274,14 +274,24 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   @doc """
   Updates a draft goods issue. Returns `{:error, :not_draft}` when not in
   draft status.
-  """
-  def update_draft(%GoodsIssue{status: "draft"} = issue, attrs) do
-    issue
-    |> GoodsIssue.changeset(attrs)
-    |> repo().update()
-  end
 
-  def update_draft(%GoodsIssue{}, _attrs), do: {:error, :not_draft}
+  Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
+  just the in-memory struct) so a stale tab cannot overwrite an issue that
+  was posted concurrently by another tab/user.
+  """
+  def update_draft(%GoodsIssue{uuid: uuid}, attrs) do
+    multi =
+      uuid
+      |> lock_status_step("draft", :not_draft)
+      |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
+        GoodsIssue.changeset(locked, attrs)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{update: updated}} -> {:ok, updated}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
 
   @doc """
   Manually attaches a traceability reference to a goods issue.

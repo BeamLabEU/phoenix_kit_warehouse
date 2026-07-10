@@ -37,9 +37,19 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
       |> assign(:sort_by, "number")
       |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
+      |> assign(:orders, [])
 
-    {:ok, assign_orders(socket)}
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    socket =
+      socket
+      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
+      |> assign_orders()
+
+    {:noreply, socket}
   end
 
   def __view_config_changed__(socket) do

@@ -39,8 +39,6 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
-    catalogue_summaries = load_catalogue_summaries(Catalogue.list_catalogues(status: "active"))
-
     comments_available? = Comments.available?()
 
     socket =
@@ -64,7 +62,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       |> assign(:child_supplier_order_refs, [])
       |> assign(:child_goods_issue_refs, [])
       |> assign(:page_title, dgettext("default", "Internal Order"))
-      |> assign(:catalogue_summaries, catalogue_summaries)
+      |> assign(:catalogue_summaries, [])
       |> assign(:expanded_catalogues, MapSet.new())
       |> assign(:expanded_categories, MapSet.new())
       |> assign(:loaded_categories, %{})
@@ -89,6 +87,16 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   def handle_params(params, _uri, socket) do
     locale = socket.assigns.locale
     action = socket.assigns.live_action
+
+    socket =
+      if socket.assigns.catalogue_summaries == [] do
+        catalogue_summaries =
+          load_catalogue_summaries(Catalogue.list_catalogues(status: "active"))
+
+        assign(socket, :catalogue_summaries, catalogue_summaries)
+      else
+        socket
+      end
 
     case action do
       :new ->
@@ -329,7 +337,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
         Enum.reduce(candidates, {selected, socket.assigns.source_picker_selected_meta}, fn c,
                                                                                            {sel,
                                                                                             m} ->
-          {MapSet.put(sel, c.uuid), Map.put(m, c.uuid, c.type)}
+          {MapSet.put(sel, c.uuid), Map.put(m, c.uuid, c.kind)}
         end)
       end
 

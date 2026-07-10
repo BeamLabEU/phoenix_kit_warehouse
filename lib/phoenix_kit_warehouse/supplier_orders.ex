@@ -82,14 +82,24 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   @doc """
   Updates a draft supplier order. Returns `{:error, :not_draft}` when not in
   draft status.
-  """
-  def update_draft(%SupplierOrder{status: "draft"} = order, attrs) do
-    order
-    |> SupplierOrder.changeset(attrs)
-    |> repo().update()
-  end
 
-  def update_draft(%SupplierOrder{}, _attrs), do: {:error, :not_draft}
+  Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
+  just the in-memory struct) so a stale tab cannot overwrite an order that
+  was posted concurrently by another tab/user.
+  """
+  def update_draft(%SupplierOrder{uuid: uuid}, attrs) do
+    multi =
+      uuid
+      |> lock_status_step("draft", :not_draft)
+      |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
+        SupplierOrder.changeset(locked, attrs)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{update: updated}} -> {:ok, updated}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
 
   @doc """
   Manually attaches a traceability reference (`type` "internal_order") to a
@@ -668,19 +678,10 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     end
   end
 
-  # Parses a required_quantity value (string, Decimal, integer, nil) to Decimal.
-  defp parse_decimal(nil), do: Decimal.new("0")
-  defp parse_decimal(%Decimal{} = d), do: d
-  defp parse_decimal(v) when is_integer(v), do: Decimal.new(v)
-
-  defp parse_decimal(v) when is_binary(v) do
-    case Decimal.parse(v) do
-      {d, ""} -> d
-      _ -> Decimal.new("0")
-    end
-  end
-
-  defp parse_decimal(_), do: Decimal.new("0")
+  # Parses a required_quantity value to Decimal via the shared, comma-aware
+  # coercion — so "1,5" (et/ru decimals) parses to 1.5 instead of being dropped
+  # to 0. Consolidates what was a stricter local parser (see StockLedger.to_decimal/1).
+  defp parse_decimal(value), do: StockLedger.to_decimal(value)
 
   # Builds an enriched line map for a supplier order.
   defp build_enriched_line(line, on_hand, shortfall, item) do

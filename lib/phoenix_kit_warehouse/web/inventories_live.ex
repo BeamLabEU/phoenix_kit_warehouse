@@ -54,9 +54,19 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
       |> assign(:sort_by, "number")
       |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(InventoryColumnConfig)
+      |> assign(:documents, [])
 
-    {:ok, assign_documents(socket)}
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    socket =
+      socket
+      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(InventoryColumnConfig)
+      |> assign_documents()
+
+    {:noreply, socket}
   end
 
   # Re-run the pipeline after a filter value change or a column save (called by
