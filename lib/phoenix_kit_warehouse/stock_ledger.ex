@@ -9,6 +9,7 @@ defmodule PhoenixKitWarehouse.StockLedger do
 
   import Ecto.Query
 
+  alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.Stock
 
   @warehouse_type_setting "warehouse_location_type_uuid"
@@ -44,6 +45,20 @@ defmodule PhoenixKitWarehouse.StockLedger do
     )
   end
 
+  @doc """
+  Lists all Locations tagged with the configured warehouse LocationType.
+
+  Returns `nil` when `warehouse_location_type_uuid/0` is not configured
+  (distinct from an empty list, which means the type is configured but no
+  Locations are tagged with it yet).
+  """
+  def list_warehouses do
+    case warehouse_location_type_uuid() do
+      nil -> nil
+      type_uuid -> Locations.list_locations(type_uuid: type_uuid)
+    end
+  end
+
   defp blank_to_nil(v) when v in [nil, ""], do: nil
   defp blank_to_nil(v), do: v
 
@@ -53,11 +68,35 @@ defmodule PhoenixKitWarehouse.StockLedger do
   end
 
   @doc """
-  Returns a map of `item_uuid => %{quantity: Decimal, unit_value: Decimal | nil}`
-  for fast tree annotation.
+  Returns a map of `item_uuid => %{quantity: Decimal, unit_value: Decimal | nil}`,
+  aggregated across every warehouse location, for fast tree annotation.
+
+  Two things to know about the aggregation:
+
+    - `quantity` is a cross-warehouse **sum**: the total quantity on hand
+      for the item across every `location_uuid` it has a `Stock` row at.
+    - `unit_value` is only an **approximation**: it is taken from whichever
+      location's row was `updated_at` most recently among rows where it is
+      not `nil` (or `nil` if none has one set). It is NOT necessarily the
+      value at any particular warehouse. For the exact per-warehouse value,
+      use `stock_map_for_location/1` instead.
   """
   def stock_map do
     Stock
+    |> repo().all()
+    |> Enum.group_by(& &1.item_uuid)
+    |> Map.new(fn {item_uuid, rows} -> {item_uuid, aggregate_stock_rows(rows)} end)
+  end
+
+  @doc """
+  Returns a map of `item_uuid => %{quantity: Decimal, unit_value: Decimal | nil}`
+  scoped to a single warehouse `location_uuid` — the exact, non-aggregated
+  counterpart of `stock_map/0`. At most one row per `item_uuid` is possible
+  here, since `{item_uuid, location_uuid}` is unique.
+  """
+  def stock_map_for_location(location_uuid) do
+    Stock
+    |> where([s], s.location_uuid == ^location_uuid)
     |> repo().all()
     |> Map.new(fn row ->
       {row.item_uuid, %{quantity: row.quantity, unit_value: row.unit_value}}
@@ -72,11 +111,42 @@ defmodule PhoenixKitWarehouse.StockLedger do
   end
 
   @doc """
+  Returns stock rows for the given list of item UUIDs, scoped to a single
+  warehouse `location_uuid`. Unlike `stock_map_for_location/1`, this returns
+  the raw `%Stock{}` rows (unmapped) — used for audit snapshots when posting.
+  """
+  def stock_for_items_at_location(item_uuids, location_uuid, target_repo \\ nil) do
+    Stock
+    |> where([s], s.item_uuid in ^item_uuids and s.location_uuid == ^location_uuid)
+    |> (target_repo || repo()).all()
+  end
+
+  @doc """
   Returns the current quantity for the given item UUID as a Decimal.
   Returns `Decimal.new(\"0\")` if no row exists.
   """
   def get_quantity(item_uuid) do
     case repo().get_by(Stock, item_uuid: item_uuid) do
+      nil -> Decimal.new("0")
+      row -> row.quantity
+    end
+  end
+
+  @doc """
+  Returns the current quantity for the given item UUID at the given
+  `location_uuid`, as a Decimal. Returns `Decimal.new(\"0\")` if no row
+  exists.
+
+  Unlike `get_quantity/1` — which looks up by `item_uuid` alone and, once an
+  item has `Stock` rows at more than one location, returns an unpredictable
+  row — this filters by both columns. Use this (not `get_quantity/1`) for
+  new warehouse operations that are location-aware (transfers).
+  """
+  def get_quantity(item_uuid, location_uuid) do
+    Stock
+    |> where([s], s.item_uuid == ^item_uuid and s.location_uuid == ^location_uuid)
+    |> repo().one()
+    |> case do
       nil -> Decimal.new("0")
       row -> row.quantity
     end
@@ -287,4 +357,28 @@ defmodule PhoenixKitWarehouse.StockLedger do
   def to_decimal_or_nil(n) when is_integer(n), do: Decimal.new(n)
   def to_decimal_or_nil(n) when is_float(n), do: Decimal.from_float(n)
   def to_decimal_or_nil(_), do: nil
+
+  # Collapses same-item `Stock` rows from multiple warehouse locations into
+  # a single {quantity, unit_value} pair for `stock_map/0` — quantity sums,
+  # unit_value picks the most recently updated non-nil value (see doc above).
+  defp aggregate_stock_rows(rows) do
+    quantity = Enum.reduce(rows, Decimal.new("0"), &Decimal.add(&2, &1.quantity))
+
+    unit_value =
+      rows
+      |> Enum.filter(&(not is_nil(&1.unit_value)))
+      |> Enum.reduce(nil, &most_recently_updated/2)
+      |> case do
+        nil -> nil
+        row -> row.unit_value
+      end
+
+    %{quantity: quantity, unit_value: unit_value}
+  end
+
+  defp most_recently_updated(row, nil), do: row
+
+  defp most_recently_updated(row, acc) do
+    if DateTime.compare(row.updated_at, acc.updated_at) == :gt, do: row, else: acc
+  end
 end
