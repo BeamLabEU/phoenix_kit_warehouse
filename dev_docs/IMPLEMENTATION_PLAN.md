@@ -7,7 +7,7 @@
 >
 > **Стыковка с locations:** контракт — `PlacePicker` LiveComponent (`{:place_picker_select, id, %{location_uuid, space_uuid}}`) и `PhoenixKitLocations.Spaces.full_path/2`; складские задачи, зависящие от пикера, имеют текстовый fallback до готовности locations v0.5.
 
-> **ОБЯЗАТЕЛЬНЫЕ ПРАВКИ ПО ИТОГАМ 4-СТОРОННЕГО РЕВЬЮ (2026-07-10, GLM/Sonnet/Kimi/Vibe; все пункты проверены по коду):**
+> **ОБЯЗАТЕЛЬНЫЕ ПРАВКИ ПО ИТОГАМ 5-СТОРОННЕГО РЕВЬЮ (2026-07-10, GLM/Sonnet/Kimi/Vibe/Opus-max; все пункты проверены по коду):**
 > 1. **[major] «Текущее состояние» — ложная посылка о core.** Актуальный дep `/www/app/deps/phoenix_kit` имеет `@current_version 140`, и `v140.ex` — это и есть складская миграция (создаёт те же 6 таблиц, что bootstrap Andi; idempotent). Формулировку «стоп-гэп до публикации V140» убрать; обоснование собственного `migration_module/0` — только НОВЫЕ таблицы (transfers, min_stock), это верно и остаётся.
 > 2. **[major] T18 — резерв только по posted.** Использовать `list_posted_internal_orders/0` (или фильтр `status == "posted"`): draft-заказы НЕ резервируют (иначе ложные дефициты). Плюс: `CommittedQuantities.compute/4` возвращает ВЛОЖЕННУЮ карту `%{source_uuid => %{item_uuid => Decimal}}` — резерв считать по строкам каждого IO: `max(0, req_line − Map.get(committed, io.uuid, %{})[item_uuid])`, не глобальными суммами.
 > 3. **[major] T19 — обязательный location_uuid.** `SupplierOrder.changeset` требует `location_uuid` (`validate_required`, supplier_order.ex:43): передавать `location_uuid: StockLedger.default_location_uuid()`; строки собирать по конвенции `build_enriched_line` (`ordered_quantity`/`base_price`, строковые ключи). Сигнатура `create_supplier_order/1` проверена — подходит.
@@ -19,6 +19,8 @@
 > 9. **[minor] «Текущее состояние».** `Spaces.full_path/2` (не `Paths.full_path/1`); экспорт catalogue — только JSON и PRO100 (CSV-писателя нет).
 > 10. **[minor] T20.** В коде и UI оборотов задокументировать: `balance` = текущий остаток на момент запроса, не историческое сальдо на конец периода.
 > 11. **[new] T23 (опционально, хвост волны 1):** заменить `<select>` склада на `PlacePicker` из locations v0.5, когда тот готов, — это и есть первый потребитель пикера (синхронизировано с планом locations).
+> 12. **[blocker, Opus] Отмена перемещений — решение №2 шапки НЕ реализовано в задачах.** Добавить: `cancel_transfer/2` (draft → status cancelled без проводок; in_transit → `Ecto.Multi` с реверс-проводкой `StockLedger.receive_quantity(item, qty, location_uuid: source_location_uuid, repo: multi-repo)` на источник + снапшот + status cancelled), статус `cancelled` в `@statuses` (T10), кнопка Cancel в форме (T15), запись в activity log.
+> 13. **[minor, Opus] T8/T16 — последовательность PgBouncer.** `mix phoenix_kit.update` генерирует И применяет одной командой, добавить `@disable_ddl_transaction` «до применения» нельзя: первый прогон в dev ОЖИДАЕМО не создаст таблицу (DDL упадёт молча) — сразу чинить через Tidewave по рецепту (шаг 3 T8), атрибут в файле нужен для последующих сред (test/prod с прямым подключением).
 
 
 
