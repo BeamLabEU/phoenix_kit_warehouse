@@ -7,6 +7,20 @@
 >
 > **Стыковка с locations:** контракт — `PlacePicker` LiveComponent (`{:place_picker_select, id, %{location_uuid, space_uuid}}`) и `PhoenixKitLocations.Spaces.full_path/2`; складские задачи, зависящие от пикера, имеют текстовый fallback до готовности locations v0.5.
 
+> **ОБЯЗАТЕЛЬНЫЕ ПРАВКИ ПО ИТОГАМ 4-СТОРОННЕГО РЕВЬЮ (2026-07-10, GLM/Sonnet/Kimi/Vibe; все пункты проверены по коду):**
+> 1. **[major] «Текущее состояние» — ложная посылка о core.** Актуальный дep `/www/app/deps/phoenix_kit` имеет `@current_version 140`, и `v140.ex` — это и есть складская миграция (создаёт те же 6 таблиц, что bootstrap Andi; idempotent). Формулировку «стоп-гэп до публикации V140» убрать; обоснование собственного `migration_module/0` — только НОВЫЕ таблицы (transfers, min_stock), это верно и остаётся.
+> 2. **[major] T18 — резерв только по posted.** Использовать `list_posted_internal_orders/0` (или фильтр `status == "posted"`): draft-заказы НЕ резервируют (иначе ложные дефициты). Плюс: `CommittedQuantities.compute/4` возвращает ВЛОЖЕННУЮ карту `%{source_uuid => %{item_uuid => Decimal}}` — резерв считать по строкам каждого IO: `max(0, req_line − Map.get(committed, io.uuid, %{})[item_uuid])`, не глобальными суммами.
+> 3. **[major] T19 — обязательный location_uuid.** `SupplierOrder.changeset` требует `location_uuid` (`validate_required`, supplier_order.ex:43): передавать `location_uuid: StockLedger.default_location_uuid()`; строки собирать по конвенции `build_enriched_line` (`ordered_quantity`/`base_price`, строковые ключи). Сигнатура `create_supplier_order/1` проверена — подходит.
+> 4. **[major] T10/T11 — двухстадийные changeset + guard'ы.** create-changeset допускает nil-склады (draft), ship/receive-changeset требуют оба и `source != destination`; в `ship_transfer`/`receive_transfer` — явный серверный guard «обе локации заданы» ДО `issue_quantity`/`receive_quantity` (`StockLedger.issue_quantity` при nil location молча падает на `default_location_uuid()` — stock_ledger.ex:216). `lock_status_step` — приватная функция, продублированная в 3 контекстах: Transfers заводит СВОЮ копию, не импортирует.
+> 5. **[major] T2/T4 — смена склада инвентаризации.** Зафиксировать семантику: смена склада в draft разрешена только пока нет посчитанных строк (иначе блокировать) ЛИБО пересидировать строки при смене; просто «обновить :stock_map» недостаточно (строки останутся от старого склада).
+> 6. **[minor] T1 — get_quantity.** `StockLedger.get_quantity/1` ищет только по item_uuid (stock_ledger.ex:78) — при мульти-складе добавить `get_quantity/2` (item+location) и использовать в новых операциях.
+> 7. **[minor] T7 — вывести `current` явно.** В скетче `for v <- (current+1)..target` переменная `current` = `migrated_version_runtime(prefix: prefix)` — вычислять внутри `up/1` (обёртка передаёт только `prefix`+`version`).
+> 8. **[minor] T19 — инлайн-редактирование минимума.** Паттерн реального образца: `phx-change` + `phx-debounce="blur"` + хук `InvEnterBlur` (internal_order_form_live.ex:1342-1357), НЕ `phx-blur`.
+> 9. **[minor] «Текущее состояние».** `Spaces.full_path/2` (не `Paths.full_path/1`); экспорт catalogue — только JSON и PRO100 (CSV-писателя нет).
+> 10. **[minor] T20.** В коде и UI оборотов задокументировать: `balance` = текущий остаток на момент запроса, не историческое сальдо на конец периода.
+> 11. **[new] T23 (опционально, хвост волны 1):** заменить `<select>` склада на `PlacePicker` из locations v0.5, когда тот готов, — это и есть первый потребитель пикера (синхронизировано с планом locations).
+
+
 
 # План: phoenix_kit_warehouse — волна 1 (мульти-склад, перемещения, дефицит, обороты, связанные документы)
 
