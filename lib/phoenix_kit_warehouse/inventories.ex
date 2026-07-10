@@ -20,29 +20,30 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   @doc """
   Builds an unsaved inventory document struct pre-seeded with lines from the
-  current stock. Only items whose catalogue card has `status == "active"` are
-  included.
+  current stock at the configured default warehouse. Only items whose
+  catalogue card has `status == "active"` are included.
 
   `locale` is explicit — do NOT rely on the process Gettext locale inside a
   context module.
   """
   def new_draft(locale, _opts \\ []) do
-    lines = seed_lines(locale)
-    %InventoryDocument{lines: lines, location_uuid: StockLedger.default_location_uuid()}
+    location_uuid = StockLedger.default_location_uuid()
+    lines = seed_lines(locale, location_uuid)
+    %InventoryDocument{lines: lines, location_uuid: location_uuid}
   end
 
   @doc """
-  Builds seed lines for a new inventory draft.
+  Builds seed lines for a new inventory draft, scoped to a single warehouse.
 
-  One line per stock row whose catalogue item exists AND has
-  `status == "active"`. Fetches items via
+  One line per stock row at `location_uuid` whose catalogue item exists AND
+  has `status == "active"`. Fetches items via
   `PhoenixKitCatalogue.Catalogue.list_items_by_uuids/2` then filters
   `status == "active"` in Elixir (that function only excludes
   soft-deleted/status="deleted" items, so inactive/discontinued slip through).
   """
-  def seed_lines(locale) do
-    stock_rows = StockLedger.list_stock()
-    item_uuids = Enum.map(stock_rows, & &1.item_uuid)
+  def seed_lines(locale, location_uuid) do
+    stock_map = StockLedger.stock_map_for_location(location_uuid)
+    item_uuids = Map.keys(stock_map)
 
     if item_uuids == [] do
       []
@@ -53,15 +54,13 @@ defmodule PhoenixKitWarehouse.Inventories do
         |> Enum.filter(&(&1.status == "active"))
         |> Map.new(&{&1.uuid, &1})
 
-      stock_map = StockLedger.stock_map()
-
-      Enum.flat_map(stock_rows, fn row ->
-        case Map.get(items_by_uuid, row.item_uuid) do
+      Enum.flat_map(item_uuids, fn item_uuid ->
+        case Map.get(items_by_uuid, item_uuid) do
           nil ->
             []
 
           item ->
-            stock_entry = stock_map[row.item_uuid]
+            stock_entry = stock_map[item_uuid]
 
             unit_value =
               (stock_entry && stock_entry.unit_value) ||
@@ -75,7 +74,7 @@ defmodule PhoenixKitWarehouse.Inventories do
                 "category_uuid" => item.category_uuid,
                 "catalogue_uuid" => item.catalogue_uuid,
                 "unit" => item.unit,
-                "counted_quantity" => row.quantity,
+                "counted_quantity" => stock_entry.quantity,
                 "unit_value" => unit_value
               }
             ]
@@ -149,11 +148,32 @@ defmodule PhoenixKitWarehouse.Inventories do
   @doc """
   Updates a draft document. Returns `{:error, :not_draft}` if the document
   is not in `draft` status.
+
+  Changing `:location_uuid` to a value different from the document's current
+  one always re-seeds `:lines` from that warehouse's current stock (see
+  `seed_lines/2`), replacing whatever lines were there before — lines from
+  the previous warehouse (manually counted or not) don't apply to a
+  different physical location. This happens unconditionally, without
+  locking (the document is still a draft; no stock has moved yet).
+
+  Pass `:locale` (atom or string key) in `attrs` to localize the re-seeded
+  line names; without it, re-seeded lines fall back to each catalogue item's
+  default (untranslated) name — see `seed_lines/2`.
   """
   def update_draft(%InventoryDocument{status: "draft"} = doc, attrs) do
-    doc
-    |> InventoryDocument.draft_changeset(attrs)
-    |> repo().update()
+    new_location_uuid = Map.get(attrs, :location_uuid) || Map.get(attrs, "location_uuid")
+
+    changeset = InventoryDocument.draft_changeset(doc, attrs)
+
+    changeset =
+      if new_location_uuid && new_location_uuid != doc.location_uuid do
+        locale = Map.get(attrs, :locale) || Map.get(attrs, "locale")
+        Ecto.Changeset.put_change(changeset, :lines, seed_lines(locale, new_location_uuid))
+      else
+        changeset
+      end
+
+    repo().update(changeset)
   end
 
   def update_draft(%InventoryDocument{}, _attrs), do: {:error, :not_draft}
@@ -203,7 +223,9 @@ defmodule PhoenixKitWarehouse.Inventories do
   @doc """
   Posts an inventory document in an `Ecto.Multi` transaction.
 
-  - Reads current `stock_map()` once up front for audit `previous_*` fields.
+  - Reads current stock at the document's own warehouse
+    (`stock_map_for_location(doc.location_uuid)`) once up front for audit
+    `previous_*` fields.
   - For each line: coerces quantities/values to Decimal; captures pre-post
     stock as audit fields; upserts the stock row inside the transaction via
     `Multi.run/3` (so all writes happen atomically).
@@ -218,7 +240,7 @@ defmodule PhoenixKitWarehouse.Inventories do
   end
 
   def post_document(%InventoryDocument{} = doc, performed_by_uuid) do
-    prior_stock = StockLedger.stock_map()
+    prior_stock = StockLedger.stock_map_for_location(doc.location_uuid)
     {audited_lines, upserts} = build_posting_multi(doc, prior_stock)
     posted_changeset = InventoryDocument.post_changeset(doc, audited_lines, performed_by_uuid)
 
@@ -255,9 +277,9 @@ defmodule PhoenixKitWarehouse.Inventories do
   @doc """
   Re-applies ABSOLUTE stock quantities for an already-posted document.
 
-  Mirrors `post_document/2` stock math exactly: reads current stock for
-  audit `previous_*` fields, upserts each line atomically, and re-stamps
-  `posted_at` + `performed_by_uuid`.
+  Mirrors `post_document/2` stock math exactly: reads current stock at the
+  document's own warehouse for audit `previous_*` fields, upserts each line
+  atomically, and re-stamps `posted_at` + `performed_by_uuid`.
 
   Returns `{:error, :not_posted}` when the document is not in `posted`
   status. Rolls back on any failure.
@@ -268,7 +290,7 @@ defmodule PhoenixKitWarehouse.Inventories do
   end
 
   def repost_document(%InventoryDocument{} = doc, performed_by_uuid) do
-    prior_stock = StockLedger.stock_map()
+    prior_stock = StockLedger.stock_map_for_location(doc.location_uuid)
     {audited_lines, multi} = build_posting_multi(doc, prior_stock)
 
     repost_changeset = InventoryDocument.post_changeset(doc, audited_lines, performed_by_uuid)

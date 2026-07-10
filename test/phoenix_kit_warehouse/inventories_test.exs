@@ -148,6 +148,59 @@ defmodule PhoenixKitWarehouse.InventoriesTest do
   end
 
   # ---------------------------------------------------------------------------
+  # seed_lines/2 — per-warehouse scoping
+  # ---------------------------------------------------------------------------
+
+  describe "seed_lines/2 — per-warehouse scoping" do
+    test "seeds only from the given location, not mixing in another location's stock" do
+      cat = create_catalogue!()
+      item_a = create_active_item!(cat)
+      item_b = create_active_item!(cat)
+      loc_a = Ecto.UUID.generate()
+      loc_b = Ecto.UUID.generate()
+
+      {:ok, _} =
+        Warehouse.upsert_quantity(item_a.uuid, "5", unit_value: nil, location_uuid: loc_a)
+
+      {:ok, _} =
+        Warehouse.upsert_quantity(item_b.uuid, "9", unit_value: nil, location_uuid: loc_b)
+
+      lines_a = Inventories.seed_lines("en", loc_a)
+      item_uuids_a = Enum.map(lines_a, & &1["item_uuid"])
+
+      assert item_a.uuid in item_uuids_a
+      refute item_b.uuid in item_uuids_a
+    end
+
+    test "counted_quantity comes from the given location's stock, not another location's" do
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+      loc_a = Ecto.UUID.generate()
+      loc_b = Ecto.UUID.generate()
+
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "3", unit_value: nil, location_uuid: loc_a)
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "20", unit_value: nil, location_uuid: loc_b)
+
+      lines_a = Inventories.seed_lines("en", loc_a)
+      line_a = Enum.find(lines_a, &(&1["item_uuid"] == item.uuid))
+
+      assert line_a != nil
+      assert Decimal.equal?(Warehouse.to_decimal(line_a["counted_quantity"]), Decimal.new("3"))
+    end
+
+    test "returns an empty list when the given location has no stock" do
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+      loc_a = Ecto.UUID.generate()
+      loc_b = Ecto.UUID.generate()
+
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "4", unit_value: nil, location_uuid: loc_a)
+
+      assert Inventories.seed_lines("en", loc_b) == []
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # create_draft / get_document / list_documents
   # ---------------------------------------------------------------------------
 
@@ -218,6 +271,85 @@ defmodule PhoenixKitWarehouse.InventoriesTest do
       {:ok, posted} = Inventories.get_document(doc.uuid)
 
       assert {:error, :not_draft} = Inventories.update_draft(posted, %{note: "changed"})
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # update_draft/2 — location change re-seeding
+  # ---------------------------------------------------------------------------
+
+  describe "update_draft/2 — location change re-seeding" do
+    test "switching location_uuid re-seeds lines from the new location's stock" do
+      cat = create_catalogue!()
+      item_a = create_active_item!(cat)
+      item_b = create_active_item!(cat)
+      loc_a = Ecto.UUID.generate()
+      loc_b = Ecto.UUID.generate()
+
+      {:ok, _} =
+        Warehouse.upsert_quantity(item_a.uuid, "5", unit_value: nil, location_uuid: loc_a)
+
+      {:ok, _} =
+        Warehouse.upsert_quantity(item_b.uuid, "9", unit_value: nil, location_uuid: loc_b)
+
+      {:ok, doc} =
+        Inventories.create_draft(%{
+          location_uuid: loc_a,
+          lines: Inventories.seed_lines("en", loc_a)
+        })
+
+      assert Enum.map(doc.lines, & &1["item_uuid"]) == [item_a.uuid]
+
+      {:ok, updated} = Inventories.update_draft(doc, %{location_uuid: loc_b, locale: "en"})
+
+      assert updated.location_uuid == loc_b
+      item_uuids = Enum.map(updated.lines, & &1["item_uuid"])
+      assert item_b.uuid in item_uuids
+      refute item_a.uuid in item_uuids
+    end
+
+    test "switching location_uuid to the same value does not touch lines" do
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+      loc_a = Ecto.UUID.generate()
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "5", unit_value: nil, location_uuid: loc_a)
+
+      {:ok, doc} =
+        Inventories.create_draft(%{
+          location_uuid: loc_a,
+          lines: [%{"item_uuid" => item.uuid, "counted_quantity" => "42"}]
+        })
+
+      {:ok, updated} = Inventories.update_draft(doc, %{location_uuid: loc_a})
+
+      line = Enum.find(updated.lines, &(&1["item_uuid"] == item.uuid))
+      # Untouched: still the manually-entered "42", not re-seeded from stock ("5").
+      assert Decimal.equal?(Warehouse.to_decimal(line["counted_quantity"]), Decimal.new("42"))
+    end
+
+    test "omitting location_uuid from attrs does not touch lines (existing save-draft callers)" do
+      {:ok, doc} =
+        Inventories.create_draft(%{
+          lines: [%{"item_uuid" => Ecto.UUID.generate(), "counted_quantity" => "7"}]
+        })
+
+      {:ok, updated} = Inventories.update_draft(doc, %{note: "just a note update"})
+
+      assert updated.note == "just a note update"
+      assert updated.lines == doc.lines
+    end
+
+    test "re-seeding without a :locale falls back gracefully (no crash)" do
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+      loc_a = Ecto.UUID.generate()
+      loc_b = Ecto.UUID.generate()
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "6", unit_value: nil, location_uuid: loc_b)
+
+      {:ok, doc} = Inventories.create_draft(%{location_uuid: loc_a, lines: []})
+
+      assert {:ok, updated} = Inventories.update_draft(doc, %{location_uuid: loc_b})
+      assert Enum.map(updated.lines, & &1["item_uuid"]) == [item.uuid]
     end
   end
 

@@ -170,9 +170,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     scope = socket.assigns[:phoenix_kit_current_scope]
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     user_uuid = current_user && current_user.uuid
+    location_uuid = StockLedger.default_location_uuid()
 
     attrs = %{
-      lines: Inventories.seed_lines(locale),
+      lines: Inventories.seed_lines(locale, location_uuid),
+      location_uuid: location_uuid,
       created_by_uuid: user_uuid
     }
 

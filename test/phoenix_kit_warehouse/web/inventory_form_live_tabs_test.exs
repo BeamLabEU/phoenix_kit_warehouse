@@ -343,7 +343,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTabsTest do
       # Create draft via the context (seeded from stock)
       {:ok, doc} =
         Inventories.create_draft(%{
-          lines: Inventories.seed_lines("en"),
+          lines: Inventories.seed_lines("en", Warehouse.default_location_uuid()),
           created_by_uuid: admin.uuid
         })
 
@@ -367,7 +367,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTabsTest do
 
       {:ok, doc} =
         Inventories.create_draft(%{
-          lines: Inventories.seed_lines("en"),
+          lines: Inventories.seed_lines("en", Warehouse.default_location_uuid()),
           created_by_uuid: admin.uuid
         })
 
@@ -393,7 +393,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTabsTest do
 
       {:ok, doc} =
         Inventories.create_draft(%{
-          lines: Inventories.seed_lines("en"),
+          lines: Inventories.seed_lines("en", Warehouse.default_location_uuid()),
           created_by_uuid: admin.uuid
         })
 
@@ -419,7 +419,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTabsTest do
 
       {:ok, doc} =
         Inventories.create_draft(%{
-          lines: Inventories.seed_lines("en"),
+          lines: Inventories.seed_lines("en", Warehouse.default_location_uuid()),
           created_by_uuid: admin.uuid
         })
 
