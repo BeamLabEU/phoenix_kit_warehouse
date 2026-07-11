@@ -227,6 +227,32 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
     end
   end
 
+  describe "search (flat view)" do
+    # Regression coverage for the search handler now re-slicing the cached
+    # :stock_items instead of re-querying build_stock_items/1 on every
+    # keystroke — the pipeline (enrich_stock -> apply_global_search -> ...)
+    # itself must still filter correctly against that cache.
+    test "search filters the flat table down to matching items", %{conn: conn} do
+      a = admin()
+      cat = create_catalogue!()
+      match = create_item!(cat, "Searchable Bolt")
+      other = create_item!(cat, "Unrelated Widget")
+      {:ok, _} = StockLedger.upsert_quantity(match.uuid, "3")
+      {:ok, _} = StockLedger.upsert_quantity(other.uuid, "3")
+
+      {:ok, lv, _html} = live(login(conn, a), path())
+      render_click(element(lv, ~s([phx-click="set_stock_view"][phx-value-view="flat"])))
+
+      html =
+        lv
+        |> element("form#stock-search")
+        |> render_change(%{"search" => "Bolt"})
+
+      assert html =~ "Searchable Bolt"
+      refute html =~ "Unrelated Widget"
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Deficit tracking (§5, full variant) — T19
   # ---------------------------------------------------------------------------

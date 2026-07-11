@@ -204,9 +204,15 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         {:noreply, create_supplier_order_from_row(socket, row)}
 
       _ ->
+        # Rejected (stale click on a row that's no longer a deficit, or the
+        # item vanished from the cached list) — refresh the cache so the
+        # keeper immediately sees the row's real current state instead of
+        # staring at the same stale badge that just got rejected.
         {:noreply,
-         put_flash(
-           socket,
+         socket
+         |> assign_stock_items()
+         |> assign_stock_rows()
+         |> put_flash(
            :error,
            dgettext("default", "Could not create a supplier order for this item")
          )}
@@ -246,10 +252,16 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   # Pipeline
   # ---------------------------------------------------------------------------
 
-  # Re-queries current stock — used by search/sort/filter event handlers,
-  # which should reflect any stock changes since the page loaded.
+  # Re-derives :stock_rows from the already-cached :stock_items — used by
+  # search/sort/filter event handlers, which only need to re-slice/re-sort/
+  # re-filter the list already loaded for this mount cycle, not re-run
+  # build_stock_items/1's Deficits.available_by_item/0 + min_stock_map/0 +
+  # Catalogue load on every keystroke. :stock_items itself is refreshed from
+  # the DB wherever the underlying data can actually change — handle_params,
+  # set_warehouse_scope, set_min_quantity, create_supplier_order_from_deficit
+  # (see assign_stock_items/1's callers) — search/sort/filtering never do.
   defp assign_stock_rows(socket),
-    do: assign_stock_rows(socket, build_stock_items(socket.assigns.warehouse_scope))
+    do: assign_stock_rows(socket, socket.assigns.stock_items)
 
   # Builds :stock_rows from an already-fetched item list — used by
   # handle_params/3, which fetches `items` once for both :stock_items and
