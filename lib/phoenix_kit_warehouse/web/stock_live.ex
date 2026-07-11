@@ -70,6 +70,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     scope = socket.assigns[:phoenix_kit_current_scope]
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     user_uuid = current_user && current_user.uuid
+    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
 
     socket =
       socket
@@ -83,6 +84,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       |> assign(:sort_by, "item")
       |> assign(:sort_dir, :asc)
       |> assign(:current_user_uuid, user_uuid)
+      |> assign(:admin?, admin?)
 
     {:ok, socket}
   end
@@ -170,6 +172,10 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   # both views so the Grouped deficit icon and the Flat badge/highlight/
   # filter stay in sync with the new value right away.
   @impl true
+  def handle_event("set_min_quantity", _params, %{assigns: %{admin?: false}} = socket) do
+    {:noreply, put_flash(socket, :error, dgettext("default", "Not authorized"))}
+  end
+
   def handle_event(
         "set_min_quantity",
         %{"item_uuid" => item_uuid, "min_quantity" => raw},
@@ -196,6 +202,14 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   # the row's already-computed Deficits values (not a fresh recompute) since
   # that's what the keeper saw when they clicked.
   @impl true
+  def handle_event(
+        "create_supplier_order_from_deficit",
+        _params,
+        %{assigns: %{admin?: false}} = socket
+      ) do
+    {:noreply, put_flash(socket, :error, dgettext("default", "Not authorized"))}
+  end
+
   def handle_event("create_supplier_order_from_deficit", %{"item_uuid" => item_uuid}, socket) do
     socket.assigns.stock_rows
     |> Enum.find(&(&1.item.uuid == item_uuid))

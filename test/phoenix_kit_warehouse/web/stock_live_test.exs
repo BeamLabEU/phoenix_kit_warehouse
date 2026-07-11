@@ -40,6 +40,21 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
     PhoenixKit.Users.Auth.get_user!(u.uuid)
   end
 
+  # Confirmed (so it can log in) but never promoted — a plain non-admin
+  # user, for asserting the admin?-guarded mutating events reject it.
+  defp non_admin do
+    {:ok, u} =
+      PhoenixKit.Users.Auth.register_user(%{
+        "email" => email(),
+        "password" => "password123456789",
+        "first_name" => "W",
+        "last_name" => "U"
+      })
+
+    {:ok, u} = PhoenixKit.Users.Auth.admin_confirm_user(u)
+    u
+  end
+
   defp login(conn, u) do
     t = PhoenixKit.Users.Auth.generate_user_session_token(u)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, t)
@@ -418,6 +433,47 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
       assert line["item_uuid"] == item.uuid
       assert Decimal.equal?(StockLedger.to_decimal(line["ordered_quantity"]), Decimal.new("5"))
       assert Decimal.equal?(StockLedger.to_decimal(line["on_hand_quantity"]), Decimal.new("2"))
+    end
+
+    test "set_min_quantity is rejected for a non-admin user", %{conn: conn} do
+      u = non_admin()
+      cat = create_catalogue!()
+      item = create_item!(cat, "Guarded Widget")
+      {:ok, _} = StockLedger.upsert_quantity(item.uuid, "10")
+
+      {:ok, lv, _html} = live(login(conn, u), path())
+      render_click(element(lv, ~s([phx-click="set_stock_view"][phx-value-view="flat"])))
+      add_flat_column(lv, "min_quantity", "item,catalogue,quantity,total_value,min_quantity")
+
+      html =
+        lv
+        |> element("#stock-min-form-#{item.uuid}")
+        |> render_change(%{"item_uuid" => item.uuid, "min_quantity" => "6"})
+
+      assert html =~ "Not authorized"
+      assert Decimal.equal?(MinStockSettings.get_min_quantity(item.uuid), Decimal.new("0"))
+    end
+
+    test "create_supplier_order_from_deficit is rejected for a non-admin user", %{conn: conn} do
+      u = non_admin()
+      cat = create_catalogue!()
+      item = create_item!(cat, "Guarded Deficit Widget")
+      {:ok, _} = StockLedger.upsert_quantity(item.uuid, "1")
+      {:ok, _} = MinStockSettings.set_min_quantity(item.uuid, "5")
+      before_count = length(SupplierOrders.list_supplier_orders())
+
+      {:ok, lv, _html} = live(login(conn, u), path())
+      render_click(element(lv, ~s([phx-click="set_stock_view"][phx-value-view="flat"])))
+
+      html =
+        lv
+        |> element(
+          ~s(button[phx-click="create_supplier_order_from_deficit"][phx-value-item_uuid="#{item.uuid}"])
+        )
+        |> render_click()
+
+      assert html =~ "Not authorized"
+      assert length(SupplierOrders.list_supplier_orders()) == before_count
     end
   end
 end
