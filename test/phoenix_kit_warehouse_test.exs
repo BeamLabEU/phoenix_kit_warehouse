@@ -25,10 +25,37 @@ defmodule PhoenixKitWarehouseTest do
              ]
     end
 
-    test "admin_tabs/0 returns 31 tabs, all under module_key() permission" do
+    test "admin_tabs/0 returns 37 tabs, all under module_key() permission" do
       tabs = PhoenixKitWarehouse.admin_tabs()
-      assert length(tabs) == 31
+      assert length(tabs) == 37
       assert Enum.all?(tabs, &(&1.permission == "warehouse"))
+    end
+
+    test "admin_tabs/0 includes the visible Transfers tab" do
+      tab = Enum.find(PhoenixKitWarehouse.admin_tabs(), &(&1.id == :warehouse_transfers))
+      assert tab.visible == true
+      assert tab.path == "warehouse/transfers"
+      assert tab.parent == :warehouse
+      assert tab.live_view == {PhoenixKitWarehouse.Web.TransferIndexLive, :index}
+    end
+
+    test "admin_tabs/0 includes the hidden Transfer CRUD tabs" do
+      tabs = PhoenixKitWarehouse.admin_tabs()
+
+      assert Enum.find(tabs, &(&1.id == :warehouse_transfer_new)).live_view ==
+               {PhoenixKitWarehouse.Web.TransferFormLive, :new}
+
+      assert Enum.find(tabs, &(&1.id == :warehouse_transfer_edit)).live_view ==
+               {PhoenixKitWarehouse.Web.TransferFormLive, :edit}
+
+      assert Enum.find(tabs, &(&1.id == :warehouse_transfer_items)).live_view ==
+               {PhoenixKitWarehouse.Web.TransferFormLive, :items}
+
+      assert Enum.find(tabs, &(&1.id == :warehouse_transfer_files)).live_view ==
+               {PhoenixKitWarehouse.Web.TransferFormLive, :files}
+
+      assert Enum.find(tabs, &(&1.id == :warehouse_transfer_comments)).live_view ==
+               {PhoenixKitWarehouse.Web.TransferFormLive, :comments}
     end
 
     test "admin_tabs/0's root tab hosts StockLive directly (no redirect stub)" do
@@ -41,7 +68,7 @@ defmodule PhoenixKitWarehouseTest do
     test "admin_tabs/0 preserves every hidden CRUD tab's priority from today's config.exs" do
       tabs = PhoenixKitWarehouse.admin_tabs()
       hidden = Enum.reject(tabs, & &1.visible)
-      assert length(hidden) == 25
+      assert length(hidden) == 30
       assert Enum.all?(hidden, &(&1.visible == false))
     end
 

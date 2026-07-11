@@ -32,6 +32,8 @@ defmodule PhoenixKitWarehouse do
   alias PhoenixKitWarehouse.Web.SettingsLive
   alias PhoenixKitWarehouse.Web.SupplierOrderFormLive
   alias PhoenixKitWarehouse.Web.SupplierOrderIndexLive
+  alias PhoenixKitWarehouse.Web.TransferFormLive
+  alias PhoenixKitWarehouse.Web.TransferIndexLive
 
   @version Mix.Project.config()[:version]
 
@@ -205,6 +207,20 @@ defmodule PhoenixKitWarehouse do
         permission: module_key(),
         group: :admin_main,
         live_view: {GoodsIssueIndexLive, :index}
+      },
+      %Tab{
+        id: :warehouse_transfers,
+        label: "Transfers",
+        gettext_backend: PhoenixKitWarehouse.Gettext,
+        gettext_domain: "default",
+        icon: "hero-arrows-right-left",
+        path: "warehouse/transfers",
+        parent: :warehouse,
+        priority: 160,
+        level: :admin,
+        permission: module_key(),
+        group: :admin_main,
+        live_view: {TransferIndexLive, :index}
       }
     ] ++ hidden_crud_tabs()
   end
@@ -488,6 +504,61 @@ defmodule PhoenixKitWarehouse do
         permission: module_key(),
         visible: false,
         live_view: {GoodsIssueFormLive, :comments}
+      },
+      %Tab{
+        id: :warehouse_transfer_new,
+        label: "New Transfer",
+        path: "warehouse/transfers/new",
+        parent: :warehouse,
+        priority: 611,
+        level: :admin,
+        permission: module_key(),
+        visible: false,
+        live_view: {TransferFormLive, :new}
+      },
+      %Tab{
+        id: :warehouse_transfer_edit,
+        label: "Edit Transfer",
+        path: "warehouse/transfers/:uuid",
+        parent: :warehouse,
+        priority: 612,
+        level: :admin,
+        permission: module_key(),
+        visible: false,
+        live_view: {TransferFormLive, :edit}
+      },
+      %Tab{
+        id: :warehouse_transfer_items,
+        label: "Transfer Items",
+        path: "warehouse/transfers/:uuid/items",
+        parent: :warehouse,
+        priority: 613,
+        level: :admin,
+        permission: module_key(),
+        visible: false,
+        live_view: {TransferFormLive, :items}
+      },
+      %Tab{
+        id: :warehouse_transfer_files,
+        label: "Transfer Files",
+        path: "warehouse/transfers/:uuid/files",
+        parent: :warehouse,
+        priority: 614,
+        level: :admin,
+        permission: module_key(),
+        visible: false,
+        live_view: {TransferFormLive, :files}
+      },
+      %Tab{
+        id: :warehouse_transfer_comments,
+        label: "Transfer Comments",
+        path: "warehouse/transfers/:uuid/comments",
+        parent: :warehouse,
+        priority: 615,
+        level: :admin,
+        permission: module_key(),
+        visible: false,
+        live_view: {TransferFormLive, :comments}
       }
     ]
   end
