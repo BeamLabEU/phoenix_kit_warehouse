@@ -9,6 +9,9 @@ defmodule PhoenixKitWarehouse.Comments do
   `inventory_comments.ex`) into one module parameterized by a `kind` atom.
   Every function degrades gracefully when the comments module is absent or
   disabled, so callers never special-case it.
+
+  `:transfer` was added later (Plan 4/T15) — transfers have no Andi
+  predecessor, but plug into the same `kind`-parameterized wrapper.
   """
   @compile {:no_warn_undefined, PhoenixKitComments}
 
@@ -17,10 +20,17 @@ defmodule PhoenixKitWarehouse.Comments do
     goods_receipt: "goods_receipt",
     internal_order: "internal_order",
     supplier_order: "supplier_order",
-    inventory: "inventory"
+    inventory: "inventory",
+    transfer: "transfer"
   }
 
-  @type kind :: :goods_issue | :goods_receipt | :internal_order | :supplier_order | :inventory
+  @type kind ::
+          :goods_issue
+          | :goods_receipt
+          | :internal_order
+          | :supplier_order
+          | :inventory
+          | :transfer
 
   @doc "The comment `resource_type` string used for the given document kind."
   @spec resource_type(kind()) :: String.t()

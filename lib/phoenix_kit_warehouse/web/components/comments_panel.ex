@@ -10,7 +10,8 @@ defmodule PhoenixKitWarehouse.Web.Components.CommentsPanel do
   `PhoenixKitWarehouse.Comments` already consolidates) into one module
   parameterized by `kind`, mirroring `PhoenixKitWarehouse.Comments`' own
   `kind :: :goods_issue | :goods_receipt | :internal_order | :supplier_order
-  | :inventory` parameterization.
+  | :inventory | :transfer` parameterization (`:transfer` added later,
+  Plan 4/T15 — no Andi predecessor).
 
   Callers guard visibility with `PhoenixKitWarehouse.Comments.available?/0`.
   """
@@ -23,7 +24,7 @@ defmodule PhoenixKitWarehouse.Web.Components.CommentsPanel do
 
   Assigns:
     * `:kind` — `:goods_issue | :goods_receipt | :internal_order |
-      :supplier_order | :inventory` (required)
+      :supplier_order | :inventory | :transfer` (required)
     * `:resource_uuid` — the document's uuid, used as `resource_uuid`
       (required)
     * `:current_user` — current user struct (or nil) (required)
@@ -33,7 +34,14 @@ defmodule PhoenixKitWarehouse.Web.Components.CommentsPanel do
   """
   attr(:kind, :atom,
     required: true,
-    values: [:goods_issue, :goods_receipt, :internal_order, :supplier_order, :inventory]
+    values: [
+      :goods_issue,
+      :goods_receipt,
+      :internal_order,
+      :supplier_order,
+      :inventory,
+      :transfer
+    ]
   )
 
   attr(:resource_uuid, :string, required: true)

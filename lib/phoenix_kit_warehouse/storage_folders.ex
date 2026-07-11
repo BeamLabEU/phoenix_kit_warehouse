@@ -13,12 +13,16 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   `<prefix>-<number>` (falling back to `<prefix>-<uuid>` when the document
   has no number yet).
 
-  Four of the five resources (goods issue, goods receipt, inventory, supplier
-  order) cache the resolved folder's uuid on a `storage_folder_uuid` column
-  and take a fast path once cached. The fifth — internal orders — has no
-  `storage_folder_uuid` column at all (confirmed: `internal_order_storage_folders.ex`
+  Four of the five original resources (goods issue, goods receipt, inventory,
+  supplier order) cache the resolved folder's uuid on a `storage_folder_uuid`
+  column and take a fast path once cached. The fifth — internal orders — has
+  no `storage_folder_uuid` column at all (confirmed: `internal_order_storage_folders.ex`
   is a genuine smaller variant with a single function clause and no
   write-back) and resolves by name on every call instead.
+
+  A sixth resource, transfers (added later, Plan 4/T15), also has a
+  `storage_folder_uuid` column and follows the same cached fast-path as the
+  four originals — see `ensure_for_transfer/2`.
   """
 
   import Ecto.Query
@@ -29,6 +33,7 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   alias PhoenixKitWarehouse.{GoodsReceipt, GoodsReceipts}
   alias PhoenixKitWarehouse.{InventoryDocument, Inventories}
   alias PhoenixKitWarehouse.{SupplierOrder, SupplierOrders}
+  alias PhoenixKitWarehouse.{Transfer, Transfers}
   alias PhoenixKitWarehouse.InternalOrder
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
@@ -126,8 +131,24 @@ defmodule PhoenixKitWarehouse.StorageFolders do
     find_or_create(name, nil, admin_user_uuid)
   end
 
+  @doc """
+  Returns `{:ok, %Folder{}}` for the given transfer, creating the folder if
+  needed. Persists `storage_folder_uuid` on the transfer record after first
+  creation. Pass `admin_user_uuid` as the folder owner.
+  """
+  def ensure_for_transfer(transfer, admin_user_uuid)
+
+  def ensure_for_transfer(%Transfer{storage_folder_uuid: uuid} = transfer, admin_user_uuid)
+      when not is_nil(uuid) do
+    ensure_cached(transfer, admin_user_uuid, "transfer", &Transfers.set_storage_folder/2)
+  end
+
+  def ensure_for_transfer(%Transfer{} = transfer, admin_user_uuid) do
+    create_and_cache(transfer, admin_user_uuid, "transfer", &Transfers.set_storage_folder/2)
+  end
+
   # ---------------------------------------------------------------------------
-  # Shared fast-path / create-and-cache helpers (the 4 full-pattern resources)
+  # Shared fast-path / create-and-cache helpers (the 5 full-pattern resources)
   # ---------------------------------------------------------------------------
 
   defp ensure_cached(%{storage_folder_uuid: uuid} = doc, admin_user_uuid, prefix, set_folder_fn) do
