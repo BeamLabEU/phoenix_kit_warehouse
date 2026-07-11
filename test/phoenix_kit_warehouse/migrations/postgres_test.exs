@@ -9,13 +9,13 @@ defmodule PhoenixKitWarehouse.Migrations.PostgresTest do
   alias PhoenixKitWarehouse.Test.Repo
 
   describe "current_version/0" do
-    test "is 1" do
-      assert Postgres.current_version() == 1
+    test "is 2" do
+      assert Postgres.current_version() == 2
     end
   end
 
   describe "migrated_version_runtime/1" do
-    test "is 0 before V01 has run" do
+    test "is 0 before any version has run" do
       assert Postgres.migrated_version_runtime(prefix: "public") == 0
     end
 
@@ -37,6 +37,18 @@ defmodule PhoenixKitWarehouse.Migrations.PostgresTest do
       assert {:ok, %{rows: [[true]]}} =
                Repo.query(
                  "SELECT to_regclass('public.phoenix_kit_warehouse_transfers') IS NOT NULL",
+                 []
+               )
+    end
+
+    test "creates phoenix_kit_warehouse_min_stock and stamps the version marker" do
+      Ecto.Migrator.up(Repo, :os.system_time(:microsecond), MigrationsRunner, log: false)
+
+      assert Postgres.migrated_version_runtime(prefix: "public") == Postgres.current_version()
+
+      assert {:ok, %{rows: [[true]]}} =
+               Repo.query(
+                 "SELECT to_regclass('public.phoenix_kit_warehouse_min_stock') IS NOT NULL",
                  []
                )
     end

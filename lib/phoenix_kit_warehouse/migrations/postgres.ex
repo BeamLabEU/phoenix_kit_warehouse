@@ -27,9 +27,15 @@ defmodule PhoenixKitWarehouse.Migrations.Postgres do
   stock movement document (`draft → in_transit → done`, plus a side
   `cancelled` status). See `PhoenixKitWarehouse.Migrations.Postgres.V01`
   for the full column/index list.
+
+  ### V02 - Min stock table
+  Creates `phoenix_kit_warehouse_min_stock` — the per-item minimum stock
+  threshold used by deficit tracking (§5). One row per `item_uuid`
+  (enforced by a unique index); items without a row are treated as having
+  no configured minimum. See `PhoenixKitWarehouse.Migrations.Postgres.V02`.
   """
 
-  @current_version 1
+  @current_version 2
   @default_prefix "public"
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
