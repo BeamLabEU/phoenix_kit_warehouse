@@ -13,7 +13,10 @@ defmodule PhoenixKitWarehouse.ColumnConfig.StockTest do
         unit_label: "pc",
         quantity: Decimal.new("5"),
         unit_value: Decimal.new("2.00"),
-        total_value: Decimal.new("10.00")
+        total_value: Decimal.new("10.00"),
+        min_quantity: Decimal.new("0"),
+        available: Decimal.new("5"),
+        below_min?: false
       },
       overrides
     )
@@ -37,7 +40,10 @@ defmodule PhoenixKitWarehouse.ColumnConfig.StockTest do
                "unit",
                "quantity",
                "unit_value",
-               "total_value"
+               "total_value",
+               "min_quantity",
+               "available",
+               "deficit"
              ]
   end
 
@@ -86,5 +92,41 @@ defmodule PhoenixKitWarehouse.ColumnConfig.StockTest do
   test "total_value sort_key treats nil as 0.0" do
     meta = C.column_metadata_map()["total_value"]
     assert meta.sort_key.(entry(%{total_value: nil})) == 0.0
+  end
+
+  test "numeric_range filter on available keeps rows within [min, max]" do
+    meta = C.column_metadata_map()["available"]
+
+    rows = [
+      entry(%{available: Decimal.new("-2")}),
+      entry(%{available: Decimal.new("5")}),
+      entry(%{available: Decimal.new("12")})
+    ]
+
+    assert [%{available: a}] = meta.filter_apply.(rows, %{"min" => "0", "max" => "10"})
+    assert Decimal.equal?(a, Decimal.new("5"))
+  end
+
+  test "sort_key for min_quantity orders by decimal value" do
+    meta = C.column_metadata_map()["min_quantity"]
+    lo = entry(%{min_quantity: Decimal.new("1")})
+    hi = entry(%{min_quantity: Decimal.new("9")})
+    assert Enum.sort_by([hi, lo], meta.sort_key, :asc) == [lo, hi]
+  end
+
+  test "deficit enum filter matches below_min?, options are a fixed Yes/No pair" do
+    meta = C.column_metadata_map()["deficit"]
+    rows = [entry(%{below_min?: true}), entry(%{below_min?: false})]
+
+    assert [%{below_min?: true}] = meta.filter_apply.(rows, "yes")
+    assert [%{below_min?: false}] = meta.filter_apply.(rows, "no")
+    assert meta.filter_options.(rows) == [{"yes", "Yes"}, {"no", "No"}]
+  end
+
+  test "sort_key for deficit orders false before true ascending" do
+    meta = C.column_metadata_map()["deficit"]
+    yes = entry(%{below_min?: true})
+    no = entry(%{below_min?: false})
+    assert Enum.sort_by([yes, no], meta.sort_key, :asc) == [no, yes]
   end
 end

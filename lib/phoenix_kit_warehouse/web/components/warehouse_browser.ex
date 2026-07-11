@@ -654,6 +654,12 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   the catalogue header and a per-category `<tfoot>` subtotal row.
 
   Columns: Item (name + SKU) / Unit / In stock (qty) / Total value.
+
+  Entries may optionally carry a `:below_min?` boolean (§5 — deficit
+  tracking, set by `Web.StockLive.build_stock_items/1`) — when true, a small
+  warning icon renders next to the item name. Missing/false is the default
+  (`Map.get(entry, :below_min?, false)`), so callers that don't track
+  deficits can keep passing the plain `%{item, quantity, unit_value}` shape.
   """
   attr(:stock_items, :list, required: true)
   attr(:locale, :string, required: true)
@@ -731,8 +737,17 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                           <%= for entry <- category_items do %>
                             <tr class="hover">
                               <td>
-                                <div class="font-medium">
+                                <div class="font-medium flex items-center gap-1">
                                   {localized_name(entry.item, @locale)}
+                                  <span
+                                    :if={Map.get(entry, :below_min?, false)}
+                                    title={dgettext("default", "Below minimum stock")}
+                                  >
+                                    <.icon
+                                      name="hero-exclamation-triangle"
+                                      class="w-3.5 h-3.5 text-error shrink-0"
+                                    />
+                                  </span>
                                 </div>
                                 <div
                                   :if={entry.item.sku}

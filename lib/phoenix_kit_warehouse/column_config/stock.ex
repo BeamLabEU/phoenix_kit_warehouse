@@ -4,8 +4,16 @@ defmodule PhoenixKitWarehouse.ColumnConfig.Stock do
 
   Operates on enriched flat stock maps of shape `%{item, display_name, sku,
   catalogue_name, category_name, unit_label, quantity, unit_value,
-  total_value}` where `quantity`, `unit_value`, and `total_value` are
-  `Decimal` (or nil for value columns), and the rest are strings.
+  total_value, min_quantity, available, below_min?}` where `quantity`,
+  `unit_value`, `total_value`, `min_quantity`, and `available` are `Decimal`
+  (or nil for value columns), `below_min?` is boolean, and the rest are
+  strings.
+
+  `min_quantity` / `available` / `below_min?` come from
+  `PhoenixKitWarehouse.Deficits` and `PhoenixKitWarehouse.MinStockSettings`
+  (§5, deficit tracking) — deliberately global-per-item (summed across every
+  warehouse), not scoped to the current `warehouse_scope`, same as
+  `Deficits.available_by_item/0` itself.
   """
 
   use PhoenixKitWarehouse.ColumnConfig, scope: "warehouse_stock"
@@ -110,6 +118,45 @@ defmodule PhoenixKitWarehouse.ColumnConfig.Stock do
         filterable?: true,
         filter_type: :numeric_range,
         filter_apply: numeric_range_filter(&decimal_to_float(&1.total_value))
+      },
+      %{
+        id: "min_quantity",
+        label: fn -> dgettext("default", "Min. quantity") end,
+        default?: false,
+        align: :right,
+        sortable?: true,
+        sort_key: &decimal_to_float(&1.min_quantity),
+        default_dir: :desc,
+        filterable?: true,
+        filter_type: :numeric_range,
+        filter_apply: numeric_range_filter(&decimal_to_float(&1.min_quantity))
+      },
+      %{
+        id: "available",
+        label: fn -> dgettext("default", "Available") end,
+        default?: false,
+        align: :right,
+        sortable?: true,
+        sort_key: &decimal_to_float(&1.available),
+        default_dir: :asc,
+        filterable?: true,
+        filter_type: :numeric_range,
+        filter_apply: numeric_range_filter(&decimal_to_float(&1.available))
+      },
+      %{
+        id: "deficit",
+        label: fn -> dgettext("default", "Deficit") end,
+        default?: false,
+        align: :left,
+        sortable?: true,
+        sort_key: & &1.below_min?,
+        default_dir: :desc,
+        filterable?: true,
+        filter_type: :enum,
+        filter_options: fn _entries ->
+          [{"yes", dgettext("default", "Yes")}, {"no", dgettext("default", "No")}]
+        end,
+        filter_apply: enum_filter(&if(&1.below_min?, do: "yes", else: "no"))
       }
     ]
   end
