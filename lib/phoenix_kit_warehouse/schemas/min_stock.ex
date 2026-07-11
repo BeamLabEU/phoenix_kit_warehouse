@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.MinStock do
 
   @type t :: %__MODULE__{}
 
-  @primary_key {:uuid, Ecto.UUID, autogenerate: true}
+  @primary_key {:uuid, UUIDv7, autogenerate: true}
   @foreign_key_type Ecto.UUID
 
   schema "phoenix_kit_warehouse_min_stock" do

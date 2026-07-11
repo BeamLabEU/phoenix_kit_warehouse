@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.Transfer do
 
   @type t :: %__MODULE__{}
 
-  @primary_key {:uuid, Ecto.UUID, autogenerate: true}
+  @primary_key {:uuid, UUIDv7, autogenerate: true}
   @foreign_key_type Ecto.UUID
 
   @statuses ~w(draft in_transit done cancelled)
