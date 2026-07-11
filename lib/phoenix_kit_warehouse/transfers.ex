@@ -18,6 +18,11 @@ defmodule PhoenixKitWarehouse.Transfers do
   `ship_transfer/2` and `receive_transfer/2` return `{:error,
   :locations_required}` up front rather than silently falling back to the
   configured default warehouse.
+
+  A transfer can also be cancelled via `cancel_transfer/2`, from `draft`
+  (no postings — nothing moved yet) or from `in_transit` (credits stock back
+  to the source, reversing `ship_transfer/2`). It cannot be cancelled once
+  `done` (received) or already `cancelled`.
   """
 
   import Ecto.Query
@@ -275,13 +280,14 @@ defmodule PhoenixKitWarehouse.Transfers do
     end
   end
 
-  # Shared line-walker for both legs of a transfer: snapshots the prior
-  # on-hand quantity (under `audit_key`) for every line, skips zero-quantity
-  # lines (no stock call at all), and halts the whole reduction — returning
+  # Shared line-walker for all three transfer operations (ship, receive, and
+  # cancel's reversal-from-in_transit leg): snapshots the prior on-hand
+  # quantity (under `audit_key`) for every line, skips zero-quantity lines
+  # (no stock call at all), and halts the whole reduction — returning
   # `{:error, reason}` — the moment `mover.(item_uuid, qty)` does. `mover` is
   # a 2-arity closure already carrying the location/repo for its leg
   # (`StockLedger.issue_quantity/3` for shipping, `receive_quantity/3` for
-  # receiving).
+  # receiving and for cancel's source credit-back).
   defp apply_lines(lines, stock_map, audit_key, mover) do
     Enum.reduce_while(lines, {:ok, []}, fn line, {:ok, acc} ->
       item_uuid = line["item_uuid"]
@@ -322,6 +328,99 @@ defmodule PhoenixKitWarehouse.Transfers do
 
       true ->
         :ok
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Cancellation
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  Cancels a transfer.
+
+  - From `draft`: NO stock postings — the goods never physically moved, so
+    cancelling just locks the row FOR UPDATE (re-checking status == "draft",
+    guarding against a concurrent ship) and flips status -> "cancelled" via
+    `Transfer.cancel_changeset/2`.
+  - From `in_transit`: reverses the `ship_transfer/2` posting. Locks the row
+    FOR UPDATE (re-checking status == "in_transit") and, for each line with
+    transfer_quantity > 0, credits the quantity BACK to `source_location_uuid`
+    via `StockLedger.receive_quantity/3` (additive — unlike issuing, this
+    cannot fail on insufficient stock). Captures `reversed_source_quantity`
+    (the source's on-hand quantity immediately before the credit) on each
+    line for audit, mirroring `previous_source_quantity`/
+    `previous_destination_quantity` on the other two legs. Does not touch
+    the destination — nothing arrived there yet.
+  - From `done` or already `cancelled`: returns `{:error, :not_cancellable}`
+    — a completed transfer can't be un-received, and a cancelled transfer
+    can't be cancelled twice.
+  """
+  def cancel_transfer(%Transfer{status: "draft"} = transfer, performed_by_uuid) do
+    multi =
+      transfer.uuid
+      |> lock_status_step("draft", :not_cancellable)
+      |> Ecto.Multi.run(:cancel, fn repo, %{lock_status: locked} ->
+        locked
+        |> Transfer.cancel_changeset(%{performed_by_uuid: performed_by_uuid})
+        |> repo.update()
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{cancel: cancelled}} -> {:ok, cancelled}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
+
+  def cancel_transfer(%Transfer{status: "in_transit"} = transfer, performed_by_uuid) do
+    multi =
+      transfer.uuid
+      |> lock_status_step("in_transit", :not_cancellable)
+      |> Ecto.Multi.run(:cancel, fn repo, %{lock_status: locked} ->
+        apply_cancel(locked, performed_by_uuid, repo)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{cancel: cancelled}} -> {:ok, cancelled}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
+  end
+
+  def cancel_transfer(%Transfer{status: status}, _performed_by_uuid)
+      when status in ["done", "cancelled"] do
+    {:error, :not_cancellable}
+  end
+
+  # Reverses ship_transfer/2's source decrement: credits transfer_quantity
+  # back to source_location_uuid for every line (skipping zero-quantity
+  # lines), snapshotting the pre-credit source quantity under
+  # "reversed_source_quantity".
+  defp apply_cancel(locked, performed_by_uuid, repo) do
+    lines = Enum.uniq_by(locked.lines, & &1["item_uuid"])
+    item_uuids = lines |> Enum.map(& &1["item_uuid"]) |> Enum.filter(& &1)
+
+    stock_map =
+      item_uuids
+      |> StockLedger.stock_for_items_at_location(locked.source_location_uuid, repo)
+      |> Map.new(&{&1.item_uuid, &1})
+
+    mover = fn item_uuid, qty ->
+      StockLedger.receive_quantity(item_uuid, qty,
+        location_uuid: locked.source_location_uuid,
+        repo: repo
+      )
+    end
+
+    case apply_lines(lines, stock_map, "reversed_source_quantity", mover) do
+      {:ok, audited_lines} ->
+        locked
+        |> Transfer.cancel_changeset(%{
+          performed_by_uuid: performed_by_uuid,
+          lines: audited_lines
+        })
+        |> repo.update()
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

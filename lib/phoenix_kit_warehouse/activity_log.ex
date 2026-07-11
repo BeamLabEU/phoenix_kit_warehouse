@@ -8,6 +8,7 @@ defmodule PhoenixKitWarehouse.ActivityLog do
 
   require Logger
   alias PhoenixKitWarehouse.InventoryDocument
+  alias PhoenixKitWarehouse.Transfer
 
   @module_key "warehouse"
 
@@ -117,6 +118,19 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     end
   end
 
+  @doc "Logs the cancellation of a transfer."
+  def log_transfer_cancelled(%Transfer{} = transfer, opts) do
+    log(
+      %{
+        action: "warehouse.transfer.cancelled",
+        resource_type: "transfer",
+        resource_uuid: transfer.uuid,
+        metadata: base_metadata(transfer)
+      },
+      opts
+    )
+  end
+
   ## Internals
 
   defp log(attrs, opts) do
@@ -158,6 +172,10 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   end
 
   defp base_metadata(%InventoryDocument{number: number}) do
+    %{"number" => stringify(number)}
+  end
+
+  defp base_metadata(%Transfer{number: number}) do
     %{"number" => stringify(number)}
   end
 

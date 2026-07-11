@@ -2,6 +2,7 @@ defmodule PhoenixKitWarehouse.TransfersTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Stock
   alias PhoenixKitWarehouse.StockLedger, as: Warehouse
   alias PhoenixKitWarehouse.Test.FakeSourceKind
@@ -539,6 +540,118 @@ defmodule PhoenixKitWarehouse.TransfersTest do
       corrupted = %{shipped | destination_location_uuid: nil}
 
       assert {:error, :locations_required} = Transfers.receive_transfer(corrupted, actor)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # cancel_transfer/2
+  # ---------------------------------------------------------------------------
+
+  describe "cancel_transfer/2" do
+    test "from draft: flips status, sets cancelled_at/performed_by_uuid, no stock change" do
+      actor = user_uuid()
+      item_uuid = Ecto.UUID.generate()
+      seed_stock!(item_uuid, "10", @source_uuid)
+      transfer = create_draft!(%{lines: [sample_line(item_uuid, qty: "5")]})
+
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("10"))
+
+      {:ok, cancelled} = Transfers.cancel_transfer(transfer, actor)
+
+      assert cancelled.status == "cancelled"
+      assert cancelled.cancelled_at != nil
+      assert cancelled.performed_by_uuid == actor
+
+      # No postings — the goods never physically moved.
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("10"))
+    end
+
+    test "from in_transit: reverses the ship — source quantity returns to its pre-ship value" do
+      item_uuid = Ecto.UUID.generate()
+      {shipped, actor} = ship!(item_uuid, "5")
+
+      # 10 (seeded) - 5 (shipped) = 5.
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("5"))
+
+      {:ok, cancelled} = Transfers.cancel_transfer(shipped, actor)
+
+      assert cancelled.status == "cancelled"
+      assert cancelled.cancelled_at != nil
+      assert cancelled.performed_by_uuid == actor
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("10"))
+    end
+
+    test "from in_transit: does not touch the destination" do
+      item_uuid = Ecto.UUID.generate()
+      {shipped, actor} = ship!(item_uuid, "5")
+
+      {:ok, _cancelled} = Transfers.cancel_transfer(shipped, actor)
+
+      assert Decimal.equal?(
+               Warehouse.get_quantity(item_uuid, @destination_uuid),
+               Decimal.new("0")
+             )
+    end
+
+    test "reversed_source_quantity audit is captured in persisted lines" do
+      item_uuid = Ecto.UUID.generate()
+      {shipped, actor} = ship!(item_uuid, "5")
+
+      {:ok, cancelled} = Transfers.cancel_transfer(shipped, actor)
+
+      [line] = cancelled.lines
+      # Source is 5 right before the reversal credit (10 seeded - 5 shipped).
+      prev_qty = Warehouse.to_decimal(line["reversed_source_quantity"])
+      assert Decimal.equal?(prev_qty, Decimal.new("5"))
+    end
+
+    test "transfer_quantity 0 line is a no-op on cancel from in_transit" do
+      item_uuid = Ecto.UUID.generate()
+      {shipped, actor} = ship!(item_uuid, "0")
+
+      {:ok, _cancelled} = Transfers.cancel_transfer(shipped, actor)
+
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("10"))
+    end
+
+    test "from done: returns {:error, :not_cancellable}, status stays done" do
+      item_uuid = Ecto.UUID.generate()
+      {shipped, actor} = ship!(item_uuid, "5")
+      {:ok, received} = Transfers.receive_transfer(shipped, actor)
+
+      assert {:error, :not_cancellable} = Transfers.cancel_transfer(received, actor)
+
+      reloaded = Transfers.get_transfer!(received.uuid)
+      assert reloaded.status == "done"
+    end
+
+    test "cancelling an already-cancelled transfer returns {:error, :not_cancellable} without double-crediting the source" do
+      item_uuid = Ecto.UUID.generate()
+      {shipped, actor} = ship!(item_uuid, "5")
+      {:ok, cancelled} = Transfers.cancel_transfer(shipped, actor)
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("10"))
+
+      assert {:error, :not_cancellable} = Transfers.cancel_transfer(cancelled, actor)
+
+      # Still 10 — a second reversal would have wrongly bumped it to 15.
+      assert Decimal.equal?(Warehouse.get_quantity(item_uuid, @source_uuid), Decimal.new("10"))
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # ActivityLog.log_transfer_cancelled/2
+  # ---------------------------------------------------------------------------
+
+  describe "ActivityLog.log_transfer_cancelled/2" do
+    test "writes a queryable warehouse.transfer.cancelled activity entry" do
+      actor = user_uuid()
+      transfer = create_draft!()
+      {:ok, cancelled} = Transfers.cancel_transfer(transfer, actor)
+
+      assert :ok = ActivityLog.log_transfer_cancelled(cancelled, actor_uuid: actor)
+
+      %{entries: entries} = PhoenixKit.Activity.list(action: "warehouse.transfer.cancelled")
+      assert Enum.any?(entries, &(&1.resource_uuid == cancelled.uuid))
     end
   end
 
