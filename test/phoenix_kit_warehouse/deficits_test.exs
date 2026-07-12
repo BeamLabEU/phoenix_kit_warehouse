@@ -7,23 +7,8 @@ defmodule PhoenixKitWarehouse.DeficitsTest do
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.MinStockSettings
   alias PhoenixKitWarehouse.StockLedger, as: Warehouse
-  alias PhoenixKitWarehouse.Test.MigrationsRunner
-  alias PhoenixKitWarehouse.Test.Repo
 
   @location_uuid "00000000-0000-0000-0000-000000000001"
-
-  # `phoenix_kit_warehouse_min_stock` is created by this package's OWN
-  # versioned migration module (see `PhoenixKitWarehouse.Migrations.Postgres`
-  # / T16), not by core PhoenixKit's `ensure_current/2` bootstrap that
-  # `test_helper.exs` runs once at suite start. Bringing it up here — inside
-  # each test's own sandboxed transaction, same trick as
-  # `PhoenixKitWarehouse.MinStockSettingsTest` / `TransfersTest` — is
-  # idempotent (`IF NOT EXISTS` DDL) and rolls back with everything else at
-  # `on_exit`.
-  setup do
-    Ecto.Migrator.up(Repo, :os.system_time(:microsecond), MigrationsRunner, log: false)
-    :ok
-  end
 
   # ---------------------------------------------------------------------------
   # Fixtures

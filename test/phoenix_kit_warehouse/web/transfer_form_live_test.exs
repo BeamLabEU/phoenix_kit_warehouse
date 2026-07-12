@@ -5,21 +5,12 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
   import Phoenix.LiveViewTest
 
   alias PhoenixKitWarehouse.StockLedger
-  alias PhoenixKitWarehouse.Test.MigrationsRunner
   alias PhoenixKitWarehouse.Test.Repo
   alias PhoenixKitWarehouse.Transfer
   alias PhoenixKitWarehouse.Transfers
   alias PhoenixKitLocations.Locations
 
-  # `phoenix_kit_warehouse_transfers` is created by this package's OWN
-  # versioned migration module (see `PhoenixKitWarehouse.Migrations.Postgres`
-  # / T7), not by core PhoenixKit's `ensure_current/2` bootstrap that
-  # `test_helper.exs` runs once at suite start. Bringing it up here — inside
-  # each test's own sandboxed transaction, same trick as
-  # `PhoenixKitWarehouse.TransfersTest` — is idempotent (`IF NOT EXISTS` DDL)
-  # and rolls back with everything else at `on_exit`.
   setup do
-    Ecto.Migrator.up(Repo, :os.system_time(:microsecond), MigrationsRunner, log: false)
     Repo.delete_all(Transfer)
     :ok
   end

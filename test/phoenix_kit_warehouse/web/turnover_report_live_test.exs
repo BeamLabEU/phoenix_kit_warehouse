@@ -8,23 +8,8 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLiveTest do
   alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.GoodsReceipts
   alias PhoenixKitWarehouse.StockLedger
-  alias PhoenixKitWarehouse.Test.MigrationsRunner
-  alias PhoenixKitWarehouse.Test.Repo
 
   @location_uuid "00000000-0000-0000-0000-000000000001"
-
-  # `phoenix_kit_warehouse_transfers` is created by this package's OWN
-  # versioned migration module, not by core PhoenixKit's `ensure_current/2`
-  # bootstrap that `test_helper.exs` runs once at suite start.
-  # `Turnover.compute/3` always queries the `Transfer` schema (even when a
-  # test only posts a GoodsReceipt), so the table must exist before mount —
-  # bringing it up here, inside each test's own sandboxed transaction, is
-  # idempotent (`IF NOT EXISTS` DDL) and rolls back with everything else at
-  # `on_exit`. Same trick as `PhoenixKitWarehouse.TurnoverTest`.
-  setup do
-    Ecto.Migrator.up(Repo, :os.system_time(:microsecond), MigrationsRunner, log: false)
-    :ok
-  end
 
   # ---------------------------------------------------------------------------
   # Helpers

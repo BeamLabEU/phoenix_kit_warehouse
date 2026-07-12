@@ -1,25 +1,9 @@
 defmodule PhoenixKitWarehouse.MinStockSettingsTest do
-  # async: false — this test brings up `phoenix_kit_warehouse_min_stock`
-  # itself (see the `setup` block below), same DDL-through-Migrator trick as
-  # `PhoenixKitWarehouse.TransfersTest` / `Migrations.PostgresTest` — keep it
-  # off the shared sandbox's async lane.
   use PhoenixKitWarehouse.DataCase, async: false
 
   alias PhoenixKitWarehouse.MinStock
   alias PhoenixKitWarehouse.MinStockSettings
-  alias PhoenixKitWarehouse.Test.MigrationsRunner
   alias PhoenixKitWarehouse.Test.Repo
-
-  # `phoenix_kit_warehouse_min_stock` is created by this package's OWN
-  # versioned migration module (see `PhoenixKitWarehouse.Migrations.Postgres`
-  # / T16), not by core PhoenixKit's `ensure_current/2` bootstrap that
-  # `test_helper.exs` runs once at suite start. Bringing it up here — inside
-  # each test's own sandboxed transaction — is idempotent (`IF NOT EXISTS`
-  # DDL) and rolls back with everything else at `on_exit`.
-  setup do
-    Ecto.Migrator.up(Repo, :os.system_time(:microsecond), MigrationsRunner, log: false)
-    :ok
-  end
 
   describe "get_min_quantity/1" do
     test "returns 0 for an item with no configured minimum" do
