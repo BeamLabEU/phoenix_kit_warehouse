@@ -84,9 +84,10 @@ defmodule PhoenixKitWarehouse.MixProject do
 
   defp deps do
     [
-      # The warehouse DB tables ship in core migration V140, published in
-      # phoenix_kit 1.7.182 — so the module needs at least that core release.
-      pk_dep(:phoenix_kit, "~> 1.7 and >= 1.7.182"),
+      # The warehouse DB tables ship in core migration V143, published in
+      # phoenix_kit 1.7.189 — TODO(maintainer): confirm exact patch version
+      # at publish time (upstream currently at 1.7.188).
+      pk_dep(:phoenix_kit, "~> 1.7 and >= 1.7.189"),
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.5"),
