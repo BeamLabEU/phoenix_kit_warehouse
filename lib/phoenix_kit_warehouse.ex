@@ -1,14 +1,16 @@
 defmodule PhoenixKitWarehouse do
   @moduledoc """
-  PhoenixKit module: stock, stocktakes, internal orders, supplier orders,
-  goods receipt, and goods issue.
+  PhoenixKit module: multi-warehouse stock scope, stocktakes, transfers with
+  cancel reverse-posting, deficit control with min-stock settings, turnover
+  report, internal orders, supplier orders, goods receipts, and goods issues.
 
   Hard-depends on `phoenix_kit_catalogue` (warehouse only ever tracks
-  catalogue items) and `phoenix_kit_locations` (every document carries a
-  `location_uuid` resolved through it) — see `required_modules/0`.
+  catalogue items), `phoenix_kit_locations` (every document carries a
+  `location_uuid` resolved through it), and `phoenix_kit_billing` (currency
+  formatting for unit values) — see `required_modules/0` and `mix.exs`.
 
   `PhoenixKitComments` stays optional (guarded via `Code.ensure_loaded?/1`
-  in the document context modules — see Plan 3).
+  in the document context modules).
 
   Documents link to host-owned records (a sub-order, a top-level order, or
   anything else a consuming app wants to link) through the generic
