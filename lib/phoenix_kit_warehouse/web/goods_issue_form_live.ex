@@ -171,10 +171,11 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   defp load_on_hand_quantities(socket) do
     lines = socket.assigns.lines
     item_uuids = lines |> Enum.map(& &1["item_uuid"]) |> Enum.filter(& &1) |> Enum.uniq()
+    location_uuid = socket.assigns.issue.location_uuid
 
     on_hand_map =
       item_uuids
-      |> StockLedger.stock_for_items()
+      |> StockLedger.stock_for_items_at_location(location_uuid)
       |> Map.new(&{&1.item_uuid, &1.quantity})
 
     assign(socket, :on_hand_map, on_hand_map)
@@ -281,6 +282,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
            socket
            |> assign(:issue, updated)
            |> assign(:location_name, resolve_location_name(updated.location_uuid))
+           |> load_on_hand_quantities()
            |> put_flash(:info, dgettext("default", "Warehouse changed"))}
         else
           {:error, _changeset} ->

@@ -48,10 +48,23 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
       |> assign(:date_from, Date.beginning_of_month(today))
       |> assign(:date_to, Date.end_of_month(today))
       |> assign(:location_uuid, nil)
+      |> assign(:warehouses, [])
+      |> assign(:rows, [])
+
+    {:ok, socket}
+  end
+
+  # mount/3 is called twice (disconnected HTTP render + connected WebSocket
+  # mount) — the report query and list_warehouses/0 belong here, run once
+  # per navigation, same split as StockLive.
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    socket =
+      socket
       |> assign(:warehouses, StockLedger.list_warehouses())
       |> assign_rows()
 
-    {:ok, socket}
+    {:noreply, socket}
   end
 
   # ---------------------------------------------------------------------------

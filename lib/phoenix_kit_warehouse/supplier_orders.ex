@@ -247,9 +247,11 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       |> Enum.filter(& &1)
       |> Enum.uniq()
 
+    location_uuid = internal_order.location_uuid || StockLedger.default_location_uuid()
+
     stock_map =
       item_uuids
-      |> StockLedger.stock_for_items()
+      |> StockLedger.stock_for_items_at_location(location_uuid)
       |> Map.new(&{&1.item_uuid, &1})
 
     items_by_uuid =
@@ -261,7 +263,6 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
         |> Map.new(&{&1.uuid, &1})
       end
 
-    location_uuid = internal_order.location_uuid || StockLedger.default_location_uuid()
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
     {assigned_by_supplier, unassigned_lines} =
@@ -398,10 +399,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       |> Enum.filter(& &1)
       |> Enum.uniq()
 
-    stock_map =
-      all_item_uuids
-      |> StockLedger.stock_for_items()
-      |> Map.new(&{&1.item_uuid, &1})
+    stock_map_by_location = build_stock_map_by_location(internal_orders, all_item_uuids)
 
     items_by_uuid =
       if all_item_uuids == [] do
@@ -428,13 +426,15 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     {new_lines_by_item, io_contributions} =
       Enum.reduce(internal_orders, {%{}, %{}}, fn io, {items_acc, io_acc} ->
         io_committed = Map.get(committed, io.uuid, %{})
+        io_location_uuid = io.location_uuid || StockLedger.default_location_uuid()
+        io_stock_map = Map.get(stock_map_by_location, io_location_uuid, %{})
 
         Enum.reduce(io.lines, {items_acc, io_acc}, fn line, {items_inner, io_inner} ->
           item_uuid = line["item_uuid"]
           item = Map.get(items_by_uuid, item_uuid)
 
           required = parse_decimal(line["required_quantity"])
-          on_hand = stock_quantity(stock_map, item_uuid)
+          on_hand = stock_quantity(io_stock_map, item_uuid)
           base_shortfall = Decimal.max(Decimal.new("0"), Decimal.sub(required, on_hand))
           already = Map.get(io_committed, item_uuid, Decimal.new("0"))
           shortfall = Decimal.max(Decimal.new("0"), Decimal.sub(base_shortfall, already))
@@ -671,6 +671,24 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   defp resolve_suppliers(_item), do: []
 
   # Returns on-hand quantity as Decimal for a given item_uuid.
+  # Each internal order may target a different warehouse, so on-hand
+  # quantity must be read per-IO's own location_uuid rather than from a
+  # single cross-warehouse snapshot (which would pick an arbitrary
+  # location's stock for items held at more than one warehouse).
+  defp build_stock_map_by_location(internal_orders, item_uuids) do
+    internal_orders
+    |> Enum.map(&(&1.location_uuid || StockLedger.default_location_uuid()))
+    |> Enum.uniq()
+    |> Map.new(fn location_uuid ->
+      stock_map =
+        item_uuids
+        |> StockLedger.stock_for_items_at_location(location_uuid)
+        |> Map.new(&{&1.item_uuid, &1})
+
+      {location_uuid, stock_map}
+    end)
+  end
+
   defp stock_quantity(stock_map, item_uuid) do
     case Map.get(stock_map, item_uuid) do
       nil -> Decimal.new("0")

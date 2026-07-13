@@ -498,10 +498,11 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   def handle_event("set_transfer_qty", params, socket) do
     lines = socket.assigns.lines
     raw = params["transfer_quantity"] || "0"
+    qty = raw |> StockLedger.to_decimal() |> clamp_non_negative() |> Decimal.to_string(:normal)
 
     case parse_line_index(params["index"], lines) do
       {:ok, index} ->
-        updated = List.update_at(lines, index, &Map.put(&1, "transfer_quantity", raw))
+        updated = List.update_at(lines, index, &Map.put(&1, "transfer_quantity", qty))
         {:noreply, assign(socket, :lines, updated)}
 
       :error ->
@@ -1510,6 +1511,17 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   end
 
   defp parse_line_index(_index_str, _lines), do: :error
+
+  # `StockLedger.issue_quantity/3`'s atomic decrement (`WHERE quantity >=
+  # qty`) only guards against too-large a quantity — a negative one makes
+  # the WHERE trivially true and the update *adds* to source stock instead
+  # of subtracting, corrupting the source warehouse's balance while the
+  # transfer still reports as shipped. Clamp client input here, same as
+  # GoodsIssueFormLive/GoodsReceiptFormLive's `clamp_non_negative/1`.
+  defp clamp_non_negative(%Decimal{} = d) do
+    zero = Decimal.new("0")
+    if Decimal.compare(d, zero) == :lt, do: zero, else: d
+  end
 
   defp update_location(socket, field, raw_uuid) do
     uuid = blank_to_nil(raw_uuid)
