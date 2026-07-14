@@ -967,19 +967,14 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
   end
 
   # ---------------------------------------------------------------------------
-  # resolve_suppliers — guarded primary_for_item path (V149)
+  # resolve_suppliers — primary_supplier_uuid scalar
   # ---------------------------------------------------------------------------
 
-  describe "resolve_suppliers — guarded primary_for_item path" do
-    test "without new catalogue export: routes via manufacturer (Hex 0.10.0 guard)" do
-      # When compiled against Hex catalogue 0.10.0, primary_for_item/1 is absent.
-      # The guard falls through to the manufacturer path. Verify manufacturer
-      # routing still produces the correct supplier assignment.
+  describe "resolve_suppliers — primary_supplier_uuid scalar" do
+    test "primary supplier wins for a generic/unbranded item with no manufacturer" do
       actor = user_uuid()
-      mfr = create_manufacturer!()
       supplier = create_supplier!()
-      Catalogue.link_manufacturer_supplier(mfr.uuid, supplier.uuid)
-      item = create_item!(%{manufacturer_uuid: mfr.uuid})
+      item = create_item!(%{primary_supplier_uuid: supplier.uuid})
 
       StockLedger.upsert_quantity(item.uuid, Decimal.new("0"),
         location_uuid: default_location_uuid()
@@ -991,125 +986,37 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
       {:ok, %{supplier_orders: orders, unassigned_lines: unassigned}} =
         SupplierOrders.generate_from_internal_order(internal_order, actor)
 
-      # With manufacturer → exactly 1 supplier, item must be assigned.
-      if Code.ensure_loaded?(PhoenixKitCatalogue.Catalogue.Suppliers) and
-           function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
-        # Feature-branch catalogue: assignment may come via junction or manufacturer.
-        # Either way, exactly one supplier order must be created.
-        assert length(orders) == 1 and unassigned == []
-      else
-        # Hex 0.10.0: manufacturer path, item assigned to the linked supplier.
-        assert length(orders) == 1
-        assert unassigned == []
-        [so] = orders
-        assert so.supplier_uuid == supplier.uuid
-      end
+      assert length(orders) == 1
+      assert unassigned == []
+      [so] = orders
+      assert so.supplier_uuid == supplier.uuid
     end
 
-    test "with new catalogue export: primary_for_item junction wins over manufacturer" do
-      # This test verifies the V149 junction-based resolution path.
-      # It only exercises the guarded code when the feature-branch catalogue
-      # (compiled with PHOENIX_KIT_CATALOGUE_PATH=../phoenix_kit_catalogue) is
-      # available — it is a no-op otherwise.
-      if Code.ensure_loaded?(PhoenixKitCatalogue.Catalogue.Suppliers) and
-           function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
-        actor = user_uuid()
+    test "primary supplier breaks the tie when the manufacturer has more than one linked supplier" do
+      actor = user_uuid()
+      mfr = create_manufacturer!()
+      supplier_a = create_supplier!()
+      supplier_b = create_supplier!()
+      Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_a.uuid)
+      Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_b.uuid)
 
-        # Item with TWO manufacturer suppliers → normally unassigned (ambiguous).
-        # A primary ItemSupplierInfo row breaks the tie.
-        mfr = create_manufacturer!()
-        supplier_a = create_supplier!()
-        supplier_b = create_supplier!()
-        Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_a.uuid)
-        Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_b.uuid)
-        item = create_item!(%{manufacturer_uuid: mfr.uuid})
+      item =
+        create_item!(%{manufacturer_uuid: mfr.uuid, primary_supplier_uuid: supplier_b.uuid})
 
-        # Mark supplier_b as the primary supplier via the junction.
-        # credo:disable-for-next-line Credo.Check.Refactor.Apply
-        {:ok, _} =
-          apply(PhoenixKitCatalogue.Catalogue.ItemSupplierInfos, :create, [
-            %{
-              item_uuid: item.uuid,
-              supplier_uuid: supplier_b.uuid,
-              supplier_source: "local",
-              is_primary: true
-            }
-          ])
+      StockLedger.upsert_quantity(item.uuid, Decimal.new("0"),
+        location_uuid: default_location_uuid()
+      )
 
-        StockLedger.upsert_quantity(item.uuid, Decimal.new("0"),
-          location_uuid: default_location_uuid()
-        )
+      line = internal_order_line(item, "5")
+      internal_order = posted_internal_order_with_lines([line], actor)
 
-        line = internal_order_line(item, "5")
-        internal_order = posted_internal_order_with_lines([line], actor)
+      {:ok, %{supplier_orders: orders, unassigned_lines: unassigned}} =
+        SupplierOrders.generate_from_internal_order(internal_order, actor)
 
-        {:ok, %{supplier_orders: orders, unassigned_lines: unassigned}} =
-          SupplierOrders.generate_from_internal_order(internal_order, actor)
-
-        # Junction primary supplier wins — exactly 1 order for supplier_b.
-        assert length(orders) == 1
-        assert unassigned == []
-        [so] = orders
-        assert so.supplier_uuid == supplier_b.uuid
-      else
-        # Hex 0.10.0: skip this path — primary_for_item/1 not yet available.
-        :ok
-      end
-    end
-
-    test "cold-boot regression: junction resolution survives an unloaded Suppliers module" do
-      # In a release, PhoenixKitCatalogue.Catalogue.Suppliers is loaded lazily
-      # and nothing on the generate path references it — a bare
-      # function_exported?/3 guard would silently disable the V149 path after
-      # a cold boot. This test purges the module and asserts resolve still
-      # takes the junction path (Code.ensure_loaded?/1 must reload it).
-      suppliers_mod = PhoenixKitCatalogue.Catalogue.Suppliers
-
-      if Code.ensure_loaded?(suppliers_mod) and
-           function_exported?(suppliers_mod, :primary_for_item, 1) do
-        actor = user_uuid()
-
-        mfr = create_manufacturer!()
-        supplier_a = create_supplier!()
-        supplier_b = create_supplier!()
-        Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_a.uuid)
-        Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_b.uuid)
-        item = create_item!(%{manufacturer_uuid: mfr.uuid})
-
-        # credo:disable-for-next-line Credo.Check.Refactor.Apply
-        {:ok, _info} =
-          apply(PhoenixKitCatalogue.Catalogue.ItemSupplierInfos, :create, [
-            %{
-              item_uuid: item.uuid,
-              supplier_uuid: supplier_b.uuid,
-              supplier_source: "local",
-              is_primary: true
-            }
-          ])
-
-        StockLedger.upsert_quantity(item.uuid, Decimal.new("0"),
-          location_uuid: default_location_uuid()
-        )
-
-        line = internal_order_line(item, "3")
-        io = posted_internal_order_with_lines([line], actor)
-
-        # Simulate the release cold-boot state: module present on disk (code
-        # path) but not loaded in the VM.
-        :code.purge(suppliers_mod)
-        :code.delete(suppliers_mod)
-        refute :erlang.function_exported(suppliers_mod, :primary_for_item, 1)
-
-        {:ok, %{supplier_orders: orders, unassigned_lines: unassigned}} =
-          SupplierOrders.generate_from_internal_order(io, actor)
-
-        assert length(orders) == 1
-        assert unassigned == []
-        [so] = orders
-        assert so.supplier_uuid == supplier_b.uuid
-      else
-        :ok
-      end
+      assert length(orders) == 1
+      assert unassigned == []
+      [so] = orders
+      assert so.supplier_uuid == supplier_b.uuid
     end
   end
 end

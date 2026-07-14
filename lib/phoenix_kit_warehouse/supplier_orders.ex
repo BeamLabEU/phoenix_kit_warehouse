@@ -8,8 +8,6 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   import Ecto.Query
 
-  require Logger
-
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
@@ -650,63 +648,32 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     end)
   end
 
-  # Resolves the list of linked suppliers for an item.
-  # Returns [] when no supplier can be determined unambiguously.
-  #
-  # Resolution order:
-  # 1. If the catalogue exports `Suppliers.primary_for_item/1` (V149+), check
-  #    the item_supplier_info junction for a primary row. Non-nil wins.
-  # 2. Fallback: manufacturer → exactly-one linked supplier wins.
-  #
-  # The `primary_supplier_uuid` scalar was removed in V149. The guarded path
-  # keeps this function backward-compatible with older catalogue releases that
-  # still lack `primary_for_item/1`. `Code.ensure_loaded?/1` is required
-  # before `function_exported?/3`: in a release the module is loaded lazily,
-  # and nothing else on this code path references `Suppliers` — without the
-  # ensure_loaded the V149 path would be silently disabled after a cold boot
-  # (same guard convention as the Activity/Comments soft-deps).
-  #
-  # A primary junction row whose supplier cannot be resolved locally (a CRM
-  # source before the CRM release is installed, or a deleted local supplier)
-  # falls back to the manufacturer path — symmetric with the no-primary case —
-  # and logs a warning so the dangling ref stays visible.
-  defp resolve_suppliers(item) do
-    suppliers_mod = PhoenixKitCatalogue.Catalogue.Suppliers
-
-    if Code.ensure_loaded?(suppliers_mod) and
-         function_exported?(suppliers_mod, :primary_for_item, 1) do
-      # credo:disable-for-next-line Credo.Check.Refactor.Apply
-      case apply(suppliers_mod, :primary_for_item, [item.uuid]) do
-        nil ->
-          resolve_via_manufacturer(item)
-
-        %{supplier_uuid: supplier_uuid} ->
-          case Catalogue.get_supplier(supplier_uuid) do
-            nil ->
-              Logger.warning(
-                "warehouse: primary supplier #{supplier_uuid} for item #{item.uuid} " <>
-                  "is not locally resolvable (CRM source or deleted supplier); " <>
-                  "falling back to manufacturer resolution"
-              )
-
-              resolve_via_manufacturer(item)
-
-            supplier ->
-              [supplier]
-          end
-      end
-    else
-      resolve_via_manufacturer(item)
+  # Resolves the list of linked suppliers for an item's manufacturer.
+  # Returns [] when item has no manufacturer_uuid.
+  # An explicit primary supplier on the item always wins — it's how we
+  # resolve generic/unbranded materials that have no manufacturer to
+  # mediate through, and how we break ties when a manufacturer has more
+  # than one linked supplier. `primary_supplier_uuid` is a V146 scalar FK
+  # on the item — V149 only adds an *additional* per-supplier pricing
+  # junction (`phoenix_kit_cat_item_supplier_info`) alongside it and does
+  # not remove or supersede this field (see V149's moduledoc — that
+  # junction has no "primary" row of its own; the scalar stays the source
+  # of truth for the item's default supplier).
+  defp resolve_suppliers(%{primary_supplier_uuid: primary_supplier_uuid})
+       when not is_nil(primary_supplier_uuid) do
+    case Catalogue.get_supplier(primary_supplier_uuid) do
+      nil -> []
+      supplier -> [supplier]
     end
   end
 
-  defp resolve_via_manufacturer(%{manufacturer_uuid: nil}), do: []
+  defp resolve_suppliers(%{manufacturer_uuid: nil}), do: []
 
-  defp resolve_via_manufacturer(%{manufacturer_uuid: manufacturer_uuid}) do
+  defp resolve_suppliers(%{manufacturer_uuid: manufacturer_uuid}) do
     Catalogue.list_suppliers_for_manufacturer(manufacturer_uuid)
   end
 
-  defp resolve_via_manufacturer(_item), do: []
+  defp resolve_suppliers(_item), do: []
 
   # Returns on-hand quantity as Decimal for a given item_uuid.
   # Each internal order may target a different warehouse, so on-hand

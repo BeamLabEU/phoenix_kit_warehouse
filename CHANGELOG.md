@@ -2,6 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.2 - 2026-07-14
+
+### Added
+
+- **Goods receipt lines can now set stock `unit_value` on posting** (PR #5).
+  When a receipt line carries a `"unit_value"` field, posting writes it to
+  `phoenix_kit_warehouse_stock.unit_value` for that item/location via
+  `StockLedger.receive_quantity/3`'s existing `:unit_value` option (last
+  posted receipt wins). Absent/`nil` leaves the existing value untouched.
+
+### Fixed
+
+- **`resolve_suppliers/1` stopped honoring `item.primary_supplier_uuid`** (PR
+  #5 fix, applied during review). PR #5 rewrote supplier resolution to prefer
+  a `PhoenixKitCatalogue.Catalogue.Suppliers.primary_for_item/1` junction
+  lookup, on the premise that core's V149 migration removed the
+  `primary_supplier_uuid` scalar. It didn't: V149 is a purely additive
+  per-supplier-pricing junction table, and the scalar remains the item's
+  documented default supplier. Against the pinned `phoenix_kit_catalogue ~>
+  0.10` dependency, `primary_for_item/1` doesn't exist, so the new code
+  silently fell through to manufacturer-only resolution — any item that
+  relied on `primary_supplier_uuid` (generic/unbranded materials with no
+  manufacturer, or breaking a tie between a manufacturer's multiple linked
+  suppliers) stopped auto-assigning a supplier during
+  `generate_from_internal_order/2`. Reverted `resolve_suppliers/1` to check
+  `primary_supplier_uuid` first, manufacturer as fallback — the original
+  pre-PR behavior. Full findings:
+  `dev_docs/pull_requests/2026/5-parties-resolver-unit-value/CLAUDE_REVIEW.md`.
+
 ## 0.2.1 - 2026-07-14
 
 ### Fixed
