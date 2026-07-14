@@ -8,6 +8,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   import Ecto.Query
 
+  require Logger
+
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
@@ -658,18 +660,39 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   #
   # The `primary_supplier_uuid` scalar was removed in V149. The guarded path
   # keeps this function backward-compatible with older catalogue releases that
-  # still lack `primary_for_item/1`.
+  # still lack `primary_for_item/1`. `Code.ensure_loaded?/1` is required
+  # before `function_exported?/3`: in a release the module is loaded lazily,
+  # and nothing else on this code path references `Suppliers` — without the
+  # ensure_loaded the V149 path would be silently disabled after a cold boot
+  # (same guard convention as the Activity/Comments soft-deps).
+  #
+  # A primary junction row whose supplier cannot be resolved locally (a CRM
+  # source before the CRM release is installed, or a deleted local supplier)
+  # falls back to the manufacturer path — symmetric with the no-primary case —
+  # and logs a warning so the dangling ref stays visible.
   defp resolve_suppliers(item) do
-    if function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
+    suppliers_mod = PhoenixKitCatalogue.Catalogue.Suppliers
+
+    if Code.ensure_loaded?(suppliers_mod) and
+         function_exported?(suppliers_mod, :primary_for_item, 1) do
       # credo:disable-for-next-line Credo.Check.Refactor.Apply
-      case apply(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, [item.uuid]) do
+      case apply(suppliers_mod, :primary_for_item, [item.uuid]) do
         nil ->
           resolve_via_manufacturer(item)
 
         %{supplier_uuid: supplier_uuid} ->
           case Catalogue.get_supplier(supplier_uuid) do
-            nil -> []
-            supplier -> [supplier]
+            nil ->
+              Logger.warning(
+                "warehouse: primary supplier #{supplier_uuid} for item #{item.uuid} " <>
+                  "is not locally resolvable (CRM source or deleted supplier); " <>
+                  "falling back to manufacturer resolution"
+              )
+
+              resolve_via_manufacturer(item)
+
+            supplier ->
+              [supplier]
           end
       end
     else

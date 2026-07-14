@@ -992,10 +992,11 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
         SupplierOrders.generate_from_internal_order(internal_order, actor)
 
       # With manufacturer → exactly 1 supplier, item must be assigned.
-      if function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
+      if Code.ensure_loaded?(PhoenixKitCatalogue.Catalogue.Suppliers) and
+           function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
         # Feature-branch catalogue: assignment may come via junction or manufacturer.
         # Either way, exactly one supplier order must be created.
-        assert length(orders) == 1 or unassigned == []
+        assert length(orders) == 1 and unassigned == []
       else
         # Hex 0.10.0: manufacturer path, item assigned to the linked supplier.
         assert length(orders) == 1
@@ -1010,7 +1011,8 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
       # It only exercises the guarded code when the feature-branch catalogue
       # (compiled with PHOENIX_KIT_CATALOGUE_PATH=../phoenix_kit_catalogue) is
       # available — it is a no-op otherwise.
-      if function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
+      if Code.ensure_loaded?(PhoenixKitCatalogue.Catalogue.Suppliers) and
+           function_exported?(PhoenixKitCatalogue.Catalogue.Suppliers, :primary_for_item, 1) do
         actor = user_uuid()
 
         # Item with TWO manufacturer suppliers → normally unassigned (ambiguous).
@@ -1051,6 +1053,61 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
         assert so.supplier_uuid == supplier_b.uuid
       else
         # Hex 0.10.0: skip this path — primary_for_item/1 not yet available.
+        :ok
+      end
+    end
+
+    test "cold-boot regression: junction resolution survives an unloaded Suppliers module" do
+      # In a release, PhoenixKitCatalogue.Catalogue.Suppliers is loaded lazily
+      # and nothing on the generate path references it — a bare
+      # function_exported?/3 guard would silently disable the V149 path after
+      # a cold boot. This test purges the module and asserts resolve still
+      # takes the junction path (Code.ensure_loaded?/1 must reload it).
+      suppliers_mod = PhoenixKitCatalogue.Catalogue.Suppliers
+
+      if Code.ensure_loaded?(suppliers_mod) and
+           function_exported?(suppliers_mod, :primary_for_item, 1) do
+        actor = user_uuid()
+
+        mfr = create_manufacturer!()
+        supplier_a = create_supplier!()
+        supplier_b = create_supplier!()
+        Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_a.uuid)
+        Catalogue.link_manufacturer_supplier(mfr.uuid, supplier_b.uuid)
+        item = create_item!(%{manufacturer_uuid: mfr.uuid})
+
+        # credo:disable-for-next-line Credo.Check.Refactor.Apply
+        {:ok, _info} =
+          apply(PhoenixKitCatalogue.Catalogue.ItemSupplierInfos, :create, [
+            %{
+              item_uuid: item.uuid,
+              supplier_uuid: supplier_b.uuid,
+              supplier_source: "local",
+              is_primary: true
+            }
+          ])
+
+        StockLedger.upsert_quantity(item.uuid, Decimal.new("0"),
+          location_uuid: default_location_uuid()
+        )
+
+        line = internal_order_line(item, "3")
+        io = posted_internal_order_with_lines([line], actor)
+
+        # Simulate the release cold-boot state: module present on disk (code
+        # path) but not loaded in the VM.
+        :code.purge(suppliers_mod)
+        :code.delete(suppliers_mod)
+        refute :erlang.function_exported(suppliers_mod, :primary_for_item, 1)
+
+        {:ok, %{supplier_orders: orders, unassigned_lines: unassigned}} =
+          SupplierOrders.generate_from_internal_order(io, actor)
+
+        assert length(orders) == 1
+        assert unassigned == []
+        [so] = orders
+        assert so.supplier_uuid == supplier_b.uuid
+      else
         :ok
       end
     end
