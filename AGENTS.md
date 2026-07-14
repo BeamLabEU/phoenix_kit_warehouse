@@ -71,7 +71,7 @@ before. Implemented via `pk_dep/3` in `mix.exs` — never hand-edit a
    compile time from each tab's `live_view:` field.
 4. Enable state is the `warehouse_enabled` boolean setting
    (`PhoenixKit.Settings`); permissions come from `permission_metadata/0`.
-5. Tables are created by PhoenixKit core (V143); this module ships no
+5. Tables are created by PhoenixKit core (V144); this module ships no
    migrations of its own.
 
 ### Key conventions
@@ -109,28 +109,32 @@ created by the parent
   `phoenix_kit_warehouse_internal_orders`,
   `phoenix_kit_warehouse_supplier_orders`, and
   `phoenix_kit_warehouse_inventory_documents`.
-- **V143** creates 2 additional tables:
+- **V144** creates 2 additional tables:
   `phoenix_kit_warehouse_transfers` and `phoenix_kit_warehouse_min_stock`.
 
 This module only defines Ecto schemas that map to those tables. The
 published `0.1.0` shipped no migrations at all (no `migrations/` directory),
-so there is no upgrade path to account for — V140 and V143 are both
+so there is no upgrade path to account for — V140 and V144 are both
 fresh-install-only DDL for this module's tables. For the full column/index
 list see the respective migration moduledocs in core
-(`lib/phoenix_kit/migrations/postgres/v140.ex` and `v143.ex`).
+(`lib/phoenix_kit/migrations/postgres/v140.ex` and `v144.ex`).
 
 The test suite builds its schema by running core's versioned migrations
 directly via `PhoenixKit.Migration.ensure_current/2` in
-`test/test_helper.exs` — no module-owned DDL. **Until phoenix_kit core
-publishes a Hex release containing V143**, that means integration tests
-need a local core checkout with V143 on it, not just the Hex pin:
+`test/test_helper.exs` — no module-owned DDL. V144 ships in phoenix_kit
+≥ 1.7.190 on Hex (1.7.189 tops out at V142), so the plain pin is
+sufficient:
+
+```bash
+mix test
+```
+
+To test against an unpublished local core checkout instead, use the
+env-var swap from "Local cross-repo development" above:
 
 ```bash
 PHOENIX_KIT_PATH=../phoenix_kit mix test
 ```
-
-(see "Local cross-repo development" above; point it at a checkout of
-core's `core-v143-module-tables` branch, or its merged successor).
 
 ## Testing
 

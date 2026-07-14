@@ -51,7 +51,7 @@ defmodule PhoenixKitWarehouse.MixProject do
       quality: ["format", "credo --strict", "dialyzer"],
       "quality.ci": ["format --check-formatted", "credo --strict", "dialyzer"],
       # Schema is applied by test/test_helper.exs on every `mix test` run via
-      # PhoenixKit.Migration.ensure_current/2 (including V143) — so there is
+      # PhoenixKit.Migration.ensure_current/2 (including V144) — so there is
       # no `ecto.migrate` step here.
       "test.setup": ["ecto.create --quiet -r PhoenixKitWarehouse.Test.Repo"],
       "test.reset": [
@@ -84,10 +84,10 @@ defmodule PhoenixKitWarehouse.MixProject do
 
   defp deps do
     [
-      # The warehouse DB tables ship in core migration V143, published in
-      # phoenix_kit 1.7.189 — TODO(maintainer): confirm exact patch version
-      # at publish time (upstream currently at 1.7.188).
-      pk_dep(:phoenix_kit, "~> 1.7 and >= 1.7.189"),
+      # The transfers/min_stock tables ship in core migration V144
+      # (renumbered from V143 at merge time), first published in
+      # phoenix_kit 1.7.190 (1.7.189 tops out at V142).
+      pk_dep(:phoenix_kit, "~> 1.7.190"),
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.5"),
