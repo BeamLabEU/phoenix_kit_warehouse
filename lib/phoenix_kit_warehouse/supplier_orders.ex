@@ -8,6 +8,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   import Ecto.Query
 
+  require Logger
+
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
@@ -667,13 +669,56 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     end
   end
 
-  defp resolve_suppliers(%{manufacturer_uuid: nil}), do: []
+  # Junction-primary path: the catalogue Item schema no longer maps the V146
+  # scalar (removed in catalogue PR #44), so the scalar head above can only
+  # match if a future catalogue release restores the field — it is kept for
+  # that case. The working default-supplier mechanism is the V151 junction
+  # `is_primary` row via `Suppliers.primary_for_item/1`.
+  #
+  # `Code.ensure_loaded?/1` is required before `function_exported?/3`: in a
+  # release the Suppliers module loads lazily and nothing else on this path
+  # references it — a bare guard would silently disable junction resolution
+  # after a cold boot (same convention as the Activity/Comments soft-deps).
+  #
+  # A primary row whose supplier is not locally resolvable (a CRM source
+  # before the CRM release, or a deleted local supplier) falls through to
+  # manufacturer resolution with a warning, symmetric with the no-primary
+  # case.
+  defp resolve_suppliers(%{uuid: item_uuid} = item) when not is_nil(item_uuid) do
+    suppliers_mod = PhoenixKitCatalogue.Catalogue.Suppliers
 
-  defp resolve_suppliers(%{manufacturer_uuid: manufacturer_uuid}) do
+    with true <-
+           Code.ensure_loaded?(suppliers_mod) and
+             function_exported?(suppliers_mod, :primary_for_item, 1),
+         # credo:disable-for-next-line Credo.Check.Refactor.Apply
+         %{supplier_uuid: supplier_uuid} <- apply(suppliers_mod, :primary_for_item, [item_uuid]) do
+      case Catalogue.get_supplier(supplier_uuid) do
+        nil ->
+          Logger.warning(
+            "warehouse: primary supplier #{supplier_uuid} for item #{item_uuid} " <>
+              "is not locally resolvable (CRM source or deleted supplier); " <>
+              "falling back to manufacturer resolution"
+          )
+
+          resolve_via_manufacturer(item)
+
+        supplier ->
+          [supplier]
+      end
+    else
+      _ -> resolve_via_manufacturer(item)
+    end
+  end
+
+  defp resolve_suppliers(item), do: resolve_via_manufacturer(item)
+
+  defp resolve_via_manufacturer(%{manufacturer_uuid: nil}), do: []
+
+  defp resolve_via_manufacturer(%{manufacturer_uuid: manufacturer_uuid}) do
     Catalogue.list_suppliers_for_manufacturer(manufacturer_uuid)
   end
 
-  defp resolve_suppliers(_item), do: []
+  defp resolve_via_manufacturer(_item), do: []
 
   # Returns on-hand quantity as Decimal for a given item_uuid.
   # Each internal order may target a different warehouse, so on-hand
