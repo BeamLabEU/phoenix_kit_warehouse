@@ -36,6 +36,12 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
 
+  on_mount({__MODULE__, :self_wrapped_layout})
+
+  def on_mount(:self_wrapped_layout, _params, _session, socket) do
+    {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
+  end
+
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Comments
   alias PhoenixKitWarehouse.DocRefs
@@ -779,51 +785,60 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
       |> assign(:transfer_uuid, assigns.transfer && assigns.transfer.uuid)
 
     ~H"""
+    <PhoenixKitWeb.Components.LayoutWrapper.app_layout
+      socket={@socket}
+      flash={@flash}
+      phoenix_kit_current_scope={assigns[:phoenix_kit_current_scope]}
+      page_title={@page_title}
+      current_path={
+        assigns[:url_path] || assigns[:current_path] ||
+          Routes.path("/admin/warehouse/transfers")
+      }
+      current_locale={assigns[:current_locale]}
+    >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
-      <.admin_page_header title={@page_title}>
-        <:actions>
-          <%!-- Draft state: Save draft + Cancel + Ship --%>
-          <%= if @draft? and @active_tab in [:general, :items] do %>
-            <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
-              {dgettext("default", "Save draft")}
-            </button>
-            <button type="button" phx-click="cancel" class="btn btn-outline btn-error btn-sm">
-              {dgettext("default", "Cancel")}
-            </button>
-            <button type="button" phx-click="ship" class="btn btn-primary btn-sm">
-              <.icon name="hero-truck" class="w-4 h-4" /> {dgettext("default", "Ship")}
-            </button>
-          <% end %>
-          <%!-- In transit: Cancel (confirm) + Receive --%>
-          <%= if @in_transit? and @active_tab in [:general, :items] do %>
-            <button
-              type="button"
-              phx-click="open_cancel_confirm"
-              class="btn btn-outline btn-error btn-sm"
-            >
-              {dgettext("default", "Cancel")}
-            </button>
-            <button type="button" phx-click="receive" class="btn btn-primary btn-sm">
-              <.icon name="hero-check" class="w-4 h-4" /> {dgettext("default", "Receive")}
-            </button>
-          <% end %>
-          <%!-- Terminal state + admin: note correction --%>
-          <%= if @terminal? and @admin? and @active_tab == :general do %>
-            <button type="button" phx-click="save_correction" class="btn btn-ghost btn-sm">
-              {dgettext("default", "Save correction")}
-            </button>
-          <% end %>
-          <%!-- Status badge (in_transit / done / cancelled) --%>
-          <%= if @transfer do %>
-            <span
-              :if={@transfer.status != "draft"}
-              class={["badge badge-lg", status_badge_class(@transfer.status)]}
-            >
-              {status_label(@transfer.status)}
-            </span>
-          <% end %>
-        </:actions>
-      </.admin_page_header>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <%!-- Draft state: Save draft + Cancel + Ship --%>
+        <%= if @draft? and @active_tab in [:general, :items] do %>
+          <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
+            {dgettext("default", "Save draft")}
+          </button>
+          <button type="button" phx-click="cancel" class="btn btn-outline btn-error btn-sm">
+            {dgettext("default", "Cancel")}
+          </button>
+          <button type="button" phx-click="ship" class="btn btn-primary btn-sm">
+            <.icon name="hero-truck" class="w-4 h-4" /> {dgettext("default", "Ship")}
+          </button>
+        <% end %>
+        <%!-- In transit: Cancel (confirm) + Receive --%>
+        <%= if @in_transit? and @active_tab in [:general, :items] do %>
+          <button
+            type="button"
+            phx-click="open_cancel_confirm"
+            class="btn btn-outline btn-error btn-sm"
+          >
+            {dgettext("default", "Cancel")}
+          </button>
+          <button type="button" phx-click="receive" class="btn btn-primary btn-sm">
+            <.icon name="hero-check" class="w-4 h-4" /> {dgettext("default", "Receive")}
+          </button>
+        <% end %>
+        <%!-- Terminal state + admin: note correction --%>
+        <%= if @terminal? and @admin? and @active_tab == :general do %>
+          <button type="button" phx-click="save_correction" class="btn btn-ghost btn-sm">
+            {dgettext("default", "Save correction")}
+          </button>
+        <% end %>
+        <%!-- Status badge (in_transit / done / cancelled) --%>
+        <%= if @transfer do %>
+          <span
+            :if={@transfer.status != "draft"}
+            class={["badge badge-lg", status_badge_class(@transfer.status)]}
+          >
+            {status_label(@transfer.status)}
+          </span>
+        <% end %>
+      </div>
 
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
@@ -1213,6 +1228,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
         </:actions>
       </.modal>
     </div>
+    </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
   end
 

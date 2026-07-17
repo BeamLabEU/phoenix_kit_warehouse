@@ -18,6 +18,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
 
+  on_mount({__MODULE__, :self_wrapped_layout})
+
+  def on_mount(:self_wrapped_layout, _params, _session, socket) do
+    {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
+  end
+
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
 
   alias PhoenixKitWarehouse.StockLedger
@@ -785,7 +791,10 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     {:noreply,
      socket
      |> assign(:files_folder_loading, false)
-     |> put_flash(:error, "Could not open files folder: #{inspect(reason)}")}
+     |> put_flash(
+       :error,
+       dgettext("default", "Could not open files folder: %{reason}", reason: inspect(reason))
+     )}
   end
 
   def handle_info({:comments_updated, _payload}, socket) do
@@ -842,53 +851,62 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       )
 
     ~H"""
+    <PhoenixKitWeb.Components.LayoutWrapper.app_layout
+      socket={@socket}
+      flash={@flash}
+      phoenix_kit_current_scope={assigns[:phoenix_kit_current_scope]}
+      page_title={@page_title}
+      current_path={
+        assigns[:url_path] || assigns[:current_path] ||
+          Routes.path("/admin/warehouse/inventories")
+      }
+      current_locale={assigns[:current_locale]}
+    >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
-      <.admin_page_header title={@page_title}>
-        <:actions>
-          <%!-- Draft state: Save draft + Conduct --%>
-          <%= if !@posted? and @active_tab in [:general, :items] do %>
-            <button
-              type="button"
-              phx-click="save_draft"
-              class="btn btn-ghost btn-sm"
-            >
-              {dgettext("default", "Save draft")}
-            </button>
-            <button
-              type="button"
-              phx-click="post"
-              class="btn btn-primary btn-sm"
-            >
-              <.icon name="hero-check" class="w-4 h-4" />
-              {dgettext("default", "Conduct")}
-            </button>
-          <% end %>
-          <%!-- Posted + admin: correction + repost + badge --%>
-          <%= if @posted? and @admin? and @active_tab in [:general, :items] do %>
-            <button
-              type="button"
-              phx-click="save_correction"
-              class="btn btn-ghost btn-sm"
-            >
-              {dgettext("default", "Save correction")}
-            </button>
-            <button
-              type="button"
-              phx-click="repost"
-              class="btn btn-warning btn-sm"
-            >
-              <.icon name="hero-arrow-path" class="w-4 h-4" />
-              {dgettext("default", "Re-conduct")}
-            </button>
-          <% end %>
-          <%!-- Posted badge (always shown when posted) --%>
-          <%= if @posted? do %>
-            <span class="badge badge-success badge-lg">
-              {dgettext("default", "Conducted")}
-            </span>
-          <% end %>
-        </:actions>
-      </.admin_page_header>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <%!-- Draft state: Save draft + Conduct --%>
+        <%= if !@posted? and @active_tab in [:general, :items] do %>
+          <button
+            type="button"
+            phx-click="save_draft"
+            class="btn btn-ghost btn-sm"
+          >
+            {dgettext("default", "Save draft")}
+          </button>
+          <button
+            type="button"
+            phx-click="post"
+            class="btn btn-primary btn-sm"
+          >
+            <.icon name="hero-check" class="w-4 h-4" />
+            {dgettext("default", "Conduct")}
+          </button>
+        <% end %>
+        <%!-- Posted + admin: correction + repost + badge --%>
+        <%= if @posted? and @admin? and @active_tab in [:general, :items] do %>
+          <button
+            type="button"
+            phx-click="save_correction"
+            class="btn btn-ghost btn-sm"
+          >
+            {dgettext("default", "Save correction")}
+          </button>
+          <button
+            type="button"
+            phx-click="repost"
+            class="btn btn-warning btn-sm"
+          >
+            <.icon name="hero-arrow-path" class="w-4 h-4" />
+            {dgettext("default", "Re-conduct")}
+          </button>
+        <% end %>
+        <%!-- Posted badge (always shown when posted) --%>
+        <%= if @posted? do %>
+          <span class="badge badge-success badge-lg">
+            {dgettext("default", "Conducted")}
+          </span>
+        <% end %>
+      </div>
 
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
@@ -1262,6 +1280,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
         </:actions>
       </.modal>
     </div>
+    </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
   end
 

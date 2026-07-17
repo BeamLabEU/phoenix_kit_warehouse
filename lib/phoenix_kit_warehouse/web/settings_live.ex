@@ -14,6 +14,12 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  on_mount({__MODULE__, :self_wrapped_layout})
+
+  def on_mount(:self_wrapped_layout, _params, _session, socket) do
+    {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
+  end
+
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitLocations.Locations
 
@@ -66,9 +72,18 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   @impl true
   def render(assigns) do
     ~H"""
+    <PhoenixKitWeb.Components.LayoutWrapper.app_layout
+      socket={@socket}
+      flash={@flash}
+      phoenix_kit_current_scope={assigns[:phoenix_kit_current_scope]}
+      page_title={dgettext("default", "Warehouse settings")}
+      current_path={
+        assigns[:url_path] || assigns[:current_path] ||
+          PhoenixKit.Utils.Routes.path("/admin/settings/warehouse")
+      }
+      current_locale={assigns[:current_locale]}
+    >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
-      <.admin_page_header title={dgettext("default", "Warehouse settings")} />
-
       <div class="card bg-base-100 shadow-sm">
         <div class="card-body p-4 gap-4">
           <p class="text-sm text-base-content/60">
@@ -117,6 +132,7 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
         </div>
       </div>
     </div>
+    </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
   end
 end

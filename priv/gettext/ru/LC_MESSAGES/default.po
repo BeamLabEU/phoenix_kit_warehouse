@@ -170,7 +170,7 @@ msgstr "Выберите, какой тип локации обозначает 
 #: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:44
 #, elixir-autogen, elixir-format
 msgid "Clear filter"
-msgstr "Включить фильтр"
+msgstr "Очистить фильтр"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:141
 #, elixir-autogen, elixir-format
@@ -192,6 +192,16 @@ msgstr "Закрыть"
 #, elixir-autogen, elixir-format
 msgid "Columns"
 msgstr "Колонки"
+
+#: lib/phoenix_kit_warehouse/web/column_management.ex:238
+#, elixir-autogen, elixir-format
+msgid "Columns updated"
+msgstr "Колонки обновлены"
+
+#: lib/phoenix_kit_warehouse/web/column_management.ex:248
+#, elixir-autogen, elixir-format
+msgid "Failed to save columns"
+msgstr "Не удалось сохранить колонки"
 
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:684
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:907
