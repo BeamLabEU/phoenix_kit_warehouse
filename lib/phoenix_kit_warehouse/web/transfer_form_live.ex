@@ -18,9 +18,10 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   the ship posting, crediting stock back to the source). See
   `PhoenixKitWarehouse.Transfers` for the posting mechanics.
 
-  Structurally a copy of `InternalOrderFormLive` (admin-chrome pattern:
-  `use PhoenixKitWeb, :live_view` + `<.admin_page_header>`, no self-wrap, no
-  streams), with two differences of substance:
+  Structurally a copy of `InternalOrderFormLive` (admin header-breadcrumb
+  pattern: `use PhoenixKitWeb, :live_view` + a `self_wrapped_layout` on_mount
+  wrapping render/1 in `<LayoutWrapper.app_layout>`, no streams), with two
+  differences of substance:
   - Two `<select>`s (source/destination warehouse) instead of one, editable
     only while `status == "draft"`.
   - No "import lines from a source" flow — a transfer has no natural upstream

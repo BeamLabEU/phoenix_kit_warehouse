@@ -8,7 +8,9 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   Both persist to `PhoenixKit.Settings` (admin-configurable, no redeploy)
   via `PhoenixKitWarehouse.StockLedger`.
 
-  Admin-chrome pattern: `use PhoenixKitWeb, :live_view` + `<.admin_page_header>`.
+  Admin header-breadcrumb pattern: `use PhoenixKitWeb, :live_view` + a
+  `self_wrapped_layout` on_mount wrapping render/1 in `<LayoutWrapper.app_layout>`
+  (title in the global admin header).
   """
 
   use PhoenixKitWeb, :live_view

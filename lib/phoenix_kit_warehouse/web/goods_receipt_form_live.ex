@@ -9,8 +9,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
   - `:files`    — MediaBrowser; storage folder resolved asynchronously.
   - `:comments` — goods receipt comments thread.
 
-  Uses the admin-chrome pattern: `use PhoenixKitWeb, :live_view` +
-  `<.admin_page_header>`. No `<Layouts.app>`, no streams.
+  Uses the admin header-breadcrumb pattern: `use PhoenixKitWeb, :live_view` +
+  a `self_wrapped_layout` on_mount wrapping render/1 in
+  `<LayoutWrapper.app_layout>` (title in the global admin header). No streams.
   All navigation paths wrapped in `PhoenixKit.Utils.Routes.path/1`.
   """
 

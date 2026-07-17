@@ -7,8 +7,9 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   - `:edit`     — loads an existing order; :general tab.
   - `:items`    — lines editor (draft only for adding/editing quantities).
 
-  Uses the admin-chrome pattern: `use PhoenixKitWeb, :live_view` +
-  `<.admin_page_header>`. No `<Layouts.app>`, no streams.
+  Uses the admin header-breadcrumb pattern: `use PhoenixKitWeb, :live_view` +
+  a `self_wrapped_layout` on_mount wrapping render/1 in
+  `<LayoutWrapper.app_layout>` (title in the global admin header). No streams.
   All navigation paths wrapped in `PhoenixKit.Utils.Routes.path/1`.
   """
 
