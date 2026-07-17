@@ -16,16 +16,17 @@ msgstr ""
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:15
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:15
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:16
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:18
 #, elixir-autogen, elixir-format
 msgid "#"
 msgstr "#"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:344
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:347
 #, elixir-autogen, elixir-format
 msgid "10% reserve applied"
 msgstr "10% reserve applied"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:879
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:883
 #, elixir-autogen, elixir-format
 msgid "A supplier is required before posting."
 msgstr "A supplier is required before posting."
@@ -36,21 +37,24 @@ msgstr "A supplier is required before posting."
 msgid "Add"
 msgstr "Add"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1064
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1041
 #, elixir-autogen, elixir-format
 msgid "Add 10% reserve"
 msgstr "Add 10% reserve"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1165
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1187
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1000
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1022
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1125
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1147
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1084
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1106
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1078
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1098
 #, elixir-autogen, elixir-format
 msgid "Add item"
 msgstr "Add item"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1191
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1028
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1151
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1112
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1102
 #, elixir-autogen, elixir-format
 msgid "After add:"
 msgstr "After add:"
@@ -60,7 +64,12 @@ msgstr "After add:"
 msgid "All columns selected"
 msgstr "All columns selected"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:283
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:743
+#, elixir-autogen, elixir-format
+msgid "All prices updated"
+msgstr "All prices updated"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:306
 #, elixir-autogen, elixir-format
 msgid "All quantities set to ordered"
 msgstr "All quantities set to ordered"
@@ -75,89 +84,103 @@ msgstr "Any"
 msgid "Apply"
 msgstr "Apply"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:299
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:303
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:291
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:293
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:370
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:302
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:309
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:313
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:301
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:303
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:641
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:312
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:295
 #, elixir-autogen, elixir-format
 msgid "Ascending"
 msgstr "Ascending"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:949
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:990
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1025
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:992
+#: lib/phoenix_kit_warehouse/web/components/related_documents.ex:46
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:997
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1175
 #, elixir-autogen, elixir-format
 msgid "Attach"
 msgstr "Attach"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:978
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1019
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1290
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1026
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1204
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1250
 #, elixir-autogen, elixir-format
 msgid "Attach customer order"
 msgstr "Attach customer order"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:979
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1020
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1143
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1027
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1205
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1120
 #, elixir-autogen, elixir-format
 msgid "Attach internal order"
 msgstr "Attach internal order"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1021
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1206
 #, elixir-autogen, elixir-format
 msgid "Attach supplier order"
 msgstr "Attach supplier order"
 
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:136
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:138
 #, elixir-autogen, elixir-format
 msgid "Available"
 msgstr "Available"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:180
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:906
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:921
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1257
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:791
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:804
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Cancel"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:292
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:306
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:295
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:353
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:523
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:675
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:295
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:315
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:329
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:562
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:544
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:298
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:356
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:526
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:678
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1553
 #, elixir-autogen, elixir-format
 msgid "Cannot modify: document is not a draft"
 msgstr "Cannot modify: document is not a draft"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:427
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:430
 #, elixir-autogen, elixir-format
 msgid "Cannot post: please set a supplier first"
 msgstr "Cannot post: please set a supplier first"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:296
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:543
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:586
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:586
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:391
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:325
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:592
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:594
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:655
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:394
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:555
 #, elixir-autogen, elixir-format
 msgid "Cannot save: document is not a draft"
 msgstr "Cannot save: document is not a draft"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:41
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:49
 #, elixir-autogen, elixir-format
 msgid "Catalogue"
 msgstr "Catalogue"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1168
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1145
 #, elixir-autogen, elixir-format
 msgid "Catalogue base price"
 msgstr "Catalogue base price"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:54
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:687
+#, elixir-autogen, elixir-format
+msgid "Catalogue module not available"
+msgstr "Catalogue module not available"
+
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:62
 #, elixir-autogen, elixir-format
 msgid "Category"
 msgstr "Category"
@@ -177,62 +200,67 @@ msgstr "Enable filter"
 msgid "Click to add"
 msgstr "Click to add"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1204
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1041
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1164
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1125
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1115
 #, elixir-autogen, elixir-format
 msgid "Close"
 msgstr "Close"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:317
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:321
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:309
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:311
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:388
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:320
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:327
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:331
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:319
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:321
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:659
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:330
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:313
 #, elixir-autogen, elixir-format
 msgid "Columns"
 msgstr "Columns"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:684
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:907
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:714
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:948
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:904
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1133
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:851
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1148
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:816
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1114
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:717
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:955
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:877
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1133
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:912
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1093
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:920
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1232
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:820
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1091
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:855
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1055
 #, elixir-autogen, elixir-format
 msgid "Comments"
 msgstr "Comments"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:911
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:952
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1137
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1152
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1118
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:959
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1137
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1097
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1236
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1095
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1059
 #, elixir-autogen, elixir-format
 msgid "Comments module is disabled. Enable it in PhoenixKit settings."
 msgstr "Comments module is disabled. Enable it in PhoenixKit settings."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:671
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:831
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:794
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:834
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:839
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:863
 #, elixir-autogen, elixir-format
 msgid "Conduct"
 msgstr "Conduct"
 
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:48
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:846
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:200
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:818
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:854
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:210
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:887
 #, elixir-autogen, elixir-format
 msgid "Conducted"
 msgstr "Conducted"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:975
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:938
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:983
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1007
 #, elixir-autogen, elixir-format
 msgid "Conducted at"
 msgstr "Conducted at"
@@ -242,24 +270,26 @@ msgstr "Conducted at"
 msgid "Contains..."
 msgstr "Contains..."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:364
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:596
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:641
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:652
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:488
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:393
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:645
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:649
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:721
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:491
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:713
 #, elixir-autogen, elixir-format
 msgid "Correction saved"
 msgstr "Correction saved"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:593
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:625
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:774
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:715
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:626
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:788
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:782
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:718
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:738
 #, elixir-autogen, elixir-format
 msgid "Could not open files folder: %{reason}"
 msgstr "Could not open files folder: %{reason}"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:988
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1072
 #, elixir-autogen, elixir-format
 msgid "Count sheet"
 msgstr "Count sheet"
@@ -269,19 +299,25 @@ msgstr "Count sheet"
 msgid "Counted"
 msgstr "Counted"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:793
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:825
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:965
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:928
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:931
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:841
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1003
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:973
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:997
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:935
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:912
 #, elixir-autogen, elixir-format
 msgid "Created"
 msgstr "Created"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:970
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1054
 #, elixir-autogen, elixir-format
 msgid "Creator"
 msgstr "Creator"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1338
+#, elixir-autogen, elixir-format
+msgid "Current cost"
+msgstr "Current cost"
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:117
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:520
@@ -289,19 +325,20 @@ msgstr "Creator"
 msgid "Current stock"
 msgstr "Current stock"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:781
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:808
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:829
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:986
 #, elixir-autogen, elixir-format
 msgid "Customer orders"
 msgstr "Customer orders"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:54
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:314
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:318
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:306
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:308
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:385
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:317
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:324
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:328
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:316
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:318
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:656
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:327
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:310
 #, elixir-autogen, elixir-format
 msgid "Customize columns"
 msgstr "Customize columns"
@@ -311,6 +348,7 @@ msgstr "Customize columns"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:42
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:27
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:75
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:50
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr "Date"
@@ -325,17 +363,18 @@ msgstr "Default warehouse"
 msgid "Defaults"
 msgstr "Defaults"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:300
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:304
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:292
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:294
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:371
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:303
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:310
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:314
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:302
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:304
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:642
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:313
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:296
 #, elixir-autogen, elixir-format
 msgid "Descending"
 msgstr "Descending"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:866
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:881
 #, elixir-autogen, elixir-format
 msgid "Deselect all"
 msgstr "Deselect all"
@@ -345,26 +384,30 @@ msgstr "Deselect all"
 msgid "Disable filter"
 msgstr "Disable filter"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:615
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:618
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:623
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:687
 #, elixir-autogen, elixir-format
 msgid "Document is already conducted"
 msgstr "Document is already conducted"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:324
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:571
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:419
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:353
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:620
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:422
 #, elixir-autogen, elixir-format
 msgid "Document is already posted"
 msgstr "Document is already posted"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:695
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:764
 #, elixir-autogen, elixir-format
 msgid "Document is not posted"
 msgstr "Document is not posted"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1268
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1106
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:42
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1228
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1190
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1179
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1569
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:195
 #, elixir-autogen, elixir-format
 msgid "Done"
 msgstr "Done"
@@ -374,20 +417,24 @@ msgstr "Done"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:36
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:48
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:37
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:205
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:209
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:197
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:199
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:208
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:40
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:215
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:219
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:207
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:209
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:218
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1567
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:193
 #, elixir-autogen, elixir-format
 msgid "Draft"
 msgstr "Draft"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:288
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:535
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:578
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:578
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:383
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:317
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:584
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:586
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:647
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:386
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:547
 #, elixir-autogen, elixir-format
 msgid "Draft saved"
 msgstr "Draft saved"
@@ -402,11 +449,12 @@ msgstr "Drag selected columns to reorder, click an available column to add it. T
 msgid "Drag to reorder"
 msgstr "Drag to reorder"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:393
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:394
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:382
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:385
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:393
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:403
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:404
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:392
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:395
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:403
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:378
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr "Edit"
@@ -416,300 +464,313 @@ msgstr "Edit"
 msgid "Enable filter"
 msgstr "Enable filter"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:550
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:486
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:415
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:621
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:579
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:509
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:423
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:624
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:364
 #, elixir-autogen, elixir-format
 msgid "Failed to add link"
 msgstr "Failed to add link"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:347
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:350
 #, elixir-autogen, elixir-format
 msgid "Failed to apply reserve"
 msgstr "Failed to apply reserve"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:619
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:627
 #, elixir-autogen, elixir-format
 msgid "Failed to conduct internal order"
 msgstr "Failed to conduct internal order"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:621
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:690
 #, elixir-autogen, elixir-format
 msgid "Failed to conduct stocktake"
 msgstr "Failed to conduct stocktake"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:189
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:203
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft"
 msgstr "Failed to create draft"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:139
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:140
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft goods issue"
 msgstr "Failed to create draft goods issue"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:140
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:143
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft goods receipt"
 msgstr "Failed to create draft goods receipt"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:155
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:163
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft internal order"
 msgstr "Failed to create draft internal order"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:142
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:143
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft supplier order"
 msgstr "Failed to create draft supplier order"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:740
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:748
 #, elixir-autogen, elixir-format
 msgid "Failed to create goods issue"
 msgstr "Failed to create goods issue"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:462
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:465
 #, elixir-autogen, elixir-format
 msgid "Failed to create goods receipt"
 msgstr "Failed to create goods receipt"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:699
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:707
 #, elixir-autogen, elixir-format
 msgid "Failed to generate supplier orders"
 msgstr "Failed to generate supplier orders"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:513
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:449
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:380
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:668
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:542
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:472
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:388
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:671
 #, elixir-autogen, elixir-format
 msgid "Failed to import lines"
 msgstr "Failed to import lines"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:342
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:371
 #, elixir-autogen, elixir-format
 msgid "Failed to post goods issue"
 msgstr "Failed to post goods issue"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:574
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:623
 #, elixir-autogen, elixir-format
 msgid "Failed to post goods receipt"
 msgstr "Failed to post goods receipt"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:432
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:435
 #, elixir-autogen, elixir-format
 msgid "Failed to post supplier order"
 msgstr "Failed to post supplier order"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:699
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:768
 #, elixir-autogen, elixir-format
 msgid "Failed to re-conduct stocktake"
 msgstr "Failed to re-conduct stocktake"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:568
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:504
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:433
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:693
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:597
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:527
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:441
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:696
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:382
 #, elixir-autogen, elixir-format
 msgid "Failed to remove link"
 msgstr "Failed to remove link"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:367
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:599
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:644
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:655
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:491
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:396
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:648
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:652
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:724
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:494
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:716
 #, elixir-autogen, elixir-format
 msgid "Failed to save correction"
 msgstr "Failed to save correction"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:291
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:538
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:581
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:581
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:386
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:320
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:587
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:589
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:650
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:389
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:550
 #, elixir-autogen, elixir-format
 msgid "Failed to save draft"
 msgstr "Failed to save draft"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:290
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:293
 #, elixir-autogen, elixir-format
 msgid "Failed to set supplier"
 msgstr "Failed to set supplier"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:551
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:620
 #, elixir-autogen, elixir-format
 msgid "Failed to update"
 msgstr "Failed to update"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:286
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:309
 #, elixir-autogen, elixir-format
 msgid "Failed to update quantities"
 msgstr "Failed to update quantities"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:677
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:707
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:897
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:844
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:809
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:705
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:756
+#, elixir-autogen, elixir-format
+msgid "Failed to update price"
+msgstr "Failed to update price"
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:710
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:870
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:905
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:913
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:813
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:848
 #, elixir-autogen, elixir-format
 msgid "Files"
 msgstr "Files"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:883
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:931
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this goods issue yet."
 msgstr "Files are not available for this goods issue yet."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:924
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1109
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this goods receipt yet."
 msgstr "Files are not available for this goods receipt yet."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1109
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1069
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this internal order yet."
 msgstr "Files are not available for this internal order yet."
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1124
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1208
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this inventory yet."
 msgstr "Files are not available for this inventory yet."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1090
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1067
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this supplier order yet."
 msgstr "Files are not available for this supplier order yet."
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:302
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:558
 #, elixir-autogen, elixir-format
 msgid "Flat"
 msgstr "Flat"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:663
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:693
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:883
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:830
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:795
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:696
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:856
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:891
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:899
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:799
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:834
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "General"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:855
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:863
 #, elixir-autogen, elixir-format
 msgid "Generate supplier orders"
 msgstr "Generate supplier orders"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:677
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:685
 #, elixir-autogen, elixir-format
 msgid "Generated %{n} supplier order(s)."
 msgstr "Generated %{n} supplier order(s)."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:669
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:677
 #, elixir-autogen, elixir-format
 msgid "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
 msgstr "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:60
+#: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:67
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:61
 #, elixir-autogen, elixir-format
 msgid "Goods Issue"
 msgstr "Goods Issue"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:159
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "Goods Issue #%{number}"
 msgstr "Goods Issue #%{number}"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:53
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:69
+#: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:60
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:71
 #, elixir-autogen, elixir-format
 msgid "Goods Receipt"
 msgstr "Goods Receipt"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:162
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:165
 #, elixir-autogen, elixir-format
 msgid "Goods Receipt #%{number}"
 msgstr "Goods Receipt #%{number}"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:732
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:740
 #, elixir-autogen, elixir-format
 msgid "Goods issue #%{number} created"
 msgstr "Goods issue #%{number} created"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:320
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:349
 #, elixir-autogen, elixir-format
 msgid "Goods issue posted — stock updated"
 msgstr "Goods issue posted — stock updated"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:456
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:459
 #, elixir-autogen, elixir-format
 msgid "Goods receipt #GR-%{number} created"
 msgstr "Goods receipt #GR-%{number} created"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:567
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:616
 #, elixir-autogen, elixir-format
 msgid "Goods receipt posted — stock updated"
 msgstr "Goods receipt posted — stock updated"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:291
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:547
 #, elixir-autogen, elixir-format
 msgid "Grouped"
 msgstr "Grouped"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:914
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:929
 #, elixir-autogen, elixir-format
 msgid "Import (%{n})"
 msgstr "Import (%{n})"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:852
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:977
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1057
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1142
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:900
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1025
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1034
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1119
 #, elixir-autogen, elixir-format
 msgid "Import from internal order"
 msgstr "Import from internal order"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1161
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1289
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1121
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1249
 #, elixir-autogen, elixir-format
 msgid "Import from order"
 msgstr "Import from order"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:889
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1018
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1067
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1203
 #, elixir-autogen, elixir-format
 msgid "Import from supplier order"
 msgstr "Import from supplier order"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1020
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1028
 #, elixir-autogen, elixir-format
 msgid "Imported from"
 msgstr "Imported from"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:80
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:726
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:88
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:732
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:25
 #, elixir-autogen, elixir-format
 msgid "In stock"
 msgstr "In stock"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:334
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:363
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:600
 #, elixir-autogen, elixir-format
 msgid "Insufficient stock for: %{item}. Reduce quantity or check stock levels."
 msgstr "Insufficient stock for: %{item}. Reduce quantity or check stock levels."
 
 #: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:51
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:55
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:768
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:66
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:949
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:816
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:64
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:953
 #, elixir-autogen, elixir-format
 msgid "Internal Order"
 msgstr "Internal Order"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:180
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:188
 #, elixir-autogen, elixir-format
 msgid "Internal Order #%{number}"
 msgstr "Internal Order #%{number}"
@@ -719,58 +780,64 @@ msgstr "Internal Order #%{number}"
 msgid "Internal Orders"
 msgstr "Internal Orders"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:610
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:618
 #, elixir-autogen, elixir-format
 msgid "Internal order conducted"
 msgstr "Internal order conducted"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:786
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:818
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:834
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:996
 #, elixir-autogen, elixir-format
 msgid "Internal orders"
 msgstr "Internal orders"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:641
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:674
 #, elixir-autogen, elixir-format
 msgid "Issue"
 msgstr "Issue"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:848
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:896
 #, elixir-autogen, elixir-format
 msgid "Issue Lines"
 msgstr "Issue Lines"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1005
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1053
 #, elixir-autogen, elixir-format
 msgid "Issue qty"
 msgstr "Issue qty"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:868
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:876
 #, elixir-autogen, elixir-format
 msgid "Issue to production"
 msgstr "Issue to production"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:17
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:25
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:116
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:518
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:724
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1002
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1036
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1307
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1159
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:730
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1050
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1221
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1336
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1267
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1136
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1264
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:227
 #, elixir-autogen, elixir-format
 msgid "Item"
 msgstr "Item"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:890
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1152
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:837
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:898
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1112
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:906
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:841
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1074
 #, elixir-autogen, elixir-format
 msgid "Items"
 msgstr "Items"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1216
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1053
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1176
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1137
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1127
 #, elixir-autogen, elixir-format
 msgid "Keep open"
 msgstr "Keep open"
@@ -780,58 +847,62 @@ msgstr "Keep open"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:62
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:78
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:63
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:670
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:700
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:802
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:78
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:703
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:863
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:806
 #, elixir-autogen, elixir-format
 msgid "Lines"
 msgstr "Lines"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:859
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:907
 #, elixir-autogen, elixir-format
 msgid "Lines are read-only on a posted goods issue."
 msgstr "Lines are read-only on a posted goods issue."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:904
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1082
 #, elixir-autogen, elixir-format
 msgid "Lines are read-only on a posted goods receipt."
 msgstr "Lines are read-only on a posted goods receipt."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:372
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:380
 #, elixir-autogen, elixir-format
 msgid "Lines imported"
 msgstr "Lines imported"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:502
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:653
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:531
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:656
 #, elixir-autogen, elixir-format
 msgid "Lines imported from internal order(s)"
 msgstr "Lines imported from internal order(s)"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:441
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:464
 #, elixir-autogen, elixir-format
 msgid "Lines imported from supplier order(s)"
 msgstr "Lines imported from supplier order(s)"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:542
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:478
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:407
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:613
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:571
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:501
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:415
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:616
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:356
 #, elixir-autogen, elixir-format
 msgid "Link added"
 msgstr "Link added"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1235
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1073
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1195
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1157
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1146
 #, elixir-autogen, elixir-format
 msgid "List"
 msgstr "List"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:879
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:920
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1105
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1120
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1086
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:927
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1105
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1065
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1204
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1063
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1027
 #, elixir-autogen, elixir-format
 msgid "Loading files..."
 msgstr "Loading files..."
@@ -846,27 +917,27 @@ msgstr "Max"
 msgid "Min"
 msgstr "Min"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:281
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:291
 #, elixir-autogen, elixir-format
 msgid "New goods issue"
 msgstr "New goods issue"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:285
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:295
 #, elixir-autogen, elixir-format
 msgid "New goods receipt"
 msgstr "New goods receipt"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:273
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:283
 #, elixir-autogen, elixir-format
 msgid "New internal order"
 msgstr "New internal order"
 
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:275
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:285
 #, elixir-autogen, elixir-format
 msgid "New stocktake"
 msgstr "New stocktake"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:284
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:294
 #, elixir-autogen, elixir-format
 msgid "New supplier order"
 msgstr "New supplier order"
@@ -882,22 +953,22 @@ msgstr "No catalogues available."
 msgid "No columns selected"
 msgstr "No columns selected"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:875
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:890
 #, elixir-autogen, elixir-format
 msgid "No documents found."
 msgstr "No documents found."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:372
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:382
 #, elixir-autogen, elixir-format
 msgid "No goods issues yet"
 msgstr "No goods issues yet"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:373
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:383
 #, elixir-autogen, elixir-format
 msgid "No goods receipts yet"
 msgstr "No goods receipts yet"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:361
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:371
 #, elixir-autogen, elixir-format
 msgid "No internal orders yet"
 msgstr "No internal orders yet"
@@ -913,25 +984,26 @@ msgstr "No items"
 msgid "No items found"
 msgstr "No items found"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:667
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:426
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:673
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:698
 #, elixir-autogen, elixir-format
 msgid "No items in stock."
 msgstr "No items in stock."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1319
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1279
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1276
 #, elixir-autogen, elixir-format
 msgid "No items yet"
 msgstr "No items yet"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:687
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:695
 #, elixir-autogen, elixir-format
 msgid "No lines required restocking."
 msgstr "No lines required restocking."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1013
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1048
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1175
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1061
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1233
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1152
 #, elixir-autogen, elixir-format
 msgid "No lines yet"
 msgstr "No lines yet"
@@ -946,34 +1018,39 @@ msgstr "No lines yet. Add items from the catalogue below."
 msgid "No matching items"
 msgstr "No matching items"
 
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:365
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:375
 #, elixir-autogen, elixir-format
 msgid "No stocktakes yet"
 msgstr "No stocktakes yet"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:680
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:688
 #, elixir-autogen, elixir-format
 msgid "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
 msgstr "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:372
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:382
 #, elixir-autogen, elixir-format
 msgid "No supplier orders yet"
 msgstr "No supplier orders yet"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:510
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:539
 #, elixir-autogen, elixir-format
 msgid "No valid posted internal orders found"
 msgstr "No valid posted internal orders found"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:352
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:584
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:629
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:744
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:522
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:631
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:665
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:476
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:381
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:633
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:658
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:712
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:637
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:752
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:591
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:700
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:734
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:176
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:210
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:479
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:701
 #, elixir-autogen, elixir-format
 msgid "Not authorized"
 msgstr "Not authorized"
@@ -989,93 +1066,99 @@ msgstr "Not set"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:86
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:54
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:99
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:811
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:822
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:843
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:854
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1010
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1076
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:977
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1022
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:114
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:859
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:870
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1021
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1032
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1018
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1036
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:981
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:999
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:980
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:998
 #, elixir-autogen, elixir-format
 msgid "Note"
 msgstr "Note"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:710
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:830
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:740
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:862
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:931
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1084
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:893
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:843
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1030
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:743
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:878
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:903
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1040
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:939
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1044
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:962
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:847
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1007
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:882
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1006
 #, elixir-autogen, elixir-format
 msgid "Note (optional)"
 msgstr "Note (optional)"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:725
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:755
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:947
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:910
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:891
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:758
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:918
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:955
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:979
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:895
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:898
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr "Number"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1162
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1139
 #, elixir-autogen, elixir-format
 msgid "On Hand"
 msgstr "On Hand"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1004
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1052
 #, elixir-autogen, elixir-format
 msgid "On hand"
 msgstr "On hand"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:751
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:759
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can create goods issues"
 msgstr "Only posted internal orders can create goods issues"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:707
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:715
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can generate supplier orders"
 msgstr "Only posted internal orders can generate supplier orders"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1048
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1025
 #, elixir-autogen, elixir-format
 msgid "Order Lines"
 msgstr "Order Lines"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:467
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:470
 #, elixir-autogen, elixir-format
 msgid "Order is not posted"
 msgstr "Order is not posted"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1164
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1141
 #, elixir-autogen, elixir-format
 msgid "Order qty"
 msgstr "Order qty"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1038
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1223
 #, elixir-autogen, elixir-format
 msgid "Ordered"
 msgstr "Ordered"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1167
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1144
 #, elixir-autogen, elixir-format
 msgid "Outstanding"
 msgstr "Outstanding"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:509
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:638
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:661
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:512
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:641
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:664
 #, elixir-autogen, elixir-format
 msgid "Please set a supplier before importing lines"
 msgstr "Please set a supplier before importing lines"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:764
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:768
 #, elixir-autogen, elixir-format
 msgid "Post"
 msgstr "Post"
@@ -1084,13 +1167,13 @@ msgstr "Post"
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:37
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:36
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:37
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:652
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:206
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:682
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:210
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:198
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:784
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:209
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:685
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:216
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:845
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:220
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:208
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:788
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:219
 #, elixir-autogen, elixir-format
 msgid "Posted"
 msgstr "Posted"
@@ -1100,52 +1183,70 @@ msgstr "Posted"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:74
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:66
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:87
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:802
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:834
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:940
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:850
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1012
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:944
 #, elixir-autogen, elixir-format
 msgid "Posted at"
 msgstr "Posted at"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1006
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1041
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1054
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1226
 #, elixir-autogen, elixir-format
 msgid "Prior stock"
 msgstr "Prior stock"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:812
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:683
+#, elixir-autogen, elixir-format
+msgid "Price updated"
+msgstr "Price updated"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1320
+#, elixir-autogen, elixir-format
+msgid "Purchase price proposals"
+msgstr "Purchase price proposals"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:881
 #, elixir-autogen, elixir-format
 msgid "Re-conduct"
 msgstr "Re-conduct"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:880
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1058
 #, elixir-autogen, elixir-format
 msgid "Receipt Lines"
 msgstr "Receipt Lines"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:896
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1339
+#, elixir-autogen, elixir-format
+msgid "Receipt price"
+msgstr "Receipt price"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1074
 #, elixir-autogen, elixir-format
 msgid "Receive all ordered"
 msgstr "Receive all ordered"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1039
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1166
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1224
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1143
 #, elixir-autogen, elixir-format
 msgid "Received"
 msgstr "Received"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:776
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:780
 #, elixir-autogen, elixir-format
 msgid "Register receipt"
 msgstr "Register receipt"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1055
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1029
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:992
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:991
 #, elixir-autogen, elixir-format
 msgid "Related documents"
 msgstr "Related documents"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:119
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1368
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1328
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1325
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Remove"
@@ -1155,45 +1256,49 @@ msgstr "Remove"
 msgid "Remove line"
 msgstr "Remove line"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1161
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1138
 #, elixir-autogen, elixir-format
 msgid "Required"
 msgstr "Required"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1309
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1269
 #, elixir-autogen, elixir-format
 msgid "Required qty"
 msgstr "Required qty"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1165
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1142
 #, elixir-autogen, elixir-format
 msgid "Reserve"
 msgstr "Reserve"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:963
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1047
 #, elixir-autogen, elixir-format
 msgid "Responsible"
 msgstr "Responsible"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:29
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:37
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:212
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:228
 #, elixir-autogen, elixir-format
 msgid "SKU"
 msgstr "SKU"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:647
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:677
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:841
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:804
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:770
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:680
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:840
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:849
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:873
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:774
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:813
 #, elixir-autogen, elixir-format
 msgid "Save correction"
 msgstr "Save correction"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:638
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:668
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:824
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:786
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:761
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:671
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:831
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:832
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:855
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:765
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:788
 #, elixir-autogen, elixir-format
 msgid "Save draft"
 msgstr "Save draft"
@@ -1203,13 +1308,14 @@ msgstr "Save draft"
 msgid "Search items by name, SKU..."
 msgstr "Search items by name, SKU..."
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:854
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:256
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:260
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:248
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:250
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:335
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:259
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:869
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:266
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:270
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:258
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:260
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:606
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:269
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:252
 #, elixir-autogen, elixir-format
 msgid "Search..."
 msgstr "Search..."
@@ -1219,7 +1325,7 @@ msgstr "Search..."
 msgid "Select a warehouse location type first."
 msgstr "Select a warehouse location type first."
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:867
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:882
 #, elixir-autogen, elixir-format
 msgid "Select all"
 msgstr "Select all"
@@ -1229,22 +1335,24 @@ msgstr "Select all"
 msgid "Selected"
 msgstr "Selected"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1163
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1140
 #, elixir-autogen, elixir-format
 msgid "Shortfall"
 msgstr "Shortfall"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:285
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:289
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:277
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:279
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:356
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:288
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:295
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:299
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:287
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:289
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:627
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:298
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:281
 #, elixir-autogen, elixir-format
 msgid "Sort by:"
 msgstr "Sort by:"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:987
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:991
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:990
 #, elixir-autogen, elixir-format
 msgid "Source documents"
 msgstr "Source documents"
@@ -1254,11 +1362,13 @@ msgstr "Source documents"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:27
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:39
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:28
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:729
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:759
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:951
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:914
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:895
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:30
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:762
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:922
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:959
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:983
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:899
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:902
 #, elixir-autogen, elixir-format
 msgid "Status"
 msgstr "Status"
@@ -1268,17 +1378,17 @@ msgstr "Status"
 msgid "Stocktake"
 msgstr "Stocktake"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:223
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:238
 #, elixir-autogen, elixir-format
 msgid "Stocktake #%{n}"
 msgstr "Stocktake #%{n}"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:613
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:682
 #, elixir-autogen, elixir-format
 msgid "Stocktake conducted"
 msgstr "Stocktake conducted"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:692
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:761
 #, elixir-autogen, elixir-format
 msgid "Stocktake re-conducted"
 msgstr "Stocktake re-conducted"
@@ -1289,9 +1399,9 @@ msgid "Stocktakes"
 msgstr "Stocktakes"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:43
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:754
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:996
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:963
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:802
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1004
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:967
 #, elixir-autogen, elixir-format
 msgid "Sub-Order"
 msgstr "Sub-Order"
@@ -1308,21 +1418,22 @@ msgstr "Sum"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:51
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:43
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:771
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:858
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:907
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:934
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1337
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:862
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:911
 #, elixir-autogen, elixir-format
 msgid "Supplier"
 msgstr "Supplier"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:43
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:795
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:70
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:973
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:71
 #, elixir-autogen, elixir-format
 msgid "Supplier Order"
 msgstr "Supplier Order"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:182
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:185
 #, elixir-autogen, elixir-format
 msgid "Supplier Order #%{number}"
 msgstr "Supplier Order #%{number}"
@@ -1332,62 +1443,63 @@ msgstr "Supplier Order #%{number}"
 msgid "Supplier Orders"
 msgstr "Supplier Orders"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:415
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:418
 #, elixir-autogen, elixir-format
 msgid "Supplier order posted"
 msgstr "Supplier order posted"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:813
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:991
 #, elixir-autogen, elixir-format
 msgid "Supplier orders"
 msgstr "Supplier orders"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:695
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:728
 #, elixir-autogen, elixir-format
 msgid "This goods issue has been posted and stock has been updated."
 msgstr "This goods issue has been posted and stock has been updated."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:725
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:888
 #, elixir-autogen, elixir-format
 msgid "This goods receipt has been posted and stock has been updated."
 msgstr "This goods receipt has been posted and stock has been updated."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:915
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:923
 #, elixir-autogen, elixir-format
 msgid "This internal order has been conducted and is now read-only."
 msgstr "This internal order has been conducted and is now read-only."
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:863
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:932
 #, elixir-autogen, elixir-format
 msgid "This stocktake has been conducted and is now read-only."
 msgstr "This stocktake has been conducted and is now read-only."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:827
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:831
 #, elixir-autogen, elixir-format
 msgid "This supplier order has been posted and is now read-only."
 msgstr "This supplier order has been posted and is now read-only."
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:488
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:698
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:993
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:704
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1077
 #, elixir-autogen, elixir-format
 msgid "Total"
 msgstr "Total"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:104
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:112
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:118
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:727
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:733
 #, elixir-autogen, elixir-format
 msgid "Total value"
 msgstr "Total value"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:876
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:945
 #, elixir-autogen, elixir-format
 msgid "Track value"
 msgstr "Track value"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1247
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1085
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1207
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1169
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1158
 #, elixir-autogen, elixir-format
 msgid "Tree"
 msgstr "Tree"
@@ -1399,18 +1511,21 @@ msgstr "Type at least 2 characters to search for items."
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:103
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:335
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:695
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:701
 #, elixir-autogen, elixir-format
 msgid "Uncategorized"
 msgstr "Uncategorized"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:67
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:75
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:519
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:725
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1003
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1037
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1308
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1160
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:731
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1051
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1222
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1268
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1137
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1265
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:213
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:229
 #, elixir-autogen, elixir-format
 msgid "Unit"
 msgstr "Unit"
@@ -1420,7 +1535,7 @@ msgstr "Unit"
 msgid "Unit price"
 msgstr "Unit price"
 
-#: lib/phoenix_kit_warehouse/column_config/stock.ex:92
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:100
 #, elixir-autogen, elixir-format
 msgid "Unit value"
 msgstr "Unit value"
@@ -1430,35 +1545,51 @@ msgstr "Unit value"
 msgid "Unsupported filter type"
 msgstr "Unsupported filter type"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1222
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1060
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1328
+#, elixir-autogen, elixir-format
+msgid "Update all"
+msgstr "Update all"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1381
+#, elixir-autogen, elixir-format
+msgid "Update price"
+msgstr "Update price"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1182
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1144
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1133
 #, elixir-autogen, elixir-format
 msgid "View:"
 msgstr "View:"
 
 #: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:34
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:220
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:230
 #: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:35
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:224
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:234
 #: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:34
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:212
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:222
 #: lib/phoenix_kit_warehouse/web/inventories_live.ex:51
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:214
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:61
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:269
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:224
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:77
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:525
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:35
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:223
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:233
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:39
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:216
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:47
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:145
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:180
 #, elixir-autogen, elixir-format
 msgid "Warehouse"
 msgstr "Warehouse"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:59
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:63
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:742
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:782
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:984
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:947
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:918
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:775
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:945
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:992
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1016
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:922
 #, elixir-autogen, elixir-format
 msgid "Warehouse (location)"
 msgstr "Warehouse (location)"
@@ -1474,70 +1605,417 @@ msgstr "Warehouse location type"
 msgid "Warehouse settings"
 msgstr "Warehouse settings"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:974
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:989
 #, elixir-autogen, elixir-format
 msgid "m²"
 msgstr "m²"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1106
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1291
 #, elixir-autogen, elixir-format
 msgid "over %{n}"
 msgstr "over %{n}"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:972
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:987
 #, elixir-autogen, elixir-format
 msgid "pair"
 msgstr "pair"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:970
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:985
 #, elixir-autogen, elixir-format
 msgid "pc"
 msgstr "pc"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1298
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1275
 #, elixir-autogen, elixir-format
 msgid "posted"
 msgstr "posted"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:975
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:990
 #, elixir-autogen, elixir-format
 msgid "rm"
 msgstr "rm"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:971
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:986
 #, elixir-autogen, elixir-format
 msgid "set"
 msgstr "set"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:973
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:988
 #, elixir-autogen, elixir-format
 msgid "sheet"
 msgstr "sheet"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1100
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1285
 #, elixir-autogen, elixir-format
 msgid "short %{n}"
 msgstr "short %{n}"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1040
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1225
 #, elixir-autogen, elixir-format
 msgid "Δ"
 msgstr "Δ"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:748
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:776
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:788
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:990
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:953
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1370
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1403
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:912
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:924
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:795
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:939
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:965
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:998
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1036
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1484
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1517
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:916
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:928
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1248
 #, elixir-autogen, elixir-format
 msgid "— not set —"
 msgstr "— not set —"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:866
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:870
 #, elixir-autogen, elixir-format
 msgid "— select supplier —"
 msgstr "— select supplier —"
+
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:566
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:184
+#, elixir-autogen, elixir-format
+msgid "All warehouses"
+msgstr "All warehouses"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1190
+#, elixir-autogen, elixir-format
+msgid "Attach a document"
+msgstr "Attach a document"
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:216
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:238
+#, elixir-autogen, elixir-format
+msgid "Balance"
+msgstr "Balance"
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:196
+#, elixir-autogen, elixir-format
+msgid "Balance shows each item's current stock, not a historical balance as of the selected end date."
+msgstr "Balance shows each item's current stock, not a historical balance as of the selected end date."
+
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:744
+#, elixir-autogen, elixir-format
+msgid "Below minimum stock"
+msgstr "Below minimum stock"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:640
+#, elixir-autogen, elixir-format
+msgid "Both warehouses must be set before receiving"
+msgstr "Both warehouses must be set before receiving"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1199
+#, elixir-autogen, elixir-format
+msgid "Cancel this transfer?"
+msgstr "Cancel this transfer?"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1211
+#, elixir-autogen, elixir-format
+msgid "Cancel transfer"
+msgstr "Cancel transfer"
+
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:43
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1570
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:196
+#, elixir-autogen, elixir-format
+msgid "Cancelled"
+msgstr "Cancelled"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:942
+#, elixir-autogen, elixir-format
+msgid "Cancelled at"
+msgstr "Cancelled at"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1260
+#, elixir-autogen, elixir-format
+msgid "Change warehouse"
+msgstr "Change warehouse"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1248
+#, elixir-autogen, elixir-format
+msgid "Change warehouse?"
+msgstr "Change warehouse?"
+
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:231
+#, elixir-autogen, elixir-format
+msgid "Could not create a supplier order for this item"
+msgstr "Could not create a supplier order for this item"
+
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:717
+#, elixir-autogen, elixir-format
+msgid "Create supplier order"
+msgstr "Create supplier order"
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:242
+#, elixir-autogen, elixir-format
+msgid "Current on-hand quantity — not a historical balance as of the end date."
+msgstr "Current on-hand quantity — not a historical balance as of the end date."
+
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:148
+#, elixir-autogen, elixir-format
+msgid "Deficit"
+msgstr "Deficit"
+
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:70
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:965
+#, elixir-autogen, elixir-format
+msgid "Destination warehouse"
+msgstr "Destination warehouse"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:579
+#, elixir-autogen, elixir-format
+msgid "Document is already shipped"
+msgstr "Document is already shipped"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:633
+#, elixir-autogen, elixir-format
+msgid "Document is not in transit"
+msgstr "Document is not in transit"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:691
+#, elixir-autogen, elixir-format
+msgid "Failed to cancel transfer"
+msgstr "Failed to cancel transfer"
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:290
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:557
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:577
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1548
+#, elixir-autogen, elixir-format
+msgid "Failed to change warehouse"
+msgstr "Failed to change warehouse"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:178
+#, elixir-autogen, elixir-format
+msgid "Failed to create draft transfer"
+msgstr "Failed to create draft transfer"
+
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:510
+#, elixir-autogen, elixir-format
+msgid "Failed to create supplier order"
+msgstr "Failed to create supplier order"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:644
+#, elixir-autogen, elixir-format
+msgid "Failed to receive transfer"
+msgstr "Failed to receive transfer"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:608
+#, elixir-autogen, elixir-format
+msgid "Failed to ship transfer"
+msgstr "Failed to ship transfer"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1031
+#, elixir-autogen, elixir-format
+msgid "Files are not available for this transfer yet."
+msgstr "Files are not available for this transfer yet."
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:158
+#, elixir-autogen, elixir-format
+msgid "From"
+msgstr "From"
+
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:41
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1568
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:194
+#, elixir-autogen, elixir-format
+msgid "In transit"
+msgstr "In transit"
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:214
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:231
+#, elixir-autogen, elixir-format
+msgid "Inflow"
+msgstr "Inflow"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1208
+#, elixir-autogen, elixir-format
+msgid "Keep transfer"
+msgstr "Keep transfer"
+
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:124
+#, elixir-autogen, elixir-format
+msgid "Min. quantity"
+msgstr "Min. quantity"
+
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:193
+#, elixir-autogen, elixir-format
+msgid "Minimum quantity must be zero or greater"
+msgstr "Minimum quantity must be zero or greater"
+
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:277
+#, elixir-autogen, elixir-format
+msgid "New transfer"
+msgstr "New transfer"
+
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:157
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:861
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:891
+#, elixir-autogen, elixir-format
+msgid "No"
+msgstr "No"
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:261
+#, elixir-autogen, elixir-format
+msgid "No movement in this period"
+msgstr "No movement in this period"
+
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:359
+#, elixir-autogen, elixir-format
+msgid "No transfers yet"
+msgstr "No transfers yet"
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:215
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:234
+#, elixir-autogen, elixir-format
+msgid "Outflow"
+msgstr "Outflow"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:586
+#, elixir-autogen, elixir-format
+msgid "Please select two different warehouses before shipping"
+msgstr "Please select two different warehouses before shipping"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:807
+#, elixir-autogen, elixir-format
+msgid "Receive"
+msgstr "Receive"
+
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:102
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:932
+#, elixir-autogen, elixir-format
+msgid "Received at"
+msgstr "Received at"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:794
+#, elixir-autogen, elixir-format
+msgid "Ship"
+msgstr "Ship"
+
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:90
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:922
+#, elixir-autogen, elixir-format
+msgid "Shipped at"
+msgstr "Shipped at"
+
+#: lib/phoenix_kit_warehouse/column_config/transfers.ex:62
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:951
+#, elixir-autogen, elixir-format
+msgid "Source warehouse"
+msgstr "Source warehouse"
+
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:506
+#, elixir-autogen, elixir-format
+msgid "Supplier order draft created"
+msgstr "Supplier order draft created"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1250
+#, elixir-autogen, elixir-format
+msgid "Switching the warehouse resets the counted quantities to the current stock of the new warehouse. Continue?"
+msgstr "Switching the warehouse resets the counted quantities to the current stock of the new warehouse. Continue?"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:698
+#, elixir-autogen, elixir-format
+msgid "This price was already revised in the catalogue"
+msgstr "This price was already revised in the catalogue"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:685
+#, elixir-autogen, elixir-format
+msgid "This transfer can no longer be cancelled"
+msgstr "This transfer can no longer be cancelled"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1590
+#, elixir-autogen, elixir-format
+msgid "This transfer has been cancelled."
+msgstr "This transfer has been cancelled."
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1587
+#, elixir-autogen, elixir-format
+msgid "This transfer has been received and is now read-only."
+msgstr "This transfer has been received and is now read-only."
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1581
+#, elixir-autogen, elixir-format
+msgid "This transfer is in transit. Stock has left the source warehouse."
+msgstr "This transfer is in transit. Stock has left the source warehouse."
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1201
+#, elixir-autogen, elixir-format
+msgid "This will reverse the shipment and credit the quantity back to the source warehouse. This cannot be undone."
+msgstr "This will reverse the shipment and credit the quantity back to the source warehouse. This cannot be undone."
+
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:169
+#, elixir-autogen, elixir-format
+msgid "To"
+msgstr "To"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:87
+#, elixir-autogen, elixir-format
+msgid "Transfer"
+msgstr "Transfer"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:200
+#, elixir-autogen, elixir-format
+msgid "Transfer #%{number}"
+msgstr "Transfer #%{number}"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:678
+#, elixir-autogen, elixir-format
+msgid "Transfer cancelled"
+msgstr "Transfer cancelled"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1266
+#, elixir-autogen, elixir-format
+msgid "Transfer qty"
+msgstr "Transfer qty"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:628
+#, elixir-autogen, elixir-format
+msgid "Transfer received — stock updated at destination"
+msgstr "Transfer received — stock updated at destination"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:575
+#, elixir-autogen, elixir-format
+msgid "Transfer shipped — stock updated at source"
+msgstr "Transfer shipped — stock updated at source"
+
+#: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:53
+#, elixir-autogen, elixir-format
+msgid "Transfers"
+msgstr "Transfers"
+
+#: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:74
+#, elixir-autogen, elixir-format
+msgid "Turnover"
+msgstr "Turnover"
+
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:749
+#, elixir-autogen, elixir-format
+msgid "Updated %{ok} price(s); %{failed} failed"
+msgstr "Updated %{ok} price(s); %{failed} failed"
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:286
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:553
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1544
+#, elixir-autogen, elixir-format
+msgid "Warehouse changed"
+msgstr "Warehouse changed"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:571
+#, elixir-autogen, elixir-format
+msgid "Warehouse changed — count sheet re-seeded"
+msgstr "Warehouse changed — count sheet re-seeded"
+
+#: lib/phoenix_kit_warehouse/column_config/stock.ex:157
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:861
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:891
+#, elixir-autogen, elixir-format
+msgid "Yes"
+msgstr "Yes"
+
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1235
+#, elixir-autogen, elixir-format
+msgid "— select —"
+msgstr "— select —"

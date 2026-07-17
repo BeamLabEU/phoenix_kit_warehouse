@@ -29,6 +29,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.CostProposals
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -68,6 +69,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       |> assign(:source_picker_query, "")
       |> assign(:warehouses, StockLedger.list_warehouses())
       |> assign(:page_title, dgettext("default", "Goods Receipt"))
+      |> assign(:price_proposals, [])
       |> PhoenixKitWeb.Components.MediaBrowser.setup_uploads()
 
     {:ok, socket}
@@ -163,7 +165,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
         dgettext("default", "Goods Receipt #%{number}", number: receipt.number)
       )
 
-    if same_receipt?, do: socket, else: assign_edit_buffer(socket, receipt)
+    socket = if same_receipt?, do: socket, else: assign_edit_buffer(socket, receipt)
+    assign_price_proposals(socket)
   end
 
   defp assign_edit_buffer(socket, receipt) do
@@ -171,6 +174,25 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     |> assign(:lines, receipt.lines)
     |> assign(:note, receipt.note || "")
   end
+
+  # Recomputes purchase price proposals from the current receipt state.
+  # Only runs for posted receipts with a supplier_uuid — otherwise clears the list.
+  # Stateless: derives from live catalogue data on every call; no DB storage.
+  defp assign_price_proposals(
+         %{assigns: %{receipt: %{status: "posted", supplier_uuid: sup}}} = socket
+       )
+       when is_binary(sup) do
+    proposals =
+      CostProposals.derive(
+        socket.assigns.lines,
+        sup,
+        CostProposals.catalogue_resolver()
+      )
+
+    assign(socket, :price_proposals, proposals)
+  end
+
+  defp assign_price_proposals(socket), do: assign(socket, :price_proposals, [])
 
   defp maybe_subscribe_and_refresh_comments(socket) do
     receipt = socket.assigns.receipt
@@ -627,6 +649,116 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     end
   end
 
+  # ---------------------------------------------------------------------------
+  # Purchase price proposals — update catalogue cost from receipt line
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event("update_price", _params, %{assigns: %{admin?: false}} = socket) do
+    {:noreply, put_flash(socket, :error, dgettext("default", "Not authorized"))}
+  end
+
+  def handle_event("update_price", %{"item_uuid" => item_uuid}, socket) do
+    receipt = socket.assigns.receipt
+    current_user = socket.assigns.current_user
+    user_uuid = current_user && current_user.uuid
+    proposal = Enum.find(socket.assigns.price_proposals, &(&1.item_uuid == item_uuid))
+
+    case proposal do
+      nil ->
+        {:noreply, socket}
+
+      %{} = p ->
+        opts = [
+          actor_uuid: user_uuid,
+          source: "goods_receipt",
+          source_uuid: receipt.uuid
+        ]
+
+        case CostProposals.apply_revision(p, opts) do
+          {:ok, _info} ->
+            {:noreply,
+             socket
+             |> assign_price_proposals()
+             |> put_flash(:info, dgettext("default", "Price updated"))}
+
+          {:error, :catalogue_unavailable} ->
+            {:noreply,
+             put_flash(socket, :error, dgettext("default", "Catalogue module not available"))}
+
+          {:error, :not_current} ->
+            # The catalogue already revised this pair (concurrent editor) —
+            # re-derive so the stale proposal disappears instead of wedging
+            # every subsequent click.
+            {:noreply,
+             socket
+             |> assign_price_proposals()
+             |> put_flash(
+               :info,
+               dgettext("default", "This price was already revised in the catalogue")
+             )}
+
+          {:error, _reason} ->
+            {:noreply,
+             socket
+             |> assign_price_proposals()
+             |> put_flash(:error, dgettext("default", "Failed to update price"))}
+        end
+    end
+  end
+
+  @impl true
+  def handle_event("update_all_prices", _params, %{assigns: %{admin?: false}} = socket) do
+    {:noreply, put_flash(socket, :error, dgettext("default", "Not authorized"))}
+  end
+
+  def handle_event("update_all_prices", _params, socket) do
+    receipt = socket.assigns.receipt
+    current_user = socket.assigns.current_user
+    user_uuid = current_user && current_user.uuid
+    proposals = socket.assigns.price_proposals
+
+    opts = [
+      actor_uuid: user_uuid,
+      source: "goods_receipt",
+      source_uuid: receipt.uuid
+    ]
+
+    # Iterate ALL proposals — one failure must not abort the rest or hide
+    # partial success. The card is re-derived afterwards regardless, so
+    # applied rows disappear and only genuinely failing pairs remain.
+    {ok_count, failed} =
+      Enum.reduce(proposals, {0, []}, fn proposal, {ok, failed} ->
+        case CostProposals.apply_revision(proposal, opts) do
+          {:ok, _info} -> {ok + 1, failed}
+          {:error, reason} -> {ok, [{proposal, reason} | failed]}
+        end
+      end)
+
+    socket = assign_price_proposals(socket)
+
+    socket =
+      cond do
+        failed == [] ->
+          put_flash(socket, :info, dgettext("default", "All prices updated"))
+
+        ok_count > 0 ->
+          put_flash(
+            socket,
+            :error,
+            dgettext("default", "Updated %{ok} price(s); %{failed} failed",
+              ok: ok_count,
+              failed: length(failed)
+            )
+          )
+
+        true ->
+          put_flash(socket, :error, dgettext("default", "Failed to update price"))
+      end
+
+    {:noreply, socket}
+  end
+
   # `Map.get(meta, uuid, "order")` alone isn't enough insurance: the key can
   # be present but mapped to `nil` (e.g. an unresolved candidate) rather
   # than absent, and `Map.get/3`'s default only kicks in when the key is
@@ -953,6 +1085,13 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
             <.goods_receipt_lines_table lines={@lines} posted?={@posted?} />
           </div>
         </div>
+        <%!-- Purchase price proposals card (posted receipts with a supplier only) --%>
+        <%= if @posted? and @price_proposals != [] do %>
+          <.price_proposals_card
+            proposals={@price_proposals}
+            admin?={@admin?}
+          />
+        <% end %>
       <% end %>
 
       <%!-- Tab: Files --%>
@@ -1160,6 +1299,95 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
           <% end %>
         </tbody>
       </table>
+    </div>
+    """
+  end
+
+  # ---------------------------------------------------------------------------
+  # Function component: purchase price proposals card
+  # ---------------------------------------------------------------------------
+
+  attr(:proposals, :list, required: true)
+  attr(:admin?, :boolean, required: true)
+
+  defp price_proposals_card(assigns) do
+    ~H"""
+    <div class="card bg-base-100 shadow-sm border border-warning/40">
+      <div class="card-body p-4">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h2 class="card-title text-base text-warning">
+            <.icon name="hero-exclamation-triangle" class="w-4 h-4" />
+            {dgettext("default", "Purchase price proposals")}
+          </h2>
+          <%= if @admin? and length(@proposals) > 1 do %>
+            <button
+              type="button"
+              phx-click="update_all_prices"
+              class="btn btn-warning btn-sm"
+            >
+              {dgettext("default", "Update all")}
+            </button>
+          <% end %>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>{dgettext("default", "Item")}</th>
+                <th>{dgettext("default", "Supplier")}</th>
+                <th class="text-right">{dgettext("default", "Current cost")}</th>
+                <th class="text-right">{dgettext("default", "Receipt price")}</th>
+                <%= if @admin? do %>
+                  <th></th>
+                <% end %>
+              </tr>
+            </thead>
+            <tbody>
+              <%= for proposal <- @proposals do %>
+                <tr class="hover">
+                  <td>
+                    <div class="font-medium">{proposal.name || "—"}</div>
+                    <div :if={proposal.sku} class="text-xs text-base-content/50 font-mono">
+                      {proposal.sku}
+                    </div>
+                  </td>
+                  <td class="text-sm text-base-content/70">
+                    {proposal.info.supplier_name_snapshot || "—"}
+                  </td>
+                  <td class="text-right tabular-nums text-sm">
+                    <%= if proposal.current_cost do %>
+                      {Decimal.to_string(proposal.current_cost, :normal)}
+                      <span :if={proposal.info.currency} class="text-xs text-base-content/50">
+                        {proposal.info.currency}
+                      </span>
+                    <% else %>
+                      <span class="text-base-content/40">—</span>
+                    <% end %>
+                  </td>
+                  <td class="text-right tabular-nums text-sm font-medium">
+                    {Decimal.to_string(proposal.receipt_price, :normal)}
+                    <span :if={proposal.info.currency} class="text-xs text-base-content/50">
+                      {proposal.info.currency}
+                    </span>
+                  </td>
+                  <%= if @admin? do %>
+                    <td>
+                      <button
+                        type="button"
+                        phx-click="update_price"
+                        phx-value-item_uuid={proposal.item_uuid}
+                        class="btn btn-xs btn-warning"
+                      >
+                        {dgettext("default", "Update price")}
+                      </button>
+                    </td>
+                  <% end %>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
     """
   end
