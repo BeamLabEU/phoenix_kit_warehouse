@@ -7,14 +7,21 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   - `:edit`     — loads an existing order; :general tab.
   - `:items`    — lines editor (draft only for adding/editing quantities).
 
-  Uses the admin-chrome pattern: `use PhoenixKitWeb, :live_view` +
-  `<.admin_page_header>`. No `<Layouts.app>`, no streams.
+  Uses the admin header-breadcrumb pattern: `use PhoenixKitWeb, :live_view` +
+  a `self_wrapped_layout` on_mount wrapping render/1 in
+  `<LayoutWrapper.app_layout>` (title in the global admin header). No streams.
   All navigation paths wrapped in `PhoenixKit.Utils.Routes.path/1`.
   """
 
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
+
+  on_mount({__MODULE__, :self_wrapped_layout})
+
+  def on_mount(:self_wrapped_layout, _params, _session, socket) do
+    {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
+  end
 
   alias PhoenixKitWarehouse.DocRefs
   alias PhoenixKitWarehouse.GoodsIssues
@@ -819,68 +826,77 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
     assigns = assign_new(assigns, :source_refs, fn -> [] end)
 
     ~H"""
+    <PhoenixKitWeb.Components.LayoutWrapper.app_layout
+      socket={@socket}
+      flash={@flash}
+      phoenix_kit_current_scope={assigns[:phoenix_kit_current_scope]}
+      page_title={@page_title}
+      current_path={
+        assigns[:url_path] || assigns[:current_path] ||
+          Routes.path("/admin/warehouse/internal-orders")
+      }
+      current_locale={assigns[:current_locale]}
+    >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
-      <.admin_page_header title={@page_title}>
-        <:actions>
-          <%!-- Draft state: Save draft + Conduct --%>
-          <%= if !@posted? and @active_tab in [:general, :items] do %>
-            <button
-              type="button"
-              phx-click="save_draft"
-              class="btn btn-ghost btn-sm"
-            >
-              {dgettext("default", "Save draft")}
-            </button>
-            <button
-              type="button"
-              phx-click="conduct"
-              class="btn btn-primary btn-sm"
-            >
-              <.icon name="hero-check" class="w-4 h-4" /> {dgettext("default", "Conduct")}
-            </button>
-          <% end %>
-          <%!-- Posted + admin: note correction + badge --%>
-          <%= if @posted? and @admin? and @active_tab == :general do %>
-            <button
-              type="button"
-              phx-click="save_correction"
-              class="btn btn-ghost btn-sm"
-            >
-              {dgettext("default", "Save correction")}
-            </button>
-          <% end %>
-          <%!-- Posted badge (always shown when posted) --%>
-          <%= if @posted? do %>
-            <span class="badge badge-success badge-lg">{dgettext("default", "Conducted")}</span>
-          <% end %>
-          <%!-- Generate supplier orders (posted only) --%>
-          <%= if @posted? do %>
-            <button
-              type="button"
-              phx-click="generate_supplier_orders"
-              class="btn btn-secondary btn-sm"
-            >
-              <.icon name="hero-truck" class="w-4 h-4" /> {dgettext(
-                "default",
-                "Generate supplier orders"
-              )}
-            </button>
-          <% end %>
-          <%!-- Issue to production (posted only) --%>
-          <%= if @posted? do %>
-            <button
-              type="button"
-              phx-click="issue_to_production"
-              class="btn btn-accent btn-sm"
-            >
-              <.icon name="hero-arrow-up-on-square" class="w-4 h-4" /> {dgettext(
-                "default",
-                "Issue to production"
-              )}
-            </button>
-          <% end %>
-        </:actions>
-      </.admin_page_header>
+      <div class="flex flex-wrap items-center justify-end gap-2">
+        <%!-- Draft state: Save draft + Conduct --%>
+        <%= if !@posted? and @active_tab in [:general, :items] do %>
+          <button
+            type="button"
+            phx-click="save_draft"
+            class="btn btn-ghost btn-sm"
+          >
+            {dgettext("default", "Save draft")}
+          </button>
+          <button
+            type="button"
+            phx-click="conduct"
+            class="btn btn-primary btn-sm"
+          >
+            <.icon name="hero-check" class="w-4 h-4" /> {dgettext("default", "Conduct")}
+          </button>
+        <% end %>
+        <%!-- Posted + admin: note correction + badge --%>
+        <%= if @posted? and @admin? and @active_tab == :general do %>
+          <button
+            type="button"
+            phx-click="save_correction"
+            class="btn btn-ghost btn-sm"
+          >
+            {dgettext("default", "Save correction")}
+          </button>
+        <% end %>
+        <%!-- Posted badge (always shown when posted) --%>
+        <%= if @posted? do %>
+          <span class="badge badge-success badge-lg">{dgettext("default", "Conducted")}</span>
+        <% end %>
+        <%!-- Generate supplier orders (posted only) --%>
+        <%= if @posted? do %>
+          <button
+            type="button"
+            phx-click="generate_supplier_orders"
+            class="btn btn-secondary btn-sm"
+          >
+            <.icon name="hero-truck" class="w-4 h-4" /> {dgettext(
+              "default",
+              "Generate supplier orders"
+            )}
+          </button>
+        <% end %>
+        <%!-- Issue to production (posted only) --%>
+        <%= if @posted? do %>
+          <button
+            type="button"
+            phx-click="issue_to_production"
+            class="btn btn-accent btn-sm"
+          >
+            <.icon name="hero-arrow-up-on-square" class="w-4 h-4" /> {dgettext(
+              "default",
+              "Issue to production"
+            )}
+          </button>
+        <% end %>
+      </div>
 
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
@@ -1243,6 +1259,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
         search_query={@source_picker_query}
       />
     </div>
+    </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
   end
 
