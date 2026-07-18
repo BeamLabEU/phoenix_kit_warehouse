@@ -43,6 +43,8 @@ defmodule PhoenixKitWarehouse.Web.ColumnManagement do
   results because of a saved filter they forgot about).
   """
 
+  use Gettext, backend: PhoenixKitWarehouse.Gettext
+
   defmacro __using__(opts) do
     column_config = Keyword.fetch!(opts, :column_config)
     scope = Keyword.fetch!(opts, :scope)
@@ -233,7 +235,7 @@ defmodule PhoenixKitWarehouse.Web.ColumnManagement do
           |> Phoenix.Component.assign(:temp_active_filters, nil)
           |> Phoenix.LiveView.put_flash(
             :info,
-            Gettext.dgettext(PhoenixKitWarehouse.Gettext, "default", "Columns updated")
+            dgettext("default", "Columns updated")
           )
 
         {:noreply, view_module.__view_config_changed__(socket)}
@@ -243,7 +245,7 @@ defmodule PhoenixKitWarehouse.Web.ColumnManagement do
          Phoenix.LiveView.put_flash(
            socket,
            :error,
-           Gettext.dgettext(PhoenixKitWarehouse.Gettext, "default", "Failed to save columns")
+           dgettext("default", "Failed to save columns")
          )}
     end
   end

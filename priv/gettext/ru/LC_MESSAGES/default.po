@@ -21,12 +21,12 @@ msgstr ""
 msgid "#"
 msgstr "#"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:347
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:354
 #, elixir-autogen, elixir-format
 msgid "10% reserve applied"
 msgstr "Запас 10% применён"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:883
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:899
 #, elixir-autogen, elixir-format
 msgid "A supplier is required before posting."
 msgstr "Перед проведением необходимо указать поставщика."
@@ -37,24 +37,24 @@ msgstr "Перед проведением необходимо указать п
 msgid "Add"
 msgstr "Добавить"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1041
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1057
 #, elixir-autogen, elixir-format
 msgid "Add 10% reserve"
 msgstr "+10% запаса"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1125
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1147
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1084
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1106
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1078
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1098
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1141
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1163
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1103
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1125
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1094
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1114
 #, elixir-autogen, elixir-format
 msgid "Add item"
 msgstr "Добавить позицию"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1151
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1112
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1102
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1167
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1131
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1118
 #, elixir-autogen, elixir-format
 msgid "After add:"
 msgstr "После добавления:"
@@ -64,12 +64,12 @@ msgstr "После добавления:"
 msgid "All columns selected"
 msgstr "Все колонки выбраны"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:743
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:750
 #, elixir-autogen, elixir-format
 msgid "All prices updated"
 msgstr "Все цены обновлены"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:306
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:313
 #, elixir-autogen, elixir-format
 msgid "All quantities set to ordered"
 msgstr "Все количества установлены по заказу"
@@ -96,27 +96,27 @@ msgid "Ascending"
 msgstr "По возрастанию"
 
 #: lib/phoenix_kit_warehouse/web/components/related_documents.ex:46
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:997
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1175
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1014
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1192
 #, elixir-autogen, elixir-format
 msgid "Attach"
 msgstr "Привязать"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1026
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1204
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1250
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1043
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1221
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1267
 #, elixir-autogen, elixir-format
 msgid "Attach customer order"
 msgstr "Привязать заказ клиента"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1027
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1205
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1120
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1044
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1222
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1137
 #, elixir-autogen, elixir-format
 msgid "Attach internal order"
 msgstr "Привязать внутренний заказ"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1206
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1223
 #, elixir-autogen, elixir-format
 msgid "Attach supplier order"
 msgstr "Привязать заказ поставщику"
@@ -129,38 +129,38 @@ msgstr "Есть"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:180
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:921
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1257
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:791
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:804
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1276
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:808
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:821
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Отмена"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:295
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:315
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:329
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:562
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:544
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:298
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:356
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:526
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:678
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1553
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:302
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:322
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:336
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:569
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:551
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:305
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:363
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:533
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:685
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1570
 #, elixir-autogen, elixir-format
 msgid "Cannot modify: document is not a draft"
 msgstr "Изменение невозможно: документ не является черновиком"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:430
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:437
 #, elixir-autogen, elixir-format
 msgid "Cannot post: please set a supplier first"
 msgstr "Нельзя провести: сначала укажите поставщика"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:325
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:592
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:594
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:655
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:394
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:555
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:332
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:599
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:601
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:662
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:401
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:562
 #, elixir-autogen, elixir-format
 msgid "Cannot save: document is not a draft"
 msgstr "Сохранение невозможно: документ не является черновиком"
@@ -170,12 +170,12 @@ msgstr "Сохранение невозможно: документ не явл�
 msgid "Catalogue"
 msgstr "Каталог"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1145
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1162
 #, elixir-autogen, elixir-format
 msgid "Catalogue base price"
 msgstr "Базовая цена каталога"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:687
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:694
 #, elixir-autogen, elixir-format
 msgid "Catalogue module not available"
 msgstr "Модуль каталога недоступен"
@@ -185,7 +185,7 @@ msgstr "Модуль каталога недоступен"
 msgid "Category"
 msgstr "Категория"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:75
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Choose which location type marks warehouses and the default warehouse where stock is held."
 msgstr "Выберите, какой тип локации обозначает склады и какой склад используется по умолчанию для хранения остатков."
@@ -193,16 +193,16 @@ msgstr "Выберите, какой тип локации обозначает 
 #: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:44
 #, elixir-autogen, elixir-format
 msgid "Clear filter"
-msgstr "Включить фильтр"
+msgstr "Очистить фильтр"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:141
 #, elixir-autogen, elixir-format
 msgid "Click to add"
 msgstr "Нажмите, чтобы добавить"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1164
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1125
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1115
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1180
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1144
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1131
 #, elixir-autogen, elixir-format
 msgid "Close"
 msgstr "Закрыть"
@@ -218,49 +218,59 @@ msgstr "Закрыть"
 msgid "Columns"
 msgstr "Колонки"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:717
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:955
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:877
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1133
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:912
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1093
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:920
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1232
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:820
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1091
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:855
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1055
+#: lib/phoenix_kit_warehouse/web/column_management.ex:238
+#, elixir-autogen, elixir-format
+msgid "Columns updated"
+msgstr "Колонки обновлены"
+
+#: lib/phoenix_kit_warehouse/web/column_management.ex:248
+#, elixir-autogen, elixir-format
+msgid "Failed to save columns"
+msgstr "Не удалось сохранить колонки"
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:733
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:971
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:893
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1149
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:928
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1109
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:939
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1251
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:836
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1107
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:871
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1071
 #, elixir-autogen, elixir-format
 msgid "Comments"
 msgstr "Комментарии"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:959
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1137
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1097
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1236
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1095
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1059
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:975
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1153
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1113
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1255
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1111
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1075
 #, elixir-autogen, elixir-format
 msgid "Comments module is disabled. Enable it in PhoenixKit settings."
 msgstr "Модуль комментариев отключён. Включите его в настройках PhoenixKit."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:834
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:839
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:863
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:851
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:856
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:883
 #, elixir-autogen, elixir-format
 msgid "Conduct"
 msgstr "Провести"
 
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:48
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:854
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:871
 #: lib/phoenix_kit_warehouse/web/inventories_live.ex:210
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:887
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:907
 #, elixir-autogen, elixir-format
 msgid "Conducted"
 msgstr "Проведена"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:983
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1007
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:999
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1026
 #, elixir-autogen, elixir-format
 msgid "Conducted at"
 msgstr "Дата проведения"
@@ -270,26 +280,27 @@ msgstr "Дата проведения"
 msgid "Contains..."
 msgstr "Содержит..."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:393
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:645
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:649
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:721
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:491
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:713
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:400
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:652
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:656
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:728
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:498
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:720
 #, elixir-autogen, elixir-format
 msgid "Correction saved"
 msgstr "Исправление сохранено"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:626
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:788
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:782
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:718
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:738
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:633
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:795
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:789
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:797
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:725
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:745
 #, elixir-autogen, elixir-format
 msgid "Could not open files folder: %{reason}"
 msgstr "Не удалось открыть папку файлов: %{reason}"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1072
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1091
 #, elixir-autogen, elixir-format
 msgid "Count sheet"
 msgstr "Инвентаризационная ведомость"
@@ -299,22 +310,22 @@ msgstr "Инвентаризационная ведомость"
 msgid "Counted"
 msgstr "Факт"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:841
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1003
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:973
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:997
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:935
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:912
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:857
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1019
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:989
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1016
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:951
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:928
 #, elixir-autogen, elixir-format
 msgid "Created"
 msgstr "Создан"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1054
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1073
 #, elixir-autogen, elixir-format
 msgid "Creator"
 msgstr "Создатель"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1338
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1355
 #, elixir-autogen, elixir-format
 msgid "Current cost"
 msgstr "Текущая цена закупки"
@@ -325,8 +336,8 @@ msgstr "Текущая цена закупки"
 msgid "Current stock"
 msgstr "Остаток"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:829
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:986
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:845
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1002
 #, elixir-autogen, elixir-format
 msgid "Customer orders"
 msgstr "Заказы клиентов"
@@ -353,7 +364,7 @@ msgstr "Настройка колонок"
 msgid "Date"
 msgstr "Дата"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:98
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "Default warehouse"
 msgstr "Склад по умолчанию"
@@ -384,29 +395,29 @@ msgstr "Снять выделение"
 msgid "Disable filter"
 msgstr "Отключить фильтр"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:623
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:687
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:630
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:694
 #, elixir-autogen, elixir-format
 msgid "Document is already conducted"
 msgstr "Документ уже проведён"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:353
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:620
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:422
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:360
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:627
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:429
 #, elixir-autogen, elixir-format
 msgid "Document is already posted"
 msgstr "Документ уже проведён"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:764
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:771
 #, elixir-autogen, elixir-format
 msgid "Document is not posted"
 msgstr "Документ не проведён"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:42
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1228
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1190
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1179
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1569
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1244
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1209
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1195
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1586
 #: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:195
 #, elixir-autogen, elixir-format
 msgid "Done"
@@ -423,18 +434,18 @@ msgstr "Готово"
 #: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:207
 #: lib/phoenix_kit_warehouse/web/inventories_live.ex:209
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:218
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1567
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1584
 #: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:193
 #, elixir-autogen, elixir-format
 msgid "Draft"
 msgstr "Черновик"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:317
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:584
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:586
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:647
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:386
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:547
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:324
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:591
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:593
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:654
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:393
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:554
 #, elixir-autogen, elixir-format
 msgid "Draft saved"
 msgstr "Черновик сохранён"
@@ -464,179 +475,179 @@ msgstr "Редактировать"
 msgid "Enable filter"
 msgstr "Включить фильтр"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:579
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:509
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:423
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:624
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:364
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:586
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:516
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:430
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:631
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:371
 #, elixir-autogen, elixir-format
 msgid "Failed to add link"
 msgstr "Не удалось добавить связь"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:350
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:357
 #, elixir-autogen, elixir-format
 msgid "Failed to apply reserve"
 msgstr "Не удалось применить запас"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:627
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:634
 #, elixir-autogen, elixir-format
 msgid "Failed to conduct internal order"
 msgstr "Не удалось провести внутренний заказ"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:690
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:697
 #, elixir-autogen, elixir-format
 msgid "Failed to conduct stocktake"
 msgstr "Не удалось провести инвентаризацию"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:203
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:210
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft"
 msgstr "Не удалось создать черновик"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:140
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:147
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft goods issue"
 msgstr "Не удалось создать черновик выдачи"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:143
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:150
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft goods receipt"
 msgstr "Не удалось создать черновик поступления"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:163
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:170
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft internal order"
 msgstr "Не удалось создать черновик внутреннего заказа"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:143
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:150
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft supplier order"
 msgstr "Не удалось создать черновик заказа поставщику"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:748
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:755
 #, elixir-autogen, elixir-format
 msgid "Failed to create goods issue"
 msgstr "Не удалось создать выдачу"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:465
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:472
 #, elixir-autogen, elixir-format
 msgid "Failed to create goods receipt"
 msgstr "Не удалось создать поступление"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:707
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:714
 #, elixir-autogen, elixir-format
 msgid "Failed to generate supplier orders"
 msgstr "Не удалось сформировать заказы поставщику"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:542
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:472
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:388
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:671
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:549
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:479
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:395
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:678
 #, elixir-autogen, elixir-format
 msgid "Failed to import lines"
 msgstr "Не удалось импортировать строки"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:371
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:378
 #, elixir-autogen, elixir-format
 msgid "Failed to post goods issue"
 msgstr "Не удалось провести выдачу"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:623
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:630
 #, elixir-autogen, elixir-format
 msgid "Failed to post goods receipt"
 msgstr "Не удалось провести поступление"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:435
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:442
 #, elixir-autogen, elixir-format
 msgid "Failed to post supplier order"
 msgstr "Не удалось провести заказ поставщику"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:768
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:775
 #, elixir-autogen, elixir-format
 msgid "Failed to re-conduct stocktake"
 msgstr "Не удалось перепровести инвентаризацию"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:597
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:527
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:441
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:696
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:382
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:604
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:534
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:448
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:703
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:389
 #, elixir-autogen, elixir-format
 msgid "Failed to remove link"
 msgstr "Не удалось удалить связь"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:396
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:648
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:652
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:724
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:494
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:716
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:403
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:655
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:659
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:731
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:501
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:723
 #, elixir-autogen, elixir-format
 msgid "Failed to save correction"
 msgstr "Не удалось сохранить исправление"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:320
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:587
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:589
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:650
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:389
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:550
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:327
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:594
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:596
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:657
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:396
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:557
 #, elixir-autogen, elixir-format
 msgid "Failed to save draft"
 msgstr "Не удалось сохранить черновик"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:293
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:300
 #, elixir-autogen, elixir-format
 msgid "Failed to set supplier"
 msgstr "Не удалось указать поставщика"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:620
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:627
 #, elixir-autogen, elixir-format
 msgid "Failed to update"
 msgstr "Не удалось обновить"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:309
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:316
 #, elixir-autogen, elixir-format
 msgid "Failed to update quantities"
 msgstr "Не удалось обновить количества"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:705
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:756
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:712
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:763
 #, elixir-autogen, elixir-format
 msgid "Failed to update price"
 msgstr "Не удалось обновить цену"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:710
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:870
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:905
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:913
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:813
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:848
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:726
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:886
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:921
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:932
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:829
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:864
 #, elixir-autogen, elixir-format
 msgid "Files"
 msgstr "Файлы"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:931
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:947
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this goods issue yet."
 msgstr "Файлы для этой выдачи пока недоступны."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1109
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1125
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this goods receipt yet."
 msgstr "Файлы для этого поступления пока недоступны."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1069
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1085
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this internal order yet."
 msgstr "Файлы для этого внутреннего заказа пока недоступны."
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1208
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1227
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this inventory yet."
 msgstr "Файлы для этой инвентаризации пока недоступны."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1067
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1083
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this supplier order yet."
 msgstr "Файлы для этого заказа поставщику пока недоступны."
@@ -646,69 +657,69 @@ msgstr "Файлы для этого заказа поставщику пока 
 msgid "Flat"
 msgstr "Плоским списком"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:696
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:856
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:891
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:899
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:799
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:834
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:712
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:872
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:907
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:918
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:815
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:850
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "Общие"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:863
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:880
 #, elixir-autogen, elixir-format
 msgid "Generate supplier orders"
 msgstr "Сформировать заказы поставщику"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:685
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:692
 #, elixir-autogen, elixir-format
 msgid "Generated %{n} supplier order(s)."
 msgstr "Сформировано заказов поставщику: %{n}."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:677
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:684
 #, elixir-autogen, elixir-format
 msgid "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
 msgstr "Сформировано заказов поставщику: %{n}. Строк не удалось назначить поставщику: %{m}."
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:67
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:61
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:68
 #, elixir-autogen, elixir-format
 msgid "Goods Issue"
 msgstr "Выдача со склада"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:160
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:167
 #, elixir-autogen, elixir-format
 msgid "Goods Issue #%{number}"
 msgstr "Выдача со склада #%{number}"
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:60
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:71
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:78
 #, elixir-autogen, elixir-format
 msgid "Goods Receipt"
 msgstr "Поступление на склад"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:165
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:172
 #, elixir-autogen, elixir-format
 msgid "Goods Receipt #%{number}"
 msgstr "Поступление на склад #%{number}"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:740
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:747
 #, elixir-autogen, elixir-format
 msgid "Goods issue #%{number} created"
 msgstr "Выдача #%{number} создана"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:349
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:356
 #, elixir-autogen, elixir-format
 msgid "Goods issue posted — stock updated"
 msgstr "Выдача проведена — остаток обновлён"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:459
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:466
 #, elixir-autogen, elixir-format
 msgid "Goods receipt #GR-%{number} created"
 msgstr "Поступление #GR-%{number} создано"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:616
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:623
 #, elixir-autogen, elixir-format
 msgid "Goods receipt posted — stock updated"
 msgstr "Поступление проведено — остаток обновлён"
@@ -723,27 +734,27 @@ msgstr "По группам"
 msgid "Import (%{n})"
 msgstr "Импортировать (%{n})"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:900
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1025
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1034
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1119
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:916
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1042
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1050
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1136
 #, elixir-autogen, elixir-format
 msgid "Import from internal order"
 msgstr "Импорт из внутреннего заказа"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1121
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1249
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1137
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1266
 #, elixir-autogen, elixir-format
 msgid "Import from order"
 msgstr "Импорт из заказа"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1067
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1203
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1083
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1220
 #, elixir-autogen, elixir-format
 msgid "Import from supplier order"
 msgstr "Импорт из заказа поставщику"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1028
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1044
 #, elixir-autogen, elixir-format
 msgid "Imported from"
 msgstr "Импортировано из"
@@ -755,22 +766,22 @@ msgstr "Импортировано из"
 msgid "In stock"
 msgstr "В наличии"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:363
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:600
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:370
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:607
 #, elixir-autogen, elixir-format
 msgid "Insufficient stock for: %{item}. Reduce quantity or check stock levels."
 msgstr "Недостаточно остатка для: %{item}. Уменьшите количество или проверьте остатки."
 
 #: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:51
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:55
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:816
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:64
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:953
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:832
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:71
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:969
 #, elixir-autogen, elixir-format
 msgid "Internal Order"
 msgstr "Внутренний заказ"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:188
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:195
 #, elixir-autogen, elixir-format
 msgid "Internal Order #%{number}"
 msgstr "Внутренний заказ #%{number}"
@@ -780,33 +791,33 @@ msgstr "Внутренний заказ #%{number}"
 msgid "Internal Orders"
 msgstr "Внутренние заказы"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:618
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:625
 #, elixir-autogen, elixir-format
 msgid "Internal order conducted"
 msgstr "Внутренний заказ проведён"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:834
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:996
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:850
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1012
 #, elixir-autogen, elixir-format
 msgid "Internal orders"
 msgstr "Внутренние заказы"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:674
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:691
 #, elixir-autogen, elixir-format
 msgid "Issue"
 msgstr "Выдача"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:896
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:912
 #, elixir-autogen, elixir-format
 msgid "Issue Lines"
 msgstr "Строки выдачи"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1053
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1070
 #, elixir-autogen, elixir-format
 msgid "Issue qty"
 msgstr "Кол-во к выдаче"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:876
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:893
 #, elixir-autogen, elixir-format
 msgid "Issue to production"
 msgstr "Выдать в производство"
@@ -815,29 +826,29 @@ msgstr "Выдать в производство"
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:116
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:518
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:730
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1050
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1221
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1336
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1267
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1136
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1264
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1067
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1238
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1353
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1284
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1153
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1281
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:227
 #, elixir-autogen, elixir-format
 msgid "Item"
 msgstr "Позиция"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:898
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1112
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:906
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:841
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1074
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:914
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1128
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:925
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:857
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1090
 #, elixir-autogen, elixir-format
 msgid "Items"
 msgstr "Позиции"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1176
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1137
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1127
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1192
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1156
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1143
 #, elixir-autogen, elixir-format
 msgid "Keep open"
 msgstr "Не закрывать"
@@ -848,61 +859,61 @@ msgstr "Не закрывать"
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:78
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:63
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:78
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:703
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:863
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:806
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:719
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:879
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:822
 #, elixir-autogen, elixir-format
 msgid "Lines"
 msgstr "Строки"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:907
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:923
 #, elixir-autogen, elixir-format
 msgid "Lines are read-only on a posted goods issue."
 msgstr "Строки проведённой выдачи доступны только для чтения."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1082
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1098
 #, elixir-autogen, elixir-format
 msgid "Lines are read-only on a posted goods receipt."
 msgstr "Строки проведённого поступления доступны только для чтения."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:380
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:387
 #, elixir-autogen, elixir-format
 msgid "Lines imported"
 msgstr "Строки импортированы"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:531
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:656
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:538
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:663
 #, elixir-autogen, elixir-format
 msgid "Lines imported from internal order(s)"
 msgstr "Строки импортированы из внутренних заказов"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:464
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:471
 #, elixir-autogen, elixir-format
 msgid "Lines imported from supplier order(s)"
 msgstr "Строки импортированы из заказов поставщику"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:571
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:501
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:415
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:616
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:356
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:578
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:508
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:422
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:623
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:363
 #, elixir-autogen, elixir-format
 msgid "Link added"
 msgstr "Связь добавлена"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1195
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1157
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1146
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1211
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1176
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1162
 #, elixir-autogen, elixir-format
 msgid "List"
 msgstr "Список"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:927
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1105
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1065
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1204
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1063
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1027
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:943
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1121
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1081
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1223
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1079
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1043
 #, elixir-autogen, elixir-format
 msgid "Loading files..."
 msgstr "Загрузка файлов..."
@@ -990,20 +1001,20 @@ msgstr "Позиции не найдены"
 msgid "No items in stock."
 msgstr "Нет позиций в наличии"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1279
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1276
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1296
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1293
 #, elixir-autogen, elixir-format
 msgid "No items yet"
 msgstr "Позиций пока нет"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:695
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:702
 #, elixir-autogen, elixir-format
 msgid "No lines required restocking."
 msgstr "Строк, требующих пополнения запасов, нет."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1061
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1233
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1152
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1078
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1250
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1169
 #, elixir-autogen, elixir-format
 msgid "No lines yet"
 msgstr "Строк пока нет"
@@ -1023,7 +1034,7 @@ msgstr "Совпадений не найдено"
 msgid "No stocktakes yet"
 msgstr "Инвентаризаций пока нет"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:688
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:695
 #, elixir-autogen, elixir-format
 msgid "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
 msgstr "Заказы поставщику не созданы. Строк не удалось назначить (0 или несколько поставщиков): %{m}."
@@ -1033,30 +1044,30 @@ msgstr "Заказы поставщику не созданы. Строк не �
 msgid "No supplier orders yet"
 msgstr "Заказов поставщику пока нет"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:539
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:546
 #, elixir-autogen, elixir-format
 msgid "No valid posted internal orders found"
 msgstr "Подходящих проведённых внутренних заказов не найдено"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:381
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:633
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:658
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:712
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:637
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:752
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:591
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:700
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:734
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:388
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:640
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:665
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:719
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:644
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:759
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:598
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:707
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:741
 #: lib/phoenix_kit_warehouse/web/stock_live.ex:176
 #: lib/phoenix_kit_warehouse/web/stock_live.ex:210
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:479
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:701
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:486
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:708
 #, elixir-autogen, elixir-format
 msgid "Not authorized"
 msgstr "Недостаточно прав"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:86
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:104
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:103
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:121
 #, elixir-autogen, elixir-format
 msgid "Not set"
 msgstr "Не задано"
@@ -1067,98 +1078,98 @@ msgstr "Не задано"
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:54
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:99
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:114
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:859
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:870
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1021
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1032
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1018
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1036
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:981
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:999
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:980
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:998
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:875
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:886
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1037
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1048
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1034
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1052
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:997
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1015
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:996
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1014
 #, elixir-autogen, elixir-format
 msgid "Note"
 msgstr "Примечание"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:743
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:878
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:903
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1040
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:939
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1044
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:962
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:847
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1007
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:882
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1006
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:759
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:894
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:919
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1056
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:955
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1060
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:981
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:863
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1023
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:898
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1022
 #, elixir-autogen, elixir-format
 msgid "Note (optional)"
 msgstr "Примечание (необязательно)"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:758
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:918
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:955
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:979
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:895
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:898
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:774
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:934
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:971
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:998
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:911
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:914
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr "Номер"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1139
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1156
 #, elixir-autogen, elixir-format
 msgid "On Hand"
 msgstr "Остаток"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1052
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1069
 #, elixir-autogen, elixir-format
 msgid "On hand"
 msgstr "Остаток"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:759
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:766
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can create goods issues"
 msgstr "Создавать выдачи можно только из проведённых внутренних заказов"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:715
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:722
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can generate supplier orders"
 msgstr "Формировать заказы поставщику можно только из проведённых внутренних заказов"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1025
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1041
 #, elixir-autogen, elixir-format
 msgid "Order Lines"
 msgstr "Строки заказа"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:470
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:477
 #, elixir-autogen, elixir-format
 msgid "Order is not posted"
 msgstr "Заказ не проведён"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1141
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1158
 #, elixir-autogen, elixir-format
 msgid "Order qty"
 msgstr "Кол-во к заказу"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1223
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1240
 #, elixir-autogen, elixir-format
 msgid "Ordered"
 msgstr "Заказано"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1144
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1161
 #, elixir-autogen, elixir-format
 msgid "Outstanding"
 msgstr "Осталось"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:512
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:641
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:664
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:519
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:648
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:671
 #, elixir-autogen, elixir-format
 msgid "Please set a supplier before importing lines"
 msgstr "Перед импортом строк укажите поставщика"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:768
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:785
 #, elixir-autogen, elixir-format
 msgid "Post"
 msgstr "Провести"
@@ -1167,12 +1178,12 @@ msgstr "Провести"
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:37
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:36
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:37
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:685
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:702
 #: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:216
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:845
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:862
 #: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:220
 #: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:208
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:788
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:805
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:219
 #, elixir-autogen, elixir-format
 msgid "Posted"
@@ -1183,70 +1194,70 @@ msgstr "Проведён"
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:74
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:66
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:87
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:850
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1012
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:944
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:866
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1028
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:960
 #, elixir-autogen, elixir-format
 msgid "Posted at"
 msgstr "Дата проведения"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1054
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1226
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1071
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1243
 #, elixir-autogen, elixir-format
 msgid "Prior stock"
 msgstr "Прежний остаток"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:683
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:690
 #, elixir-autogen, elixir-format
 msgid "Price updated"
 msgstr "Цена обновлена"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1320
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1337
 #, elixir-autogen, elixir-format
 msgid "Purchase price proposals"
 msgstr "Предложения по закупочным ценам"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:881
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:901
 #, elixir-autogen, elixir-format
 msgid "Re-conduct"
 msgstr "Перепровести"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1058
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1074
 #, elixir-autogen, elixir-format
 msgid "Receipt Lines"
 msgstr "Строки поступления"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1339
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1356
 #, elixir-autogen, elixir-format
 msgid "Receipt price"
 msgstr "Цена по поступлению"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1074
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1090
 #, elixir-autogen, elixir-format
 msgid "Receive all ordered"
 msgstr "Принять всё заказанное"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1224
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1143
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1241
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1160
 #, elixir-autogen, elixir-format
 msgid "Received"
 msgstr "Принято"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:780
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:797
 #, elixir-autogen, elixir-format
 msgid "Register receipt"
 msgstr "Оформить поступление"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1029
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:992
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:991
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1045
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1008
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1007
 #, elixir-autogen, elixir-format
 msgid "Related documents"
 msgstr "Связанные документы"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:119
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1328
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1325
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1345
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1342
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Удалить"
@@ -1256,22 +1267,22 @@ msgstr "Удалить"
 msgid "Remove line"
 msgstr "Удалить строку"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1138
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1155
 #, elixir-autogen, elixir-format
 msgid "Required"
 msgstr "Требуется"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1269
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1286
 #, elixir-autogen, elixir-format
 msgid "Required qty"
 msgstr "Требуемое кол-во"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1142
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1159
 #, elixir-autogen, elixir-format
 msgid "Reserve"
 msgstr "Запас"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1047
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1066
 #, elixir-autogen, elixir-format
 msgid "Responsible"
 msgstr "Ответственный"
@@ -1283,22 +1294,22 @@ msgstr "Ответственный"
 msgid "SKU"
 msgstr "Артикул"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:680
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:840
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:849
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:873
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:774
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:813
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:697
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:857
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:866
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:893
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:791
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:830
 #, elixir-autogen, elixir-format
 msgid "Save correction"
 msgstr "Сохранить исправление"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:671
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:831
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:832
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:855
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:765
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:788
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:688
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:848
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:849
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:875
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:782
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:805
 #, elixir-autogen, elixir-format
 msgid "Save draft"
 msgstr "Сохранить черновик"
@@ -1320,7 +1331,7 @@ msgstr "Поиск по названию, SKU..."
 msgid "Search..."
 msgstr "Поиск..."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:114
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:131
 #, elixir-autogen, elixir-format
 msgid "Select a warehouse location type first."
 msgstr "Сначала выберите тип локации для складов."
@@ -1335,7 +1346,7 @@ msgstr "Выбрать все"
 msgid "Selected"
 msgstr "Выбрано"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1140
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1157
 #, elixir-autogen, elixir-format
 msgid "Shortfall"
 msgstr "Дефицит"
@@ -1351,8 +1362,8 @@ msgstr "Дефицит"
 msgid "Sort by:"
 msgstr "Сортировка:"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:991
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:990
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1007
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1006
 #, elixir-autogen, elixir-format
 msgid "Source documents"
 msgstr "Документы-источники"
@@ -1363,32 +1374,32 @@ msgstr "Документы-источники"
 #: lib/phoenix_kit_warehouse/column_config/inventories.ex:39
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:28
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:30
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:762
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:922
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:959
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:983
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:899
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:902
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:778
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:938
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:975
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1002
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:915
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:918
 #, elixir-autogen, elixir-format
 msgid "Status"
 msgstr "Статус"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:73
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:80
 #, elixir-autogen, elixir-format
 msgid "Stocktake"
 msgstr "Инвентаризация"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:238
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:245
 #, elixir-autogen, elixir-format
 msgid "Stocktake #%{n}"
 msgstr "Инвентаризация №%{n}"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:682
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:689
 #, elixir-autogen, elixir-format
 msgid "Stocktake conducted"
 msgstr "Инвентаризация проведена"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:761
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:768
 #, elixir-autogen, elixir-format
 msgid "Stocktake re-conducted"
 msgstr "Инвентаризация перепроведена"
@@ -1399,9 +1410,9 @@ msgid "Stocktakes"
 msgstr "Инвентаризации"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:43
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:802
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1004
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:967
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:818
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1020
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:983
 #, elixir-autogen, elixir-format
 msgid "Sub-Order"
 msgstr "Подзаказ"
@@ -1418,22 +1429,22 @@ msgstr "Сумма"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:51
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:43
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:934
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1337
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:862
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:911
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:950
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1354
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:878
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:927
 #, elixir-autogen, elixir-format
 msgid "Supplier"
 msgstr "Поставщик"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:43
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:973
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:71
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:989
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:78
 #, elixir-autogen, elixir-format
 msgid "Supplier Order"
 msgstr "Заказ поставщику"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:185
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:192
 #, elixir-autogen, elixir-format
 msgid "Supplier Order #%{number}"
 msgstr "Заказ поставщику #%{number}"
@@ -1443,44 +1454,44 @@ msgstr "Заказ поставщику #%{number}"
 msgid "Supplier Orders"
 msgstr "Заказы поставщику"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:418
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:425
 #, elixir-autogen, elixir-format
 msgid "Supplier order posted"
 msgstr "Заказ поставщику проведён"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:991
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1007
 #, elixir-autogen, elixir-format
 msgid "Supplier orders"
 msgstr "Заказы поставщику"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:728
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:744
 #, elixir-autogen, elixir-format
 msgid "This goods issue has been posted and stock has been updated."
 msgstr "Эта выдача проведена, остаток обновлён."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:888
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:904
 #, elixir-autogen, elixir-format
 msgid "This goods receipt has been posted and stock has been updated."
 msgstr "Это поступление проведено, остаток обновлён."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:923
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:939
 #, elixir-autogen, elixir-format
 msgid "This internal order has been conducted and is now read-only."
 msgstr "Этот внутренний заказ проведён и доступен только для чтения."
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:932
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:951
 #, elixir-autogen, elixir-format
 msgid "This stocktake has been conducted and is now read-only."
 msgstr "Инвентаризация проведена и доступна только для чтения."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:831
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:847
 #, elixir-autogen, elixir-format
 msgid "This supplier order has been posted and is now read-only."
 msgstr "Этот заказ поставщику проведён и доступен только для чтения."
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:488
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:704
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1077
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1096
 #, elixir-autogen, elixir-format
 msgid "Total"
 msgstr "Всего"
@@ -1492,14 +1503,14 @@ msgstr "Всего"
 msgid "Total value"
 msgstr "Итоговая стоимость"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:945
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:964
 #, elixir-autogen, elixir-format
 msgid "Track value"
 msgstr "Учитывать стоимость"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1207
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1169
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1158
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1223
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1188
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1174
 #, elixir-autogen, elixir-format
 msgid "Tree"
 msgstr "Дерево"
@@ -1519,11 +1530,11 @@ msgstr "Без категории"
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:75
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:519
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:731
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1051
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1222
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1268
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1137
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1265
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1068
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1239
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1285
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1154
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1282
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:213
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:229
 #, elixir-autogen, elixir-format
@@ -1545,19 +1556,19 @@ msgstr "Учётная стоимость ед."
 msgid "Unsupported filter type"
 msgstr "Неподдерживаемый тип фильтра"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1328
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1345
 #, elixir-autogen, elixir-format
 msgid "Update all"
 msgstr "Обновить все"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1381
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1398
 #, elixir-autogen, elixir-format
 msgid "Update price"
 msgstr "Обновить цену"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1182
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1144
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1133
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1198
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1163
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1149
 #, elixir-autogen, elixir-format
 msgid "View:"
 msgstr "Вид:"
@@ -1585,22 +1596,22 @@ msgstr "Склад"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:59
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:63
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:775
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:945
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:992
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1016
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:922
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:791
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:961
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1008
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1035
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:938
 #, elixir-autogen, elixir-format
 msgid "Warehouse (location)"
 msgstr "Склад (локация)"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:83
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:100
 #, elixir-autogen, elixir-format
 msgid "Warehouse location type"
 msgstr "Тип локации для складов"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:53
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:70
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:61
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:81
 #, elixir-autogen, elixir-format
 msgid "Warehouse settings"
 msgstr "Настройки склада"
@@ -1610,7 +1621,7 @@ msgstr "Настройки склада"
 msgid "m²"
 msgstr "м²"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1291
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1308
 #, elixir-autogen, elixir-format
 msgid "over %{n}"
 msgstr "излишек %{n}"
@@ -1625,7 +1636,7 @@ msgstr "пара"
 msgid "pc"
 msgstr "шт."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1275
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1292
 #, elixir-autogen, elixir-format
 msgid "posted"
 msgstr "проведён"
@@ -1645,31 +1656,31 @@ msgstr "компл."
 msgid "sheet"
 msgstr "лист"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1285
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1302
 #, elixir-autogen, elixir-format
 msgid "short %{n}"
 msgstr "недовоз %{n}"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1225
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1242
 #, elixir-autogen, elixir-format
 msgid "Δ"
 msgstr "Δ"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:795
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:939
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:965
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:998
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1036
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1484
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1517
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:916
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:928
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1248
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:811
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:955
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:981
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1014
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1055
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1504
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1537
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:932
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:944
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1265
 #, elixir-autogen, elixir-format
 msgid "— not set —"
 msgstr "— не задано —"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:870
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:886
 #, elixir-autogen, elixir-format
 msgid "— select supplier —"
 msgstr "— выберите поставщика —"
@@ -1680,7 +1691,7 @@ msgstr "— выберите поставщика —"
 msgid "All warehouses"
 msgstr "Все склады"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1190
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1206
 #, elixir-autogen, elixir-format
 msgid "Attach a document"
 msgstr "Прикрепить документ"
@@ -1701,39 +1712,39 @@ msgstr "Сальдо показывает текущий остаток пози
 msgid "Below minimum stock"
 msgstr "Ниже минимального остатка"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:640
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:647
 #, elixir-autogen, elixir-format
 msgid "Both warehouses must be set before receiving"
 msgstr "Перед приёмкой должны быть указаны оба склада"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1199
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1215
 #, elixir-autogen, elixir-format
 msgid "Cancel this transfer?"
 msgstr "Отменить это перемещение?"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1211
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1227
 #, elixir-autogen, elixir-format
 msgid "Cancel transfer"
 msgstr "Отменить перемещение"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:43
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1570
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1587
 #: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:196
 #, elixir-autogen, elixir-format
 msgid "Cancelled"
 msgstr "Отменено"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:942
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:958
 #, elixir-autogen, elixir-format
 msgid "Cancelled at"
 msgstr "Отменено в"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1260
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1279
 #, elixir-autogen, elixir-format
 msgid "Change warehouse"
 msgstr "Сменить склад"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1248
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1267
 #, elixir-autogen, elixir-format
 msgid "Change warehouse?"
 msgstr "Сменить склад?"
@@ -1759,35 +1770,35 @@ msgid "Deficit"
 msgstr "Дефицит"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:70
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:965
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:981
 #, elixir-autogen, elixir-format
 msgid "Destination warehouse"
 msgstr "Склад назначения"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:579
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:586
 #, elixir-autogen, elixir-format
 msgid "Document is already shipped"
 msgstr "Документ уже отгружен"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:633
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:640
 #, elixir-autogen, elixir-format
 msgid "Document is not in transit"
 msgstr "Документ не в пути"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:691
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:698
 #, elixir-autogen, elixir-format
 msgid "Failed to cancel transfer"
 msgstr "Не удалось отменить перемещение"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:290
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:557
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:577
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1548
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:297
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:564
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:584
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1565
 #, elixir-autogen, elixir-format
 msgid "Failed to change warehouse"
 msgstr "Не удалось сменить склад"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:178
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:185
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft transfer"
 msgstr "Не удалось создать черновик перемещения"
@@ -1797,17 +1808,17 @@ msgstr "Не удалось создать черновик перемещени
 msgid "Failed to create supplier order"
 msgstr "Не удалось создать заказ поставщику"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:644
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:651
 #, elixir-autogen, elixir-format
 msgid "Failed to receive transfer"
 msgstr "Не удалось принять перемещение"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:608
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:615
 #, elixir-autogen, elixir-format
 msgid "Failed to ship transfer"
 msgstr "Не удалось отгрузить перемещение"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1031
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1047
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this transfer yet."
 msgstr "Файлы для этого перемещения пока недоступны."
@@ -1818,7 +1829,7 @@ msgid "From"
 msgstr "Откуда"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:41
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1568
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1585
 #: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:194
 #, elixir-autogen, elixir-format
 msgid "In transit"
@@ -1830,7 +1841,7 @@ msgstr "В пути"
 msgid "Inflow"
 msgstr "Приход"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1208
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1224
 #, elixir-autogen, elixir-format
 msgid "Keep transfer"
 msgstr "Оставить перемещение"
@@ -1873,35 +1884,35 @@ msgstr "Перемещений пока нет"
 msgid "Outflow"
 msgstr "Расход"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:586
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:593
 #, elixir-autogen, elixir-format
 msgid "Please select two different warehouses before shipping"
 msgstr "Перед отгрузкой выберите два разных склада"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:807
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:824
 #, elixir-autogen, elixir-format
 msgid "Receive"
 msgstr "Принять"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:102
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:932
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:948
 #, elixir-autogen, elixir-format
 msgid "Received at"
 msgstr "Принято в"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:794
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:811
 #, elixir-autogen, elixir-format
 msgid "Ship"
 msgstr "Отгрузить"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:90
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:922
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:938
 #, elixir-autogen, elixir-format
 msgid "Shipped at"
 msgstr "Отгружено"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:62
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:951
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:967
 #, elixir-autogen, elixir-format
 msgid "Source warehouse"
 msgstr "Склад-источник"
@@ -1911,37 +1922,37 @@ msgstr "Склад-источник"
 msgid "Supplier order draft created"
 msgstr "Черновик заказа поставщику создан"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1250
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1269
 #, elixir-autogen, elixir-format
 msgid "Switching the warehouse resets the counted quantities to the current stock of the new warehouse. Continue?"
 msgstr "Смена склада сбросит подсчитанные количества к текущему остатку нового склада. Продолжить?"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:698
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:705
 #, elixir-autogen, elixir-format
 msgid "This price was already revised in the catalogue"
 msgstr "Эта цена уже была обновлена в каталоге"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:685
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:692
 #, elixir-autogen, elixir-format
 msgid "This transfer can no longer be cancelled"
 msgstr "Это перемещение уже нельзя отменить"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1590
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1607
 #, elixir-autogen, elixir-format
 msgid "This transfer has been cancelled."
 msgstr "Это перемещение отменено."
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1587
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1604
 #, elixir-autogen, elixir-format
 msgid "This transfer has been received and is now read-only."
 msgstr "Перемещение принято и доступно только для чтения."
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1581
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1598
 #, elixir-autogen, elixir-format
 msgid "This transfer is in transit. Stock has left the source warehouse."
 msgstr "Перемещение в пути. Товар списан со склада-источника."
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1201
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1217
 #, elixir-autogen, elixir-format
 msgid "This will reverse the shipment and credit the quantity back to the source warehouse. This cannot be undone."
 msgstr "Отгрузка будет сторнирована, количество вернётся на склад-источник. Действие необратимо."
@@ -1951,32 +1962,32 @@ msgstr "Отгрузка будет сторнирована, количеств
 msgid "To"
 msgstr "Куда"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:87
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:94
 #, elixir-autogen, elixir-format
 msgid "Transfer"
 msgstr "Перемещение"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:200
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:207
 #, elixir-autogen, elixir-format
 msgid "Transfer #%{number}"
 msgstr "Перемещение №%{number}"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:678
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:685
 #, elixir-autogen, elixir-format
 msgid "Transfer cancelled"
 msgstr "Перемещение отменено"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1266
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1283
 #, elixir-autogen, elixir-format
 msgid "Transfer qty"
 msgstr "Кол-во к перемещению"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:628
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:635
 #, elixir-autogen, elixir-format
 msgid "Transfer received — stock updated at destination"
 msgstr "Перемещение принято — остаток на складе назначения обновлён"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:575
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:582
 #, elixir-autogen, elixir-format
 msgid "Transfer shipped — stock updated at source"
 msgstr "Перемещение отгружено — остаток на складе-источнике обновлён"
@@ -1991,19 +2002,19 @@ msgstr "Перемещения"
 msgid "Turnover"
 msgstr "Обороты"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:749
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:756
 #, elixir-autogen, elixir-format
 msgid "Updated %{ok} price(s); %{failed} failed"
 msgstr "Обновлено цен: %{ok}; с ошибкой: %{failed}"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:286
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:553
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1544
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:293
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:560
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1561
 #, elixir-autogen, elixir-format
 msgid "Warehouse changed"
 msgstr "Склад изменён"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:571
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:578
 #, elixir-autogen, elixir-format
 msgid "Warehouse changed — count sheet re-seeded"
 msgstr "Склад изменён — ведомость пересчёта пересеяна"
@@ -2015,7 +2026,7 @@ msgstr "Склад изменён — ведомость пересчёта пе
 msgid "Yes"
 msgstr "Да"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1235
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1252
 #, elixir-autogen, elixir-format
 msgid "— select —"
 msgstr "— выберите —"
