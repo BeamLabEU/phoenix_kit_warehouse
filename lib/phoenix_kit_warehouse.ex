@@ -116,7 +116,11 @@ defmodule PhoenixKitWarehouse do
       key: module_key(),
       label: "Warehouse",
       icon: "hero-building-storefront",
-      description: "Warehouse stock, stocktakes, and document management"
+      description: "Warehouse stock, stocktakes, and document management",
+      # Lets the admin permissions matrix render this label translated,
+      # the same way the sidebar tabs below translate theirs.
+      gettext_backend: PhoenixKitWarehouse.Gettext,
+      gettext_domain: "default"
     }
   end
 
