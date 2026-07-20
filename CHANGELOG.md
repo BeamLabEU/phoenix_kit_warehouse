@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.4 - 2026-07-20
+
+### Fixed
+
+- **Row-link overlay escaped its row on Safari/iPad** (PR #10) — Safari
+  doesn't honor `position: relative` on `<tr>`, so the whole-row-clickable
+  `::after` overlay on every index table (goods issues, goods receipts,
+  internal orders, supplier orders, stocktakes, transfers) escaped to the
+  `<table>`'s containing block; every row's overlay covered the entire
+  table and the last row won hit-testing, so any row tap on iOS/iPadOS
+  navigated to the last item. Fixed by adding Tailwind's `transform-gpu`
+  utility alongside the existing `relative` class on each row — WebKit does
+  honor a `transform` as a containing block on table rows. Reviewed: no
+  affected file was missed, and the fix doesn't interact badly with the
+  per-row `⋮` action menu (which portals to `<body>` on open) or any
+  pinned/sticky table variant.
+
+### Changed (review of PR #9)
+
+- **`permission_metadata/0`'s attempted gettext declaration was reverted**
+  — PR #9 added `gettext_backend`/`gettext_domain` to the warehouse's
+  `permission_metadata/0`, intending to translate its label in the admin
+  permissions matrix the same way `admin_tabs/0` already translates sidebar
+  labels. Against the dependency actually pinned in `mix.lock`
+  (`phoenix_kit` 1.7.205, published 2026-07-19, before core's
+  `localized_module_label/1` work landed), no code reads those two keys —
+  the permissions matrix still renders through the plain, untranslated
+  `Permissions.module_label/1` — so the addition was inert in production
+  and only introduced a new `mix dialyzer` `callback_type_mismatch`
+  against the published `permission_meta()` behaviour type. Reverted
+  `permission_metadata/0` to its original 4-key shape. Re-adding the two
+  keys is the correct follow-up once `phoenix_kit` publishes a Hex release
+  containing the localized-permission-labels feature and this repo's pin
+  is bumped to it — `admin_tabs/0`'s per-tab gettext declarations are
+  unaffected (that feature is real and already published). Full findings:
+  `dev_docs/pull_requests/2026/9-permission-label-i18n/CLAUDE_REVIEW.md`
+  and `dev_docs/pull_requests/2026/10-safari-row-link/CLAUDE_REVIEW.md`.
+
+### Maintenance
+
+- Removed a stale, unused `mix.lock` entry (`beamlab_ex_aws_sqs`, hex
+  package v4.0.0) left over from the prior `phoenix_kit` 1.7.199 → 1.7.205
+  bump, which renamed the dependency's key to `ex_aws_sqs` (same hex
+  package, v5.0.0) and made the old lock entry unreferenced. Caught by
+  `mix deps.unlock --check-unused`.
+
 ## 0.2.3 - 2026-07-16
 
 ### Changed
