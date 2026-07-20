@@ -378,7 +378,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
               </.table_default_row>
             <% end %>
             <%= for doc <- @documents do %>
-              <.table_default_row class="relative cursor-pointer">
+              <.table_default_row class="transform-gpu relative cursor-pointer">
                 <% meta_map = InventoryColumnConfig.column_metadata_map() %>
                 <%= for col <- @selected_columns, meta = Map.get(meta_map, col), meta do %>
                   <.table_default_cell class={cell_class(col, meta)}>

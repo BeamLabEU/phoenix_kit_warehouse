@@ -385,7 +385,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
               </.table_default_row>
             <% end %>
             <%= for entry <- @receipts do %>
-              <.table_default_row class="relative cursor-pointer">
+              <.table_default_row class="transform-gpu relative cursor-pointer">
                 <% meta_map = GoodsReceiptColumnConfig.column_metadata_map() %>
                 <%= for col <- @selected_columns, meta = Map.get(meta_map, col), meta do %>
                   <.table_default_cell class={cell_class(col, meta)}>
