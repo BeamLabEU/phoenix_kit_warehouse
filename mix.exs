@@ -1,7 +1,7 @@
 defmodule PhoenixKitWarehouse.MixProject do
   use Mix.Project
 
-  @version "0.2.4"
+  @version "0.2.5"
   @source_url "https://github.com/BeamLabEU/phoenix_kit_warehouse"
 
   def project do
@@ -87,7 +87,10 @@ defmodule PhoenixKitWarehouse.MixProject do
       # The transfers/min_stock tables ship in core migration V144
       # (renumbered from V143 at merge time), first published in
       # phoenix_kit 1.7.190 (1.7.189 tops out at V142).
-      pk_dep(:phoenix_kit, "~> 1.7.190"),
+      # 1.7.214+ required: Scope.can_access_admin_area?/1 (the rename of the
+      # now-`@deprecated` Scope.admin?/1) — an older core has no such function,
+      # so this is an UndefinedFunctionError at runtime, not a warning.
+      pk_dep(:phoenix_kit, "~> 1.7.214"),
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.5"),

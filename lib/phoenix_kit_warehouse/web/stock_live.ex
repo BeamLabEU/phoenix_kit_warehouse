@@ -70,7 +70,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     scope = socket.assigns[:phoenix_kit_current_scope]
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     user_uuid = current_user && current_user.uuid
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.admin?(scope))
+    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
 
     socket =
       socket

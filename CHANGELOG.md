@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.5 - 2026-07-27
+
+### Changed
+
+- **Stop calling the deprecated `PhoenixKit.Users.Auth.Scope.admin?/1`.** All 7
+  call sites — one per form/stock LiveView (`stock_live`,
+  `goods_receipt_form_live`, `goods_issue_form_live`,
+  `internal_order_form_live`, `transfer_form_live`,
+  `supplier_order_form_live`, `inventory_form_live`) — now call
+  `Scope.can_access_admin_area?/1`, the name core renamed it to in phoenix_kit
+  1.7.214. The old name is a pure `@deprecated` delegate, so **no behavior
+  change** — this only silences the deprecation warning host apps were eating
+  on every compile of this library, with no way to fix it themselves. The
+  `test/support/live_case.ex` doc comment was updated to match.
+- **Dependency floor raised to `phoenix_kit ~> 1.7.214`** (from `~> 1.7.190`) —
+  `can_access_admin_area?/1` does not exist below it, so an older core would be
+  an `UndefinedFunctionError` at call time rather than a warning. This was not
+  hypothetical: the lockfile was resolving 1.7.205.
+- Dependency lockfile bumps: `phoenix_kit` 1.7.205 → 1.7.216, `phoenix_kit_ai`
+  0.16.0 → 0.17.1, `phoenix_kit_catalogue` 0.12.1 → 0.12.3,
+  `phoenix_kit_comments` 0.2.14 → 0.2.15, `phoenix_live_view` 1.2.7 → 1.2.8,
+  `etcher` 0.8.1 → 0.9.0, `ex_ast` 0.12.10 → 0.13.1, `bandit` 1.12.0 → 1.12.4,
+  `grpc`/`grpc_core` 1.0.2 → 1.0.3, `igniter` 0.8.2 → 0.8.3, `leaf` 0.3.0 →
+  0.3.2, `plug_crypto` 2.1.1 → 2.2.0, `glob_ex` 0.1.11 → 0.1.12.
+
 ## 0.2.4 - 2026-07-20
 
 ### Fixed
