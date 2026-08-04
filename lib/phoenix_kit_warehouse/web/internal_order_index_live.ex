@@ -9,6 +9,20 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  # Search and sort live in the query string so a filtered list is a real URL:
+  # shareable, reload-proof, and Back returns to the previous query instead of
+  # leaving the page.
+  use PhoenixKitWeb.Live.UrlState,
+    params: [
+      search: [default: "", url_key: "q"],
+      sort_by: [
+        default: "number",
+        url_key: "sort",
+        in: ~w(number status date lines_count posted_at note)
+      ],
+      sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
+    ]
+
   use PhoenixKitWarehouse.Web.ColumnManagement,
     column_config: PhoenixKitWarehouse.ColumnConfig.InternalOrders,
     scope: "warehouse_internal_orders"
@@ -29,27 +43,27 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
     current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
+    # :search, :sort_by, and :sort_dir are assigned from the query string by
+    # UrlState before mount/3 runs — re-assigning them here would overwrite a
+    # shared link's state with defaults.
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:search, "")
-      |> assign(:sort_by, "number")
-      |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
+      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(InternalOrderColumnConfig)
 
     {:ok, socket}
   end
 
+  # The list is loaded here rather than in mount/3: UrlState calls this after
+  # mount and on every change to the query string, so one code path serves the
+  # first render, a shared link, and the Back button alike.
   @impl true
-  def handle_params(_params, _uri, socket) do
-    socket =
-      socket
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(InternalOrderColumnConfig)
-      |> assign_orders()
+  def handle_url_state(_state, socket), do: assign_orders(socket)
 
-    {:noreply, socket}
-  end
+  @impl true
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   def __view_config_changed__(socket) do
     socket =
@@ -66,14 +80,16 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
   # Events
   # ---------------------------------------------------------------------------
 
+  # `replace: true` — debounced box, so a typed-out query would otherwise leave
+  # one history entry per pause and Back would walk the search string backwards.
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> assign_orders()}
+    {:noreply, push_url_state(socket, [search: search], replace: true)}
   end
 
   @impl true
   def handle_event("set_sort", %{"sort_by" => by}, socket) do
-    {:noreply, socket |> assign(:sort_by, parse_sort_by(by)) |> assign_orders()}
+    {:noreply, push_url_state(socket, sort_by: parse_sort_by(by))}
   end
 
   @impl true
@@ -85,13 +101,12 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
         do: {by_id, flip_dir(socket.assigns.sort_dir)},
         else: {by_id, default_dir(by_id)}
 
-    {:noreply,
-     socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir) |> assign_orders()}
+    {:noreply, push_url_state(socket, sort_by: sort_by, sort_dir: sort_dir)}
   end
 
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
-    {:noreply, socket |> assign(:sort_dir, flip_dir(socket.assigns.sort_dir)) |> assign_orders()}
+    {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
   # ---------------------------------------------------------------------------

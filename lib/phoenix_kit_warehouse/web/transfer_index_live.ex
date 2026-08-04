@@ -14,6 +14,20 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  # Search and sort live in the query string so a filtered list is a real URL:
+  # shareable, reload-proof, and Back returns to the previous query instead of
+  # leaving the page.
+  use PhoenixKitWeb.Live.UrlState,
+    params: [
+      search: [default: "", url_key: "q"],
+      sort_by: [
+        default: "number",
+        url_key: "sort",
+        in: ~w(number status date lines_count shipped_at received_at note)
+      ],
+      sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
+    ]
+
   use PhoenixKitWarehouse.Web.ColumnManagement,
     column_config: PhoenixKitWarehouse.ColumnConfig.Transfers,
     scope: "warehouse_transfers"
@@ -37,13 +51,21 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:search, "")
-      |> assign(:sort_by, "number")
-      |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
+      |> assign(:transfers, [])
       |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(TransferColumnConfig)
 
-    {:ok, assign_transfers(socket)}
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_url_state(_state, socket) do
+    assign_transfers(socket)
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
   end
 
   def __view_config_changed__(socket) do
@@ -63,12 +85,12 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
 
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> assign_transfers()}
+    {:noreply, push_url_state(socket, [search: search], replace: true)}
   end
 
   @impl true
   def handle_event("set_sort", %{"sort_by" => by}, socket) do
-    {:noreply, socket |> assign(:sort_by, parse_sort_by(by)) |> assign_transfers()}
+    {:noreply, push_url_state(socket, sort_by: parse_sort_by(by))}
   end
 
   @impl true
@@ -80,14 +102,12 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
         do: {by_id, flip_dir(socket.assigns.sort_dir)},
         else: {by_id, default_dir(by_id)}
 
-    {:noreply,
-     socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir) |> assign_transfers()}
+    {:noreply, push_url_state(socket, sort_by: sort_by, sort_dir: sort_dir)}
   end
 
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
-    {:noreply,
-     socket |> assign(:sort_dir, flip_dir(socket.assigns.sort_dir)) |> assign_transfers()}
+    {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
   # ---------------------------------------------------------------------------

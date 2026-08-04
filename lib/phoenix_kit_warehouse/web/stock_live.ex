@@ -32,6 +32,22 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  # Search and sort live in the query string so a filtered list is a real URL:
+  # shareable, reload-proof, and Back returns to the previous query instead of
+  # leaving the page. `stock_view` and `warehouse_scope` are per-user
+  # ViewConfig preferences — they intentionally stay out of the URL.
+  use PhoenixKitWeb.Live.UrlState,
+    params: [
+      search: [default: "", url_key: "q"],
+      sort_by: [
+        default: "item",
+        url_key: "sort",
+        in:
+          ~w(item sku catalogue category unit quantity unit_value total_value min_quantity available deficit)
+      ],
+      sort_dir: [default: :asc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
+    ]
+
   use PhoenixKitWarehouse.Web.ColumnManagement,
     column_config: PhoenixKitWarehouse.ColumnConfig.Stock,
     scope: "warehouse_stock"
@@ -72,27 +88,9 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     user_uuid = current_user && current_user.uuid
     admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
 
-    socket =
-      socket
-      |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:locale, locale)
-      |> assign(:stock_items, [])
-      |> assign(:stock_view, "grouped")
-      |> assign(:warehouses, [])
-      |> assign(:warehouse_scope, nil)
-      |> assign(:search, "")
-      |> assign(:sort_by, "item")
-      |> assign(:sort_dir, :asc)
-      |> assign(:current_user_uuid, user_uuid)
-      |> assign(:admin?, admin?)
-
-    {:ok, socket}
-  end
-
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    user_uuid = socket.assigns.current_user_uuid
-
+    # ViewConfig preferences (stock_view, warehouse_scope) are per-user stored
+    # settings, not URL state — they live in mount so handle_url_state can
+    # already see warehouse_scope when it builds stock_items.
     view_config =
       if is_binary(user_uuid),
         do: ViewConfigs.get_view_config(user_uuid, "warehouse_stock"),
@@ -101,20 +99,32 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     stock_view = Map.get(view_config, "stock_view") || "grouped"
     warehouse_scope = view_config |> Map.get("warehouse_scope") |> normalize_warehouse_scope()
 
-    # Computed once here (was: once for `:stock_items` in mount, then again
-    # inside assign_stock_rows/1 — 2x per mount cycle). assign_stock_rows/2
-    # reuses this result instead of re-querying.
-    items = build_stock_items(warehouse_scope)
-
     socket =
       socket
+      |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> assign(:locale, locale)
+      |> assign(:stock_items, [])
+      |> assign(:stock_rows, [])
+      |> assign(:stock_view, stock_view)
       |> assign(:warehouses, StockLedger.list_warehouses())
       |> assign(:warehouse_scope, warehouse_scope)
-      |> assign(:stock_view, stock_view)
-      |> assign(:stock_items, items)
+      |> assign(:current_user_uuid, user_uuid)
+      |> assign(:admin?, admin?)
       |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(StockColumnConfig)
-      |> assign_stock_rows(items)
 
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_url_state(_state, socket) do
+    # Computed once and shared: assign_stock_rows/2 reuses the item list
+    # instead of re-querying the ledger a second time.
+    items = build_stock_items(socket.assigns.warehouse_scope)
+    socket |> assign(:stock_items, items) |> assign_stock_rows(items)
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end
 
@@ -235,12 +245,12 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, [search: search], replace: true)}
   end
 
   @impl true
   def handle_event("set_sort", %{"sort_by" => by}, socket) do
-    {:noreply, socket |> assign(:sort_by, parse_sort_by(by)) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, sort_by: parse_sort_by(by))}
   end
 
   @impl true
@@ -252,14 +262,12 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         do: {by_id, flip_dir(socket.assigns.sort_dir)},
         else: {by_id, default_dir(by_id)}
 
-    {:noreply,
-     socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, sort_by: sort_by, sort_dir: sort_dir)}
   end
 
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
-    {:noreply,
-     socket |> assign(:sort_dir, flip_dir(socket.assigns.sort_dir)) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
   # ---------------------------------------------------------------------------
