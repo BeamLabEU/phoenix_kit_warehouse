@@ -104,6 +104,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       |> assign(:page_title, dgettext("default", "Warehouse"))
       |> assign(:locale, locale)
       |> assign(:stock_items, [])
+      |> assign(:stock_items_loaded?, false)
       |> assign(:stock_rows, [])
       |> assign(:stock_view, stock_view)
       |> assign(:warehouses, StockLedger.list_warehouses())
@@ -117,10 +118,27 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
   @impl true
   def handle_url_state(_state, socket) do
-    # Computed once and shared: assign_stock_rows/2 reuses the item list
-    # instead of re-querying the ledger a second time.
-    items = build_stock_items(socket.assigns.warehouse_scope)
-    socket |> assign(:stock_items, items) |> assign_stock_rows(items)
+    # Search and sort only re-slice the list already loaded for this mount, so
+    # they must reuse the cached :stock_items — rebuilding here would re-run
+    # Deficits.available_by_item/0, min_stock_map/0 and the Catalogue load on
+    # every debounced keystroke, which is exactly what the cache exists to
+    # prevent. The ledger is re-read only when there is nothing cached yet
+    # (first render of a mount); the events that genuinely invalidate it —
+    # set_warehouse_scope, set_min_quantity, create_supplier_order_from_deficit
+    # — refresh :stock_items themselves.
+    # Tracked with an explicit flag rather than by testing :stock_items for
+    # emptiness — an empty warehouse legitimately has no items, and would
+    # otherwise re-query the ledger on every keystroke forever.
+    if socket.assigns.stock_items_loaded? do
+      assign_stock_rows(socket, socket.assigns.stock_items)
+    else
+      items = build_stock_items(socket.assigns.warehouse_scope)
+
+      socket
+      |> assign(:stock_items, items)
+      |> assign(:stock_items_loaded?, true)
+      |> assign_stock_rows(items)
+    end
   end
 
   @impl true
@@ -131,14 +149,15 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   # Re-run the pipeline after a filter value change or a column save (called by
   # the ColumnManagement macro); reset sort if its column was hidden.
   def __view_config_changed__(socket) do
-    socket =
-      if socket.assigns.sort_by in socket.assigns.selected_columns do
-        socket
-      else
-        assign(socket, :sort_by, List.first(socket.assigns.selected_columns) || "item")
-      end
-
-    assign_stock_rows(socket)
+    # A hidden sort column has to be re-picked through the URL, not with a
+    # bare assign. push_url_state merges the next search onto the URL state
+    # map, so an assign alone leaves ?sort= naming the column that was just
+    # hidden — and a reload sorts by it again, invisibly.
+    if socket.assigns.sort_by in socket.assigns.selected_columns do
+      assign_stock_rows(socket)
+    else
+      push_url_state(socket, sort_by: List.first(socket.assigns.selected_columns) || "item")
+    end
   end
 
   # ---------------------------------------------------------------------------

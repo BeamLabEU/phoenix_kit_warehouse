@@ -65,14 +65,15 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   end
 
   def __view_config_changed__(socket) do
-    socket =
-      if socket.assigns.sort_by in socket.assigns.selected_columns do
-        socket
-      else
-        assign(socket, :sort_by, List.first(socket.assigns.selected_columns) || "number")
-      end
-
-    assign_orders(socket)
+    # A hidden sort column has to be re-picked through the URL, not with a
+    # bare assign. push_url_state merges the next search onto the URL state
+    # map, so an assign alone leaves ?sort= naming the column that was just
+    # hidden — and a reload sorts by it again, invisibly.
+    if socket.assigns.sort_by in socket.assigns.selected_columns do
+      assign_orders(socket)
+    else
+      push_url_state(socket, sort_by: List.first(socket.assigns.selected_columns) || "number")
+    end
   end
 
   # ---------------------------------------------------------------------------
