@@ -37,8 +37,10 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
     column_config: PhoenixKitWarehouse.ColumnConfig.Inventories,
     scope: "warehouse_inventories"
 
-  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKitWarehouse.ColumnConfig.Inventories, as: InventoryColumnConfig
+  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
 
   # Opt out of PhoenixKit's auto admin-chrome layout (applied to external Andi
@@ -57,7 +59,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
     locale = socket.assigns[:current_locale] || Gettext.get_locale()
 
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     socket =
@@ -66,7 +68,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
       |> assign(:locale, locale)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:documents, [])
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(InventoryColumnConfig)
+      |> ColumnManagement.assign_column_state(InventoryColumnConfig)
 
     {:ok, socket}
   end

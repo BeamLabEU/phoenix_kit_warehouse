@@ -91,31 +91,29 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   """
   def log_responsibility_changed(%InventoryDocument{} = doc, changes, opts)
       when is_map(changes) do
-    try do
-      responsibility_meta =
-        changes
-        |> Map.take([:created_by, :performed_by])
-        |> Map.new(fn {field, {from, to}} ->
-          {to_string(field), %{"from" => stringify(from), "to" => stringify(to)}}
-        end)
+    responsibility_meta =
+      changes
+      |> Map.take([:created_by, :performed_by])
+      |> Map.new(fn {field, {from, to}} ->
+        {to_string(field), %{"from" => stringify(from), "to" => stringify(to)}}
+      end)
 
-      log(
-        %{
-          action: "warehouse.inventory.responsibility_changed",
-          resource_type: "inventory_document",
-          resource_uuid: doc.uuid,
-          metadata: Map.merge(base_metadata(doc), responsibility_meta)
-        },
-        opts
+    log(
+      %{
+        action: "warehouse.inventory.responsibility_changed",
+        resource_type: "inventory_document",
+        resource_uuid: doc.uuid,
+        metadata: Map.merge(base_metadata(doc), responsibility_meta)
+      },
+      opts
+    )
+  rescue
+    e ->
+      Logger.warning(
+        "[Warehouse.ActivityLog] log_responsibility_changed error: #{Exception.message(e)}"
       )
-    rescue
-      e ->
-        Logger.warning(
-          "[Warehouse.ActivityLog] log_responsibility_changed error: #{Exception.message(e)}"
-        )
 
-        :ok
-    end
+      :ok
   end
 
   @doc "Logs the cancellation of a transfer."

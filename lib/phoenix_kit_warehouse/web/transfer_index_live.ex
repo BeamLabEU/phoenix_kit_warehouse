@@ -32,8 +32,10 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     column_config: PhoenixKitWarehouse.ColumnConfig.Transfers,
     scope: "warehouse_transfers"
 
-  alias PhoenixKitWarehouse.{StockLedger, Transfers}
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKitWarehouse.ColumnConfig.Transfers, as: TransferColumnConfig
+  alias PhoenixKitWarehouse.{StockLedger, Transfers}
+  alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -45,7 +47,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     socket =
@@ -53,7 +55,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
       |> assign(:page_title, dgettext("default", "Warehouse"))
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:transfers, [])
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(TransferColumnConfig)
+      |> ColumnManagement.assign_column_state(TransferColumnConfig)
 
     {:ok, socket}
   end

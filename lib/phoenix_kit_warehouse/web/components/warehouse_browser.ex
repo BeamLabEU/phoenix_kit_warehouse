@@ -585,9 +585,9 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                       />
                                     </form>
                                   <% else %>
-                                    <span class="tabular-nums text-sm">{format_input_decimal(
-                                      unit_value
-                                    ) || "—"}</span>
+                                    <span class="tabular-nums text-sm">{blank_to_dash(
+                                      format_input_decimal(unit_value)
+                                    )}</span>
                                   <% end %>
                                 </td>
                                 <td class="text-right">
@@ -606,9 +606,9 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                       />
                                     </form>
                                   <% else %>
-                                    <span class="tabular-nums text-sm">{format_input_decimal(
-                                      line_sum(counted, unit_value)
-                                    ) || "—"}</span>
+                                    <span class="tabular-nums text-sm">{blank_to_dash(
+                                      format_input_decimal(line_sum(counted, unit_value))
+                                    )}</span>
                                   <% end %>
                                 </td>
                               <% end %>
@@ -967,14 +967,15 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
     _ -> %{}
   end
 
+  # Always reached with a map: safe_get_translation/2 rescues to %{}, which is
+  # the defensive layer here — a second non-map clause is unreachable and
+  # dialyzer flags it as such.
   defp pick_name(translation) when is_map(translation) do
     case Map.get(translation, "_name") || Map.get(translation, "name") do
       name when is_binary(name) and name != "" -> name
       _ -> nil
     end
   end
-
-  defp pick_name(_), do: nil
 
   @doc """
   Short localized label for a catalogue item unit of measure. Ported from
@@ -1057,6 +1058,12 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   defp format_quantity(%Decimal{} = d), do: Decimal.to_string(d, :normal)
   defp format_quantity(n) when is_integer(n), do: Integer.to_string(n)
   defp format_quantity(s) when is_binary(s), do: s
+
+  # format_input_decimal/1 returns "" — never nil — for a missing value, and ""
+  # is truthy, so the `|| "—"` these read-only cells used to carry could never
+  # fire and the placeholder never appeared.
+  defp blank_to_dash(""), do: "—"
+  defp blank_to_dash(value), do: value
 
   defp format_input_decimal(nil), do: ""
   defp format_input_decimal(""), do: ""

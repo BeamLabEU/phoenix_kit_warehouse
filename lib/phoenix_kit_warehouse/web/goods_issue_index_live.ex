@@ -27,8 +27,10 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
     column_config: PhoenixKitWarehouse.ColumnConfig.GoodsIssues,
     scope: "warehouse_goods_issues"
 
-  alias PhoenixKitWarehouse.{DocRefs, GoodsIssues}
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKitWarehouse.ColumnConfig.GoodsIssues, as: GoodsIssueColumnConfig
+  alias PhoenixKitWarehouse.{DocRefs, GoodsIssues}
+  alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -40,7 +42,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     # :search, :sort_by, and :sort_dir are assigned from the query string by
@@ -51,7 +53,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
       |> assign(:page_title, dgettext("default", "Warehouse"))
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:issues, [])
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(GoodsIssueColumnConfig)
+      |> ColumnManagement.assign_column_state(GoodsIssueColumnConfig)
 
     {:ok, socket}
   end

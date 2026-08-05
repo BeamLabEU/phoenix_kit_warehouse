@@ -10,13 +10,13 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   require Logger
 
+  alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrder
-  alias PhoenixKitCatalogue.Catalogue
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
@@ -381,18 +381,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   def import_from_internal_orders(%SupplierOrder{} = supplier_order, io_uuids, _actor_uuid)
       when is_list(io_uuids) do
-    # Load all selected posted IOs
-    internal_orders =
-      io_uuids
-      |> Enum.filter(& &1)
-      |> Enum.uniq()
-      |> Enum.map(fn uuid ->
-        case InternalOrders.get_internal_order(uuid) do
-          {:ok, %{status: "posted"} = io} -> io
-          _ -> nil
-        end
-      end)
-      |> Enum.filter(& &1)
+    internal_orders = load_posted_internal_orders(io_uuids)
 
     # Collect all item_uuids across all IOs
     all_item_uuids =
@@ -401,97 +390,22 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       |> Enum.filter(& &1)
       |> Enum.uniq()
 
-    stock_map_by_location = build_stock_map_by_location(internal_orders, all_item_uuids)
+    ctx = %{
+      stock_map_by_location: build_stock_map_by_location(internal_orders, all_item_uuids),
+      items_by_uuid: load_items_by_uuid(all_item_uuids),
+      target_supplier_uuid: supplier_order.supplier_uuid,
+      committed:
+        CommittedQuantities.compute(
+          SupplierOrder,
+          ["internal_order"],
+          Enum.map(internal_orders, & &1.uuid),
+          "ordered_quantity"
+        )
+    }
 
-    items_by_uuid =
-      if all_item_uuids == [] do
-        %{}
-      else
-        all_item_uuids
-        |> Catalogue.list_items_by_uuids()
-        |> Map.new(&{&1.uuid, &1})
-      end
+    {new_lines_by_item, io_contributions} = collect_import_lines(internal_orders, ctx)
 
-    target_supplier_uuid = supplier_order.supplier_uuid
-
-    committed =
-      CommittedQuantities.compute(
-        SupplierOrder,
-        ["internal_order"],
-        Enum.map(internal_orders, & &1.uuid),
-        "ordered_quantity"
-      )
-
-    # Collect enriched lines belonging to this supplier, merged by item_uuid,
-    # netting out quantity already committed to other supplier orders for the
-    # same internal order (or this one, on re-import).
-    {new_lines_by_item, io_contributions} =
-      Enum.reduce(internal_orders, {%{}, %{}}, fn io, {items_acc, io_acc} ->
-        io_committed = Map.get(committed, io.uuid, %{})
-        io_location_uuid = io.location_uuid || StockLedger.default_location_uuid()
-        io_stock_map = Map.get(stock_map_by_location, io_location_uuid, %{})
-
-        Enum.reduce(io.lines, {items_acc, io_acc}, fn line, {items_inner, io_inner} ->
-          item_uuid = line["item_uuid"]
-          item = Map.get(items_by_uuid, item_uuid)
-
-          required = parse_decimal(line["required_quantity"])
-          on_hand = stock_quantity(io_stock_map, item_uuid)
-          base_shortfall = Decimal.max(Decimal.new("0"), Decimal.sub(required, on_hand))
-          already = Map.get(io_committed, item_uuid, Decimal.new("0"))
-          shortfall = Decimal.max(Decimal.new("0"), Decimal.sub(base_shortfall, already))
-
-          cond do
-            Decimal.equal?(shortfall, Decimal.new("0")) ->
-              {items_inner, io_inner}
-
-            is_nil(item) ->
-              {items_inner, io_inner}
-
-            true ->
-              case resolve_suppliers(item) do
-                [%{uuid: ^target_supplier_uuid}] ->
-                  enriched = build_enriched_line(line, on_hand, shortfall, item)
-
-                  items_inner2 =
-                    Map.update(items_inner, item_uuid, enriched, fn existing ->
-                      merge_enriched_lines(existing, enriched)
-                    end)
-
-                  io_map = Map.get(io_inner, io.uuid, %{})
-                  io_map2 = Map.update(io_map, item_uuid, shortfall, &Decimal.add(&1, shortfall))
-                  io_inner2 = Map.put(io_inner, io.uuid, io_map2)
-
-                  {items_inner2, io_inner2}
-
-                _ ->
-                  {items_inner, io_inner}
-              end
-          end
-        end)
-      end)
-
-    new_lines = Map.values(new_lines_by_item)
-
-    # Merge with existing lines: existing lines win position; if same item_uuid
-    # exists in both, the imported values override quantities.
-    existing_lines = supplier_order.lines || []
-    existing_item_uuids = MapSet.new(existing_lines, & &1["item_uuid"])
-
-    # For existing lines that also appear in the import, apply merged data.
-    updated_existing =
-      Enum.map(existing_lines, fn line ->
-        case Map.get(new_lines_by_item, line["item_uuid"]) do
-          nil -> line
-          imported -> merge_enriched_lines(line, imported)
-        end
-      end)
-
-    # Append new lines not already present
-    truly_new =
-      Enum.filter(new_lines, fn l -> not MapSet.member?(existing_item_uuids, l["item_uuid"]) end)
-
-    final_lines = updated_existing ++ truly_new
+    final_lines = merge_import_lines(supplier_order.lines || [], new_lines_by_item)
 
     merged_refs =
       Enum.reduce(internal_orders, supplier_order.source_refs || [], fn io, acc_refs ->
@@ -513,6 +427,104 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     }
 
     update_draft(supplier_order, attrs)
+  end
+
+  # The selected internal orders, keeping only the ones that are actually
+  # posted — an unposted or missing IO contributes nothing to the import.
+  defp load_posted_internal_orders(io_uuids) do
+    io_uuids
+    |> Enum.filter(& &1)
+    |> Enum.uniq()
+    |> Enum.map(fn uuid ->
+      case InternalOrders.get_internal_order(uuid) do
+        {:ok, %{status: "posted"} = io} -> io
+        _ -> nil
+      end
+    end)
+    |> Enum.filter(& &1)
+  end
+
+  defp load_items_by_uuid([]), do: %{}
+
+  defp load_items_by_uuid(item_uuids) do
+    item_uuids
+    |> Catalogue.list_items_by_uuids()
+    |> Map.new(&{&1.uuid, &1})
+  end
+
+  # Collects enriched lines belonging to this supplier, merged by item_uuid,
+  # netting out quantity already committed to other supplier orders for the
+  # same internal order (or this one, on re-import). Returns the merged lines
+  # keyed by item, plus what each internal order contributed per item — the
+  # latter is what `source_refs` records so the next import nets against it.
+  defp collect_import_lines(internal_orders, ctx) do
+    Enum.reduce(internal_orders, {%{}, %{}}, fn io, acc ->
+      io_committed = Map.get(ctx.committed, io.uuid, %{})
+      io_location_uuid = io.location_uuid || StockLedger.default_location_uuid()
+      io_stock_map = Map.get(ctx.stock_map_by_location, io_location_uuid, %{})
+
+      Enum.reduce(io.lines, acc, fn line, inner ->
+        import_line(inner, line, io, ctx, io_committed, io_stock_map)
+      end)
+    end)
+  end
+
+  # One internal-order line. Nothing is ordered when on-hand stock plus what is
+  # already committed elsewhere covers the requirement, when the item is not in
+  # the catalogue, or when the item is not this order's supplier's.
+  defp import_line({items_acc, io_acc} = acc, line, io, ctx, io_committed, io_stock_map) do
+    item_uuid = line["item_uuid"]
+    item = Map.get(ctx.items_by_uuid, item_uuid)
+
+    required = parse_decimal(line["required_quantity"])
+    on_hand = stock_quantity(io_stock_map, item_uuid)
+    base_shortfall = Decimal.max(Decimal.new("0"), Decimal.sub(required, on_hand))
+    already = Map.get(io_committed, item_uuid, Decimal.new("0"))
+    shortfall = Decimal.max(Decimal.new("0"), Decimal.sub(base_shortfall, already))
+
+    if Decimal.equal?(shortfall, Decimal.new("0")) or is_nil(item) or
+         not sole_supplier?(item, ctx.target_supplier_uuid) do
+      acc
+    else
+      enriched = build_enriched_line(line, on_hand, shortfall, item)
+
+      items_acc2 =
+        Map.update(items_acc, item_uuid, enriched, fn existing ->
+          merge_enriched_lines(existing, enriched)
+        end)
+
+      io_map = Map.get(io_acc, io.uuid, %{})
+      io_map2 = Map.update(io_map, item_uuid, shortfall, &Decimal.add(&1, shortfall))
+
+      {items_acc2, Map.put(io_acc, io.uuid, io_map2)}
+    end
+  end
+
+  # An item is imported only when it resolves to exactly one supplier and that
+  # supplier is this order's — an ambiguous item is left for a human to place.
+  defp sole_supplier?(item, target_supplier_uuid) do
+    match?([%{uuid: ^target_supplier_uuid}], resolve_suppliers(item))
+  end
+
+  # Existing lines keep their position; an imported line for the same item
+  # overrides its quantities. Items only in the import are appended.
+  defp merge_import_lines(existing_lines, new_lines_by_item) do
+    existing_item_uuids = MapSet.new(existing_lines, & &1["item_uuid"])
+
+    updated_existing =
+      Enum.map(existing_lines, fn line ->
+        case Map.get(new_lines_by_item, line["item_uuid"]) do
+          nil -> line
+          imported -> merge_enriched_lines(line, imported)
+        end
+      end)
+
+    truly_new =
+      new_lines_by_item
+      |> Map.values()
+      |> Enum.filter(fn l -> not MapSet.member?(existing_item_uuids, l["item_uuid"]) end)
+
+    updated_existing ++ truly_new
   end
 
   # Merges two enriched lines for the same item_uuid by summing quantities.

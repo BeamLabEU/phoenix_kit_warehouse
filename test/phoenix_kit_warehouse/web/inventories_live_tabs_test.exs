@@ -10,9 +10,13 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTabsTest do
 
   import Phoenix.LiveViewTest
 
-  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
-  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
+  alias PhoenixKitWarehouse.Test.Repo
 
   # ---------------------------------------------------------------------------
   # Helpers
@@ -22,27 +26,27 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTabsTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Tab",
         "last_name" => "Admin"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
-  defp warehouse_path, do: PhoenixKit.Utils.Routes.path("/admin/warehouse")
+  defp warehouse_path, do: Routes.path("/admin/warehouse")
 
   defp inventories_path,
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/inventories")
+    do: Routes.path("/admin/warehouse/inventories")
 
   defp create_catalogue!(name_suffix) do
     {:ok, cat} =
@@ -133,7 +137,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTabsTest do
   describe "in-stock tab grouped rendering" do
     setup do
       # Clear stock so only our test items appear
-      PhoenixKitWarehouse.Test.Repo.delete_all(PhoenixKitWarehouse.Stock)
+      Repo.delete_all(PhoenixKitWarehouse.Stock)
       :ok
     end
 
@@ -251,7 +255,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTabsTest do
 
     test "empty inventories tab shows no-stocktakes placeholder", %{conn: conn} do
       # Delete all docs to ensure empty state
-      PhoenixKitWarehouse.Test.Repo.delete_all(PhoenixKitWarehouse.InventoryDocument)
+      Repo.delete_all(PhoenixKitWarehouse.InventoryDocument)
 
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
@@ -269,7 +273,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTabsTest do
 
       {:ok, _lv, html} = live(conn, inventories_path())
 
-      edit_path = PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{doc.uuid}")
+      edit_path = Routes.path("/admin/warehouse/inventory/#{doc.uuid}")
       assert html =~ edit_path
     end
   end

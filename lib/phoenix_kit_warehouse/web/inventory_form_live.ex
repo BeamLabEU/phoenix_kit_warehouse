@@ -18,6 +18,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
+  alias PhoenixKit.Users.Auth.Scope
+  alias PhoenixKitWeb.Components.MediaBrowser
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -27,10 +29,10 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
 
-  alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.ActivityLog
-  alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitWarehouse.Comments
+  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, WarehouseBrowser}
 
@@ -47,8 +49,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     locale = socket.assigns[:current_locale] || Gettext.get_locale()
 
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
+    current_user = scope && Scope.user(scope)
+    admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
     comments_available? = Comments.available?()
 
@@ -88,7 +90,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:item_search_results, nil)
       |> assign(:add_mode, :one)
       |> assign(:search_mode, :list)
-      |> PhoenixKitWeb.Components.MediaBrowser.setup_uploads()
+      |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
   end
@@ -187,7 +189,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
   defp handle_params_new(socket, locale) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
     location_uuid = StockLedger.default_location_uuid()
 
@@ -813,7 +815,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
   # Delegate MediaBrowser parent messages to the canonical handler.
   def handle_info({PhoenixKitWeb.Components.MediaBrowser, _action, _payload} = msg, socket) do
-    PhoenixKitWeb.Components.MediaBrowser.handle_parent_info(msg, socket)
+    MediaBrowser.handle_parent_info(msg, socket)
   end
 
   # Catch-all: silently drop any unmatched process message (e.g. stale PubSub

@@ -54,12 +54,12 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
 
-  alias PhoenixKitWarehouse.ViewConfigs
+  alias PhoenixKitWarehouse.ColumnConfig.Stock, as: StockColumnConfig
   alias PhoenixKitWarehouse.Deficits
   alias PhoenixKitWarehouse.MinStockSettings
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrders
-  alias PhoenixKitWarehouse.ColumnConfig.Stock, as: StockColumnConfig
+  alias PhoenixKitWarehouse.ViewConfigs
 
   alias PhoenixKitWarehouse.Web.Components.{
     ColumnModal,
@@ -68,8 +68,10 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     WarehouseHeader
   }
 
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.Web.ColumnManagement
 
   # Opt out of PhoenixKit's auto admin-chrome layout so this view self-wraps
   # with `LayoutWrapper.app_layout` in render/1. Same pattern as orders/index.ex.
@@ -84,9 +86,9 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     locale = socket.assigns[:current_locale] || Gettext.get_locale()
 
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
+    admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
     # ViewConfig preferences (stock_view, warehouse_scope) are per-user stored
     # settings, not URL state — they live in mount so handle_url_state can
@@ -111,7 +113,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       |> assign(:warehouse_scope, warehouse_scope)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:admin?, admin?)
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(StockColumnConfig)
+      |> ColumnManagement.assign_column_state(StockColumnConfig)
 
     {:ok, socket}
   end

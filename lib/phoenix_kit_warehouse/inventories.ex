@@ -8,9 +8,9 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   import Ecto.Query
 
+  alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.StockLedger
-  alias PhoenixKitCatalogue.Catalogue
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
@@ -105,14 +105,15 @@ defmodule PhoenixKitWarehouse.Inventories do
     _ -> %{}
   end
 
+  # Always reached with a map: safe_get_translation/2 rescues to %{}, which is
+  # the defensive layer here — a second non-map clause is unreachable and
+  # dialyzer flags it as such.
   defp pick_name(translation) when is_map(translation) do
     case Map.get(translation, "_name") || Map.get(translation, "name") do
       name when is_binary(name) and name != "" -> name
       _ -> nil
     end
   end
-
-  defp pick_name(_), do: nil
 
   # ---------------------------------------------------------------------------
   # Draft CRUD

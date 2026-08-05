@@ -36,6 +36,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
+  alias PhoenixKit.Users.Auth.Scope
+  alias PhoenixKitWeb.Components.MediaBrowser
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -43,6 +45,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
   end
 
+  alias PhoenixKit.Utils.Routes
+  alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Comments
   alias PhoenixKitWarehouse.DocRefs
@@ -52,9 +57,6 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   alias PhoenixKitWarehouse.Transfer
   alias PhoenixKitWarehouse.Transfers
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
-  alias PhoenixKit.Utils.Routes
-  alias PhoenixKitCatalogue.Catalogue
-  alias PhoenixKitLocations.Locations
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -65,8 +67,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     locale = socket.assigns[:current_locale] || Gettext.get_locale()
 
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
+    current_user = scope && Scope.user(scope)
+    admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
     comments_available? = Comments.available?()
 
@@ -106,7 +108,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
       |> assign(:source_picker_selected, MapSet.new())
       |> assign(:source_picker_selected_meta, %{})
       |> assign(:source_picker_query, "")
-      |> PhoenixKitWeb.Components.MediaBrowser.setup_uploads()
+      |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
   end
@@ -760,7 +762,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   end
 
   def handle_info({PhoenixKitWeb.Components.MediaBrowser, _action, _payload} = msg, socket) do
-    PhoenixKitWeb.Components.MediaBrowser.handle_parent_info(msg, socket)
+    MediaBrowser.handle_parent_info(msg, socket)
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}

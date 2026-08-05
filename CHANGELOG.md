@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- **The `—` placeholder never appeared in the read-only price and sum cells of
+  the inventory count sheet.** They rendered `format_input_decimal(value) ||
+  "—"`, but `format_input_decimal/1` returns `""` — never `nil` — for a missing
+  value, and `""` is truthy, so the cell went blank instead. Now goes through an
+  explicit `blank_to_dash/1`.
+
+### Changed
+
+- **`mix precommit` passes for the first time.** It had been failing on `main`
+  for a long time, on findings spread across the whole codebase rather than any
+  recent change. Cleared all 291 `mix credo --strict` issues (248
+  `Design.AliasUsage`, 37 `Readability.AliasOrder`, 2 `WithSingleClause`, plus
+  `PreferImplicitTry`, `StringSigils`, `CyclomaticComplexity` and `Nesting`) and
+  all four actionable dialyzer warnings.
+- `SupplierOrders.import_from_internal_orders/3` is split into
+  `load_posted_internal_orders/1`, `load_items_by_uuid/1`,
+  `collect_import_lines/2`, `import_line/6`, `sole_supplier?/2` and
+  `merge_import_lines/2` — behaviour preserved exactly, cyclomatic complexity 16
+  → under the limit and nesting depth 5 → 3.
+- `StorageFolders` drops the `parent_uuid` parameter that both call sites always
+  passed as `nil`; the folder lookup is now explicitly root-scoped. Dead
+  `pick_name/1` fallback clauses removed from `Inventories` and
+  `Web.Components.WarehouseBrowser` — `safe_get_translation/2` already rescues
+  to `%{}`, which is the real defensive layer.
+- New `.dialyzer_ignore.exs` documents the six `Ecto.Multi` opaqueness warnings
+  (one per context's `lock_status_step/3`), which are an artefact of Ecto's
+  `@opaque t()` and have no code-level fix. Wired up with
+  `list_unused_filters: true` so a stale filter is reported.
+
 ## 0.2.6 - 2026-08-05
 
 ### Added

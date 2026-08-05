@@ -4,14 +4,18 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
+  alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.SupplierOrder
   alias PhoenixKitWarehouse.SupplierOrders
-  alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.Test.Repo
 
   @default_location_uuid "00000000-0000-0000-0000-000000000001"
 
   setup do
-    PhoenixKitWarehouse.Test.Repo.delete_all(SupplierOrder)
+    Repo.delete_all(SupplierOrder)
     :ok
   end
 
@@ -23,20 +27,20 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Admin",
         "last_name" => "User"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
@@ -62,7 +66,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLiveTest do
   end
 
   defp index_path,
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders")
+    do: Routes.path("/admin/warehouse/supplier-orders")
 
   # ---------------------------------------------------------------------------
   # Tests

@@ -26,12 +26,12 @@ defmodule PhoenixKitWarehouse do
   alias PhoenixKitWarehouse.Web.GoodsIssueIndexLive
   alias PhoenixKitWarehouse.Web.GoodsReceiptFormLive
   alias PhoenixKitWarehouse.Web.GoodsReceiptIndexLive
-  alias PhoenixKitWarehouse.Web.InventoriesLive
-  alias PhoenixKitWarehouse.Web.InventoryFormLive
   alias PhoenixKitWarehouse.Web.InternalOrderFormLive
   alias PhoenixKitWarehouse.Web.InternalOrderIndexLive
-  alias PhoenixKitWarehouse.Web.StockLive
+  alias PhoenixKitWarehouse.Web.InventoriesLive
+  alias PhoenixKitWarehouse.Web.InventoryFormLive
   alias PhoenixKitWarehouse.Web.SettingsLive
+  alias PhoenixKitWarehouse.Web.StockLive
   alias PhoenixKitWarehouse.Web.SupplierOrderFormLive
   alias PhoenixKitWarehouse.Web.SupplierOrderIndexLive
   alias PhoenixKitWarehouse.Web.TransferFormLive

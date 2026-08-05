@@ -27,10 +27,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
     column_config: PhoenixKitWarehouse.ColumnConfig.GoodsReceipts,
     scope: "warehouse_goods_receipts"
 
-  alias PhoenixKitWarehouse.{DocRefs, GoodsReceipts}
-  alias PhoenixKitWarehouse.ColumnConfig.GoodsReceipts, as: GoodsReceiptColumnConfig
-  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.ColumnConfig.GoodsReceipts, as: GoodsReceiptColumnConfig
+  alias PhoenixKitWarehouse.{DocRefs, GoodsReceipts}
+  alias PhoenixKitWarehouse.Web.ColumnManagement
+  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -41,7 +43,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     # :search, :sort_by, and :sort_dir are assigned from the query string by
@@ -52,7 +54,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
       |> assign(:page_title, dgettext("default", "Warehouse"))
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:receipts, [])
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(GoodsReceiptColumnConfig)
+      |> ColumnManagement.assign_column_state(GoodsReceiptColumnConfig)
 
     {:ok, socket}
   end

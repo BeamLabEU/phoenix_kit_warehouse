@@ -27,10 +27,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     column_config: PhoenixKitWarehouse.ColumnConfig.SupplierOrders,
     scope: "warehouse_supplier_orders"
 
-  alias PhoenixKitWarehouse.{DocRefs, SupplierOrders}
-  alias PhoenixKitWarehouse.ColumnConfig.SupplierOrders, as: SupplierOrderColumnConfig
-  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.ColumnConfig.SupplierOrders, as: SupplierOrderColumnConfig
+  alias PhoenixKitWarehouse.{DocRefs, SupplierOrders}
+  alias PhoenixKitWarehouse.Web.ColumnManagement
+  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -41,7 +43,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     socket =
@@ -49,7 +51,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
       |> assign(:page_title, dgettext("default", "Warehouse"))
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
+      |> ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
 
     {:ok, socket}
   end

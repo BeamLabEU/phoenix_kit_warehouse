@@ -15,6 +15,8 @@ defmodule PhoenixKitWarehouse.MixProject do
       description: "Warehouse module for PhoenixKit — inventory, stock, goods receipts/issues.",
       package: package(),
       dialyzer: [
+        ignore_warnings: ".dialyzer_ignore.exs",
+        list_unused_filters: true,
         plt_add_apps: [
           :phoenix_kit,
           :phoenix_kit_billing,

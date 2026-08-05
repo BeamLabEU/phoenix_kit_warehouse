@@ -186,8 +186,8 @@ post-merge is not the right call — recorded here as the obvious follow-up.
 
 ## Validation
 
-`mix precommit` was run step by step because the alias does not currently pass
-on `main` — see the note on `credo --strict` below.
+`mix precommit` **passes** (exit 0). It did not when this review started — see
+"Clearing the gate" below for what was wrong and what was done about it.
 
 | Step | Result |
 | --- | --- |
@@ -195,50 +195,88 @@ on `main` — see the note on `credo --strict` below.
 | `mix deps.unlock --check-unused` | clean **after** the `mix.lock` fix below |
 | `mix hex.audit` | no retired or advisory packages |
 | `mix format --check-formatted` | clean |
-| `mix credo --strict` | exit 14 — **pre-existing**, see below |
-| `mix dialyzer` | exit 2 on one **pre-existing** warning, see below |
+| `mix credo --strict` | no issues (1734 mods/funs, 110 files) |
+| `mix dialyzer` | passed — 6 warnings, all 6 matched by `.dialyzer_ignore.exs`, 0 unnecessary skips |
 | `mix test` | 75 tests, 0 failures (701 excluded) |
 
-- **`mix test` cannot cover this fix here.** PostgreSQL is unavailable in this
-  environment, so the 701 `:integration` tests — including every
+- **`mix test` cannot cover the sort-reset fix here.** PostgreSQL is unavailable
+  in this environment, so the 701 `:integration` tests — including every
   `*_index_live_test.exs` LiveView test — were auto-excluded exactly as
   CLAUDE.md describes. The new whitelist test runs in the DB-less set and
   passes (21 assertions across the 7 screens). The `__view_config_changed__/1`
   fix itself is verified by reading `UrlState.sanitize/2` + `reload?/3` and by
   compile/dialyzer only, **not** by an executed integration test — worth a run
   on a machine with a database before this is relied on.
-- **`mix precommit` fails on `main` independently of this PR.**
-  `mix credo --strict` exits 14 against an unmodified checkout, on 291 issues
-  spread over 21 `lib/` files — 248 of them `Credo.Check.Design.AliasUsage`
-  ("Nested modules could be aliased"), plus `Readability.AliasOrder` and two
-  `Refactor` findings in `supplier_orders.ex`. They land in files this PR never
-  touched (`transfer_form_live.ex`, `inventory_form_live.ex`, `doc_refs.ex`,
-  `column_management.ex`, …) and `.credo.exs` has been unchanged since the
-  scaffolding commit, so this long predates PR #11. Verified that the changes
-  here add **zero** new credo findings: the per-file issue set is byte-identical
-  before and after. Not fixed — clearing 291 mechanical alias findings across
-  the whole codebase is its own change, and burying a five-line correctness fix
-  under it would be the wrong trade. Flagged so the gap between CLAUDE.md's
-  stated gate and reality is on record.
-- **`mix dialyzer` also fails on a pre-existing warning**, once credo stops
-  aborting the chain before it runs:
+- **`mix.lock` carried eight unused entries** (`igniter`, `sourceror`,
+  `spitfire`, `rewrite`, `owl`, `text_diff`, `ex_ast`, `glob_ex`) left over from
+  the dependency bump in 0.2.5, which `mix deps.unlock --check-unused` rejects.
+  Cleaned with `mix deps.unlock --unused`.
 
-  ```
-  lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:977:8:pattern_match_cov
-  The pattern :variable_ can never match, because previous clauses completely
-  cover the type map().
-  ```
+## Clearing the gate
 
-  That is the defensive `defp pick_name(_), do: nil` catch-all under
-  `defp pick_name(translation) when is_map(translation)` — every call site
-  passes a map, so the fallback is dead code. The file is untouched by this PR
-  and by this review (last changed in b403e5c, wave-1), and nothing here made
-  the clause newly unreachable. Not fixed: deleting a dead defensive clause in
-  an unrelated component would not make the gate green anyway while the 291
-  credo issues stand, so it buys nothing and costs unrelated churn. Worth
-  clearing alongside the credo backlog.
-- **One unrelated fix was needed to get past step 2:** `mix.lock` carried eight
-  unused entries (`igniter`, `sourceror`, `spitfire`, `rewrite`, `owl`,
-  `text_diff`, `ex_ast`, `glob_ex`) left over from the `lib upgrades` commit
-  (c818048), which `mix deps.unlock --check-unused` rejects. Cleaned with
-  `mix deps.unlock --unused`.
+CLAUDE.md names `mix precommit` as the gate, but it had not passed on `main` for
+a long time — `.credo.exs` has been unchanged since the scaffolding commit and
+the findings sat in files across the whole codebase, not in anything PR #11
+touched. Before changing anything it was confirmed that this review's own edits
+added **zero** new credo findings (the per-file issue set was byte-identical
+before and after). The backlog was then cleared in full.
+
+### credo: 291 → 0
+
+| Check | Count | How |
+| --- | --- | --- |
+| `Design.AliasUsage` | 248 | Aliased the 8 distinct modules being called fully-qualified (`PhoenixKit.Users.Auth`, `…Auth.Scope`, `…Users.Roles`, `PhoenixKit.Utils.Routes`, `PhoenixKitWarehouse.Test.Repo`, `…Test.Fixtures`, `…Web.ColumnManagement`, `PhoenixKitWeb.Components.MediaBrowser`) across 42 files and rewrote the call sites |
+| `Readability.AliasOrder` | 37 | Sorted every run of consecutive alias statements, including the members inside `Base.{A, B}` groups |
+| `Readability.WithSingleClause` | 2 | `with`/`else` with a single `<-` → `case`, in the two `set_location` handlers |
+| `Readability.PreferImplicitTry` | 1 | `activity_log.ex` `log_responsibility_changed/3` now uses a function-level `rescue` |
+| `Readability.StringSigils` | 1 | `@doc` with four escaped quotes → `~S"""` heredoc |
+| `Refactor.CyclomaticComplexity` + `Refactor.Nesting` | 2 | Split `SupplierOrders.import_from_internal_orders/3` (complexity 16, nesting depth 5) |
+
+Two of these are worth calling out because they were not purely cosmetic:
+
+- **`ColumnManagement.save_view_config/6` could not simply be aliased.** The
+  call sits inside the `__using__` quote, so the alias would have had to exist
+  in every *host* LiveView. Replaced with `unquote(__MODULE__)`, which binds the
+  defining module at expansion time and is correct regardless of the caller.
+- **`import_from_internal_orders/3` was split, not merely reindented.** The
+  134-line body now delegates to `load_posted_internal_orders/1`,
+  `load_items_by_uuid/1`, `collect_import_lines/2`, `import_line/6`,
+  `sole_supplier?/2` and `merge_import_lines/2`. Behaviour is preserved
+  exactly: the old `cond` (shortfall zero → skip, nil item → skip, otherwise
+  match the supplier) becomes one short-circuiting `if`, evaluated in the same
+  order, and the `[%{uuid: ^target_supplier_uuid}]` single-supplier match is now
+  `sole_supplier?/2`. **This path is exercised only by `:integration` tests,
+  which could not run here** — it is covered by compile and dialyzer alone and
+  deserves a run against a database.
+
+### dialyzer: 11 → 0 actionable
+
+The first dialyzer run appeared to report a single warning; that was a
+truncated `tail` of the log, and the real count was **11**. Four were genuine
+dead or unreachable code:
+
+- `warehouse_browser.ex` and `inventories.ex` each carried a
+  `defp pick_name(_), do: nil` fallback under a `when is_map(translation)`
+  clause. The caller is `safe_get_translation/2`, which already rescues to
+  `%{}` — that rescue is the defensive layer, and the extra clause was dead.
+- `storage_folders.ex` threaded a `parent_uuid` through `find_or_create/3` and
+  `find_by_name/2` that both call sites passed as `nil`, so
+  `where_parent(query, uuid)` was unreachable. The parameter is gone and the
+  lookup is explicitly root-scoped.
+- **`warehouse_browser.ex:590` and `:611` were a real (cosmetic) bug.** The
+  read-only price and sum cells rendered
+  `format_input_decimal(value) || "—"`, but `format_input_decimal/1` returns
+  `""` — never `nil` — for a missing value, and `""` is truthy in Elixir. The
+  `—` placeholder could therefore never appear; the cell just went blank.
+  Replaced with an explicit `blank_to_dash/1`. Dialyzer flagged this as
+  `guard_fail`; nothing else would have.
+
+The remaining six are one repeated artefact of Ecto's types, not defects here:
+each context's `lock_status_step/3` builds a multi with `Ecto.Multi.new()` and
+passes it to `Ecto.Multi.run/3`. `Ecto.Multi.t()` is `@opaque`, but dialyzer
+sees through `new/0` to the concrete struct and reports an opaqueness mismatch.
+Rewriting the call as `Ecto.Multi.new() |> Ecto.Multi.run(...)` was tried and
+only moves the column the warning points at, so there is no code-level fix.
+They are listed with that justification in a new `.dialyzer_ignore.exs`, wired
+up in `mix.exs` together with `list_unused_filters: true` so a filter that stops
+matching is reported rather than silently rotting.

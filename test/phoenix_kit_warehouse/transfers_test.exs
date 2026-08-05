@@ -2,6 +2,7 @@ defmodule PhoenixKitWarehouse.TransfersTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Stock
   alias PhoenixKitWarehouse.StockLedger, as: Warehouse
@@ -18,7 +19,7 @@ defmodule PhoenixKitWarehouse.TransfersTest do
 
   defp user_uuid do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => "tr-test-#{System.unique_integer([:positive])}@example.com",
         "password" => "password123456789",
         "first_name" => "TR",
