@@ -153,10 +153,12 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     # bare assign. push_url_state merges the next search onto the URL state
     # map, so an assign alone leaves ?sort= naming the column that was just
     # hidden — and a reload sorts by it again, invisibly.
-    if socket.assigns.sort_by in socket.assigns.selected_columns do
+    next = next_sort_by(socket)
+
+    if next == socket.assigns.sort_by do
       assign_stock_rows(socket)
     else
-      push_url_state(socket, sort_by: List.first(socket.assigns.selected_columns) || "item")
+      push_url_state(socket, sort_by: next)
     end
   end
 
@@ -388,6 +390,25 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         true -> meta.filter_apply.(acc, value)
       end
     end)
+  end
+
+  # The column to sort by after a column save: the current one while it is still
+  # visible, else the first visible column that is actually sortable. Sortable
+  # is not optional here — push_url_state sanitizes anything outside the
+  # declared `in:` whitelist back to the default, so re-picking a non-sortable
+  # column can resolve to the sort column already in effect, and a state that
+  # does not move never re-runs handle_url_state/2. The list would then keep
+  # rendering the rows it had before the column change.
+  defp next_sort_by(socket) do
+    %{sort_by: sort_by, selected_columns: selected} = socket.assigns
+
+    if sort_by in selected,
+      do: sort_by,
+      else: selected |> Enum.find(&sortable_column?/1) |> parse_sort_by()
+  end
+
+  defp sortable_column?(column_id) do
+    match?(%{sortable?: true}, Map.get(StockColumnConfig.column_metadata_map(), column_id))
   end
 
   defp parse_sort_by(value) when is_binary(value) do

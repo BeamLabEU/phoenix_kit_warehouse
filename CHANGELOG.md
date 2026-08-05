@@ -2,6 +2,53 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.2.6 - 2026-08-05
+
+### Added
+
+- **Warehouse list search and sort now live in the URL** (PR #11) — all seven
+  index screens (`stock`, `inventories`, `internal_orders`, `supplier_orders`,
+  `goods_receipts`, `goods_issues`, `transfers`) adopt core's
+  `PhoenixKitWeb.Live.UrlState` in `:patch` mode, exposing `?q=`, `?sort=` and
+  `?dir=`. A filtered list is now a real URL: shareable, reload-proof, and Back
+  returns to the previous query instead of leaving the page. List loading moves
+  from `handle_params/3` to the `handle_url_state/2` callback, so one code path
+  serves the first render, a shared link and the Back button. The debounced
+  search box patches with `replace: true`, leaving one history entry rather
+  than one per pause in typing. `stock_view` and `warehouse_scope` stay
+  per-user `ViewConfig` preferences and are deliberately **not** in the URL.
+- `StockLive` caches its ledger snapshot per mount behind an explicit
+  `:stock_items_loaded?` flag, so search and sort re-slice the loaded list
+  instead of re-running `Deficits.available_by_item/0`, the min-stock map and
+  the Catalogue load on every keystroke.
+
+### Fixed
+
+- **Hiding the active sort column could leave the list stale** — when a column
+  save hid the column being sorted by, `__view_config_changed__/1` re-picked
+  `List.first(selected_columns)`, which is the first *visible* column and need
+  not be **sortable** (`sub_order`, `supplier_order`, `location`,
+  `source_location`, `destination_location` never are, and column order is
+  user-controlled). `push_url_state/3` sanitizes anything outside the declared
+  `in:` whitelist back to the default, so the re-pick silently collapsed to
+  `"number"` / `"item"` — and when that was already the active sort, the URL
+  state did not move at all, `handle_url_state/2` never re-ran, and the column
+  or filter change that triggered it was never applied to the table. All seven
+  screens now pick the first visible column that is actually sortable and
+  refresh in place when the re-pick resolves to the current column.
+- `mix.lock` carried eight unused entries (`igniter`, `sourceror`, `spitfire`,
+  `rewrite`, `owl`, `text_diff`, `ex_ast`, `glob_ex`) left over from the
+  dependency bump in 0.2.5, which `mix deps.unlock --check-unused` rejects.
+
+### Testing
+
+- New DB-less unit test pins each index LiveView's `?sort=` whitelist to the
+  `sortable?: true` columns of its `ColumnConfig` — the two are the same fact
+  written twice, and drift is silent: a sortable column left out of the
+  whitelist cannot be sorted by at all. Also asserts each declared default sort
+  column is itself sortable and that `?dir=` stays `cast: :atom` restricted to
+  `[:asc, :desc]`.
+
 ## 0.2.5 - 2026-07-27
 
 ### Changed
