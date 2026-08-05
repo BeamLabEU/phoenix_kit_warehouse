@@ -9,6 +9,20 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  # Search and sort live in the query string so a filtered list is a real URL:
+  # shareable, reload-proof, and Back returns to the previous query instead of
+  # leaving the page.
+  use PhoenixKitWeb.Live.UrlState,
+    params: [
+      search: [default: "", url_key: "q"],
+      sort_by: [
+        default: "number",
+        url_key: "sort",
+        in: ~w(number status supplier lines_count date posted_at note)
+      ],
+      sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
+    ]
+
   use PhoenixKitWarehouse.Web.ColumnManagement,
     column_config: PhoenixKitWarehouse.ColumnConfig.SupplierOrders,
     scope: "warehouse_supplier_orders"
@@ -33,34 +47,33 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:search, "")
-      |> assign(:sort_by, "number")
-      |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
+      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
 
     {:ok, socket}
   end
 
   @impl true
-  def handle_params(_params, _uri, socket) do
-    socket =
-      socket
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
-      |> assign_orders()
+  def handle_url_state(_state, socket) do
+    assign_orders(socket)
+  end
 
+  @impl true
+  def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end
 
   def __view_config_changed__(socket) do
-    socket =
-      if socket.assigns.sort_by in socket.assigns.selected_columns do
-        socket
-      else
-        assign(socket, :sort_by, List.first(socket.assigns.selected_columns) || "number")
-      end
-
-    assign_orders(socket)
+    # A hidden sort column has to be re-picked through the URL, not with a
+    # bare assign. push_url_state merges the next search onto the URL state
+    # map, so an assign alone leaves ?sort= naming the column that was just
+    # hidden — and a reload sorts by it again, invisibly.
+    if socket.assigns.sort_by in socket.assigns.selected_columns do
+      assign_orders(socket)
+    else
+      push_url_state(socket, sort_by: List.first(socket.assigns.selected_columns) || "number")
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -69,12 +82,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
 
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> assign_orders()}
+    {:noreply, push_url_state(socket, [search: search], replace: true)}
   end
 
   @impl true
   def handle_event("set_sort", %{"sort_by" => by}, socket) do
-    {:noreply, socket |> assign(:sort_by, parse_sort_by(by)) |> assign_orders()}
+    {:noreply, push_url_state(socket, sort_by: parse_sort_by(by))}
   end
 
   @impl true
@@ -86,13 +99,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
         do: {by_id, flip_dir(socket.assigns.sort_dir)},
         else: {by_id, default_dir(by_id)}
 
-    {:noreply,
-     socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir) |> assign_orders()}
+    {:noreply, push_url_state(socket, sort_by: sort_by, sort_dir: sort_dir)}
   end
 
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
-    {:noreply, socket |> assign(:sort_dir, flip_dir(socket.assigns.sort_dir)) |> assign_orders()}
+    {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
   # ---------------------------------------------------------------------------
