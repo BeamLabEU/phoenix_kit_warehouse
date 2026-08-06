@@ -2,10 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.2.7 - 2026-08-06
 
 ### Fixed
 
+- **Dependency floor raised to `phoenix_kit ~> 1.7.231`** (PR #12, from
+  `~> 1.7.214`) — seven index LiveViews `use PhoenixKitWeb.Live.UrlState`, which
+  first shipped in core 1.7.231. The old requirement declared a contract that
+  permitted a core without that module, so a consumer whose resolution landed
+  below 1.7.231 would fail to compile this package. `mix.lock` already carried
+  1.7.231, so this corrects the published contract, not the current build.
+- **Dependency floor raised to `phoenix_kit_comments ~> 0.2 and >= 0.2.8`**
+  (post-merge review of PR #12, from `~> 0.2`) — the same class of defect PR #12
+  fixed for core, left in place three lines below it. Six form LiveViews `use
+  PhoenixKitComments.Embed`, which first shipped in comments 0.2.6; a `use` is
+  macro expansion at compile time and cannot be guarded. `PhoenixKitWarehouse.
+  Comments` additionally calls `subscribe/2`, `unsubscribe/2` and the list form
+  of `count_comments/2`, all three of which arrived in 0.2.8 — and its
+  `available?/0` guard only covers `PhoenixKitComments` being absent entirely,
+  not an older release that is present but missing those functions. The ceiling
+  stays `< 1.0.0` rather than becoming `~> 0.2.8`'s `< 0.3.0`, so a future
+  comments 0.3.0 still resolves.
 - **The `—` placeholder never appeared in the read-only price and sum cells of
   the inventory count sheet.** They rendered `format_input_decimal(value) ||
   "—"`, but `format_input_decimal/1` returns `""` — never `nil` — for a missing
