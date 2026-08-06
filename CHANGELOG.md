@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- **Documentation now matches the actual dependency contract.** The
+  `PhoenixKitWarehouse` moduledoc claimed `PhoenixKitComments` "stays optional
+  (guarded via `Code.ensure_loaded?/1`)", and `AGENTS.md` said the same. Neither
+  was true: `phoenix_kit_comments` is not declared `optional:` in `mix.exs`, and
+  six form LiveViews `use PhoenixKitComments.Embed`, which is macro expansion at
+  compile time and cannot be guarded. All four sibling packages are now
+  described as hard dependencies, with the distinction a reader actually needs
+  spelled out — a hard *package* dependency is not a required *module*, and
+  `required_modules/0` lists only `"catalogue"` and `"locations"`. The moduledoc
+  also no longer implies billing is enablement-checked; it isn't, its component
+  is imported unconditionally.
+- `PhoenixKitWarehouse.Comments`' moduledoc now states what "unavailable" covers
+  (installed-but-disabled) and what it does not (version skew — `available?/0`
+  returns `true` against comments 0.2.6/0.2.7, where `subscribe/2` and the batch
+  `count_comments/2` do not yet exist; the `>= 0.2.8` floor is what closes that,
+  not any guard in the module). The `Code.ensure_loaded?/1` check and the
+  `@compile {:no_warn_undefined, ...}` attribute are labelled as the always-true
+  residue they are.
+
 ## 0.2.7 - 2026-08-06
 
 ### Fixed
