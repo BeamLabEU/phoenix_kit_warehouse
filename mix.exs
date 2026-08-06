@@ -92,7 +92,11 @@ defmodule PhoenixKitWarehouse.MixProject do
       # 1.7.214+ required: Scope.can_access_admin_area?/1 (the rename of the
       # now-`@deprecated` Scope.admin?/1) — an older core has no such function,
       # so this is an UndefinedFunctionError at runtime, not a warning.
-      pk_dep(:phoenix_kit, "~> 1.7.214"),
+      # 1.7.231 is the floor: that release ships
+      # `PhoenixKitWeb.Live.UrlState`, which 7 LiveView files in this
+      # module `use`. Anything below it resolves a core with no such
+      # module, and the failure surfaces in the consumer's build.
+      pk_dep(:phoenix_kit, "~> 1.7.231"),
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.5"),
