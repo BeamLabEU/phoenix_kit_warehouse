@@ -90,27 +90,6 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     user_uuid = current_user && current_user.uuid
     admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
-    socket =
-      socket
-      |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:locale, locale)
-      |> assign(:stock_items, [])
-      |> assign(:stock_view, "grouped")
-      |> assign(:warehouses, [])
-      |> assign(:warehouse_scope, nil)
-      |> assign(:search, "")
-      |> assign(:sort_by, "item")
-      |> assign(:sort_dir, :asc)
-      |> assign(:current_user_uuid, user_uuid)
-      |> assign(:admin?, admin?)
-
-    {:ok, socket}
-  end
-
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    user_uuid = socket.assigns.current_user_uuid
-
     # ViewConfig preferences (stock_view, warehouse_scope) are per-user stored
     # settings, not URL state — they live in mount so handle_url_state can
     # already see warehouse_scope when it builds stock_items.
