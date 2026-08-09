@@ -1,9 +1,10 @@
 defmodule PhoenixKitWarehouse.InventoriesTest do
   use PhoenixKitWarehouse.DataCase, async: false
 
-  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
-  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
 
   # ---------------------------------------------------------------------------
   # Helpers
@@ -59,7 +60,7 @@ defmodule PhoenixKitWarehouse.InventoriesTest do
 
   defp user_uuid do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => "wh-test-#{System.unique_integer([:positive])}@example.com",
         "password" => "password123456789",
         "first_name" => "Test",

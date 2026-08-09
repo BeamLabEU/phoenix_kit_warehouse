@@ -4,13 +4,17 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.Test.Repo
   alias PhoenixKitWarehouse.Transfer
   alias PhoenixKitWarehouse.Transfers
 
   setup do
-    PhoenixKitWarehouse.Test.Repo.delete_all(Transfer)
+    Repo.delete_all(Transfer)
     :ok
   end
 
@@ -22,24 +26,24 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Admin",
         "last_name" => "User"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
-  defp index_path, do: PhoenixKit.Utils.Routes.path("/admin/warehouse/transfers")
+  defp index_path, do: Routes.path("/admin/warehouse/transfers")
 
   defp create_transfer(attrs \\ %{}) do
     {:ok, transfer} = Transfers.create_transfer(attrs)
@@ -86,7 +90,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLiveTest do
 
       {:ok, lv, _html} = live(conn, index_path())
 
-      new_path = PhoenixKit.Utils.Routes.path("/admin/warehouse/transfers/new")
+      new_path = Routes.path("/admin/warehouse/transfers/new")
       assert has_element?(lv, ~s(a[href="#{new_path}"]), "New transfer")
     end
 

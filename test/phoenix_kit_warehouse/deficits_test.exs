@@ -2,6 +2,7 @@ defmodule PhoenixKitWarehouse.DeficitsTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitWarehouse.Deficits
   alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.InternalOrders
@@ -28,7 +29,7 @@ defmodule PhoenixKitWarehouse.DeficitsTest do
   # — posting requires an actual user row, not an arbitrary UUID.
   defp user_uuid do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => "deficits-test-#{System.unique_integer([:positive])}@example.com",
         "password" => "password123456789",
         "first_name" => "Deficits",

@@ -4,11 +4,15 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
+  alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.Test.Fixtures
   alias PhoenixKitWarehouse.Test.Repo
   alias PhoenixKitWarehouse.Transfer
   alias PhoenixKitWarehouse.Transfers
-  alias PhoenixKitLocations.Locations
 
   setup do
     Repo.delete_all(Transfer)
@@ -23,33 +27,33 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Admin",
         "last_name" => "User"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
-  defp edit_path(uuid), do: PhoenixKit.Utils.Routes.path("/admin/warehouse/transfers/#{uuid}")
+  defp edit_path(uuid), do: Routes.path("/admin/warehouse/transfers/#{uuid}")
 
   defp items_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/transfers/#{uuid}/items")
+    do: Routes.path("/admin/warehouse/transfers/#{uuid}/items")
 
   defp files_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/transfers/#{uuid}/files")
+    do: Routes.path("/admin/warehouse/transfers/#{uuid}/files")
 
   defp comments_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/transfers/#{uuid}/comments")
+    do: Routes.path("/admin/warehouse/transfers/#{uuid}/comments")
 
   # Creates real Location records tagged with a fresh warehouse LocationType
   # and marks that type as the warehouse type. The per-test sandbox rolls
@@ -614,14 +618,14 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
       {:ok, cancelled} = Transfers.cancel_transfer(transfer, admin.uuid)
 
       {:ok, user} =
-        PhoenixKit.Users.Auth.register_user(%{
+        Auth.register_user(%{
           "email" => unique_email(),
           "password" => "password123456789",
           "first_name" => "Regular",
           "last_name" => "User"
         })
 
-      {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
+      {:ok, user} = Auth.admin_confirm_user(user)
       conn = log_in_admin(conn, user)
 
       {:ok, _lv, html} = live(conn, edit_path(cancelled.uuid))
@@ -640,7 +644,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       transfer = create_draft()
-      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      customer_order = Fixtures.insert_order!()
 
       {:ok, lv, _html} = live(conn, edit_path(transfer.uuid))
 
@@ -662,7 +666,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
     test "removing an attached reference detaches it", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
-      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      customer_order = Fixtures.insert_order!()
 
       transfer =
         create_draft(%{source_refs: [%{"type" => "order", "uuid" => customer_order.uuid}]})

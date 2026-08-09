@@ -31,10 +31,10 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   alias PhoenixKit.Modules.Storage.Folder, as: StorageFolder
   alias PhoenixKitWarehouse.{GoodsIssue, GoodsIssues}
   alias PhoenixKitWarehouse.{GoodsReceipt, GoodsReceipts}
-  alias PhoenixKitWarehouse.{InventoryDocument, Inventories}
+  alias PhoenixKitWarehouse.InternalOrder
+  alias PhoenixKitWarehouse.{Inventories, InventoryDocument}
   alias PhoenixKitWarehouse.{SupplierOrder, SupplierOrders}
   alias PhoenixKitWarehouse.{Transfer, Transfers}
-  alias PhoenixKitWarehouse.InternalOrder
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
@@ -128,7 +128,7 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   """
   def ensure_for_internal_order(%InternalOrder{} = order, admin_user_uuid) do
     name = folder_name("internal-order", order.number, order.uuid)
-    find_or_create(name, nil, admin_user_uuid)
+    find_or_create(name, admin_user_uuid)
   end
 
   @doc """
@@ -172,26 +172,26 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   defp create_and_cache(doc, admin_user_uuid, prefix, set_folder_fn) do
     name = folder_name(prefix, doc.number, doc.uuid)
 
-    with {:ok, folder} <- find_or_create(name, nil, admin_user_uuid),
+    with {:ok, folder} <- find_or_create(name, admin_user_uuid),
          {:ok, _} <- set_folder_fn.(doc, folder.uuid) do
       {:ok, folder}
     end
   end
 
-  defp find_or_create(name, parent_uuid, user_uuid) do
-    case find_by_name(name, parent_uuid) do
+  defp find_or_create(name, user_uuid) do
+    case find_by_name(name) do
       %StorageFolder{} = folder ->
         {:ok, folder}
 
       nil ->
-        case Storage.create_folder(%{name: name, parent_uuid: parent_uuid, user_uuid: user_uuid}) do
+        case Storage.create_folder(%{name: name, parent_uuid: nil, user_uuid: user_uuid}) do
           {:ok, folder} ->
             {:ok, folder}
 
           {:error, %Ecto.Changeset{errors: errors}} ->
             # Unique constraint race — another process created it between our lookup and insert.
             if Keyword.has_key?(errors, :name) do
-              {:ok, find_by_name(name, parent_uuid)}
+              {:ok, find_by_name(name)}
             else
               {:error, :create_folder_failed}
             end
@@ -199,15 +199,14 @@ defmodule PhoenixKitWarehouse.StorageFolders do
     end
   end
 
-  defp find_by_name(name, parent_uuid) do
+  # Document folders are always created at the storage root, so the lookup is
+  # root-scoped too — there is no caller that passes a parent.
+  defp find_by_name(name) do
     StorageFolder
     |> where([f], f.name == ^name)
-    |> where_parent(parent_uuid)
+    |> where([f], is_nil(f.parent_uuid))
     |> repo().one()
   end
-
-  defp where_parent(query, nil), do: where(query, [f], is_nil(f.parent_uuid))
-  defp where_parent(query, uuid), do: where(query, [f], f.parent_uuid == ^uuid)
 
   defp folder_name(prefix, number, uuid) do
     case number do

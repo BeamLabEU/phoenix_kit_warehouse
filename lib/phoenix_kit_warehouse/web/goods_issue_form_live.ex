@@ -19,6 +19,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
+  alias PhoenixKit.Users.Auth.Scope
+  alias PhoenixKitWeb.Components.MediaBrowser
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -26,12 +28,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
     {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
   end
 
-  alias PhoenixKitWarehouse.StockLedger
-  alias PhoenixKitWarehouse.DocRefs
   alias PhoenixKitWarehouse.Comments
+  alias PhoenixKitWarehouse.DocRefs
   alias PhoenixKitWarehouse.GoodsIssues
-  alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.InternalOrders
+  alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, WarehouseBrowser}
 
   alias PhoenixKit.Utils.Routes
@@ -43,8 +45,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
+    current_user = scope && Scope.user(scope)
+    admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
     comments_available? = Comments.available?()
 
@@ -75,7 +77,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       |> assign(:io_picker_selected_meta, %{})
       |> assign(:io_picker_query, "")
       |> assign(:warehouses, StockLedger.list_warehouses())
-      |> PhoenixKitWeb.Components.MediaBrowser.setup_uploads()
+      |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
   end
@@ -131,7 +133,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
   defp handle_params_new(socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     case GoodsIssues.create_goods_issue(%{created_by_uuid: user_uuid}) do
@@ -284,14 +286,15 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   def handle_event("set_location", %{"location_uuid" => uuid}, socket) do
     case socket.assigns.issue do
       %PhoenixKitWarehouse.GoodsIssue{status: "draft"} = issue ->
-        with {:ok, updated} <- GoodsIssues.update_draft(issue, %{location_uuid: uuid}) do
-          {:noreply,
-           socket
-           |> assign(:issue, updated)
-           |> assign(:location_name, resolve_location_name(updated.location_uuid))
-           |> load_on_hand_quantities()
-           |> put_flash(:info, dgettext("default", "Warehouse changed"))}
-        else
+        case GoodsIssues.update_draft(issue, %{location_uuid: uuid}) do
+          {:ok, updated} ->
+            {:noreply,
+             socket
+             |> assign(:issue, updated)
+             |> assign(:location_name, resolve_location_name(updated.location_uuid))
+             |> load_on_hand_quantities()
+             |> put_flash(:info, dgettext("default", "Warehouse changed"))}
+
           {:error, _changeset} ->
             {:noreply,
              put_flash(socket, :error, dgettext("default", "Failed to change warehouse"))}
@@ -648,7 +651,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   end
 
   def handle_info({PhoenixKitWeb.Components.MediaBrowser, _action, _payload} = msg, socket) do
-    PhoenixKitWeb.Components.MediaBrowser.handle_parent_info(msg, socket)
+    MediaBrowser.handle_parent_info(msg, socket)
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}

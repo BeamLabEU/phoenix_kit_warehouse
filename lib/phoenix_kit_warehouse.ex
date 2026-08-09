@@ -4,13 +4,28 @@ defmodule PhoenixKitWarehouse do
   cancel reverse-posting, deficit control with min-stock settings, turnover
   report, internal orders, supplier orders, goods receipts, and goods issues.
 
-  Hard-depends on `phoenix_kit_catalogue` (warehouse only ever tracks
-  catalogue items), `phoenix_kit_locations` (every document carries a
-  `location_uuid` resolved through it), and `phoenix_kit_billing` (currency
-  formatting for unit values) — see `required_modules/0` and `mix.exs`.
+  All four sibling packages are hard dependencies in `mix.exs` — none is
+  declared `optional:`, so all four are always compiled in:
 
-  `PhoenixKitComments` stays optional (guarded via `Code.ensure_loaded?/1`
-  in the document context modules).
+    * `phoenix_kit_catalogue` — warehouse only ever tracks catalogue items.
+    * `phoenix_kit_locations` — every document carries a `location_uuid`
+      resolved through it.
+    * `phoenix_kit_billing` — currency formatting for unit values, via a
+      compile-time `import` of `CurrencyDisplay.currency_compact/1`.
+    * `phoenix_kit_comments` — six form LiveViews `use
+      PhoenixKitComments.Embed`. A `use` is macro expansion at compile time,
+      so this one can be neither guarded nor made optional; that is why
+      `mix.exs` floors it at 0.2.8 rather than 0.2.
+
+  A hard *package* dependency is not the same thing as a required *module*.
+  `required_modules/0` lists only `"catalogue"` and `"locations"` — the two
+  whose PhoenixKit modules a host must actually have enabled. Billing is
+  never enablement-checked at all (its component is imported, not called
+  conditionally), and comments is checked at runtime but not required:
+  `PhoenixKitWarehouse.Comments.available?/0` gates every comments call on
+  `PhoenixKitComments.enabled?/0`, and all six form LiveViews assign
+  `comments_available?` from it, so a host that has the comments module
+  installed but switched off simply renders no threads.
 
   Documents link to host-owned records (a sub-order, a top-level order, or
   anything else a consuming app wants to link) through the generic
@@ -26,12 +41,12 @@ defmodule PhoenixKitWarehouse do
   alias PhoenixKitWarehouse.Web.GoodsIssueIndexLive
   alias PhoenixKitWarehouse.Web.GoodsReceiptFormLive
   alias PhoenixKitWarehouse.Web.GoodsReceiptIndexLive
-  alias PhoenixKitWarehouse.Web.InventoriesLive
-  alias PhoenixKitWarehouse.Web.InventoryFormLive
   alias PhoenixKitWarehouse.Web.InternalOrderFormLive
   alias PhoenixKitWarehouse.Web.InternalOrderIndexLive
-  alias PhoenixKitWarehouse.Web.StockLive
+  alias PhoenixKitWarehouse.Web.InventoriesLive
+  alias PhoenixKitWarehouse.Web.InventoryFormLive
   alias PhoenixKitWarehouse.Web.SettingsLive
+  alias PhoenixKitWarehouse.Web.StockLive
   alias PhoenixKitWarehouse.Web.SupplierOrderFormLive
   alias PhoenixKitWarehouse.Web.SupplierOrderIndexLive
   alias PhoenixKitWarehouse.Web.TransferFormLive

@@ -25,7 +25,9 @@ defmodule PhoenixKitWarehouse.Test.FakeOrderSources do
     end
   end
 
-  @doc "Registers a fake top-level order: `%{uuid:, label:, lines: [%{\"item_uuid\" => ..., \"required_quantity\" => ...}]}`."
+  @doc ~S"""
+  Registers a fake top-level order: `%{uuid:, label:, lines: [%{"item_uuid" => ..., "required_quantity" => ...}]}`.
+  """
   def put_order(order) do
     ensure_started()
     Agent.update(__MODULE__, &put_in(&1, [:orders, order.uuid], order))

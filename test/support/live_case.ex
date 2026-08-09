@@ -9,7 +9,7 @@ defmodule PhoenixKitWarehouse.LiveCase do
   Unlike `PhoenixKitCatalogue.LiveCase`, this case does **not** short-circuit
   authentication with a fake scope — every ported warehouse LiveView reads
   `phoenix_kit_current_scope` (not just `phoenix_kit_current_user`) and
-  calls `PhoenixKit.Users.Auth.Scope.admin?/1`, so tests use the real
+  calls `PhoenixKit.Users.Auth.Scope.can_access_admin_area?/1`, so tests use the real
   register/confirm/promote/login flow via `PhoenixKit.Users.Auth`, exactly
   as the original Andi tests did — this module only provides the
   Endpoint/sandbox plumbing, not a login shortcut.

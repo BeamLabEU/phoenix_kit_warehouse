@@ -2,6 +2,7 @@ defmodule PhoenixKitWarehouse.TurnoverTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.GoodsReceipts
@@ -21,7 +22,7 @@ defmodule PhoenixKitWarehouse.TurnoverTest do
 
   defp user_uuid do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => "turnover-test-#{System.unique_integer([:positive])}@example.com",
         "password" => "password123456789",
         "first_name" => "Turnover",

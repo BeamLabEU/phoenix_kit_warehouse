@@ -19,6 +19,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
   use PhoenixKitComments.Embed
+  alias PhoenixKit.Users.Auth.Scope
+  alias PhoenixKitWeb.Components.MediaBrowser
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -26,12 +28,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
   end
 
-  alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.Comments
   alias PhoenixKitWarehouse.DocRefs
   alias PhoenixKitWarehouse.GoodsReceipts
-  alias PhoenixKitWarehouse.Comments
-  alias PhoenixKitWarehouse.SupplierOrders
+  alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
+  alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
 
   alias PhoenixKit.Utils.Routes
@@ -44,8 +46,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
+    current_user = scope && Scope.user(scope)
+    admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
     comments_available? = Comments.available?()
 
@@ -76,7 +78,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       |> assign(:source_picker_selected, [])
       |> assign(:source_picker_query, "")
       |> assign(:page_title, dgettext("default", "Supplier Order"))
-      |> PhoenixKitWeb.Components.MediaBrowser.setup_uploads()
+      |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
   end
@@ -129,7 +131,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
   defp handle_params_new(socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
     attrs = %{
@@ -740,7 +742,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   end
 
   def handle_info({PhoenixKitWeb.Components.MediaBrowser, _action, _payload} = msg, socket) do
-    PhoenixKitWeb.Components.MediaBrowser.handle_parent_info(msg, socket)
+    MediaBrowser.handle_parent_info(msg, socket)
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}

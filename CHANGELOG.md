@@ -2,6 +2,197 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- **Documentation now matches the actual dependency contract.** The
+  `PhoenixKitWarehouse` moduledoc claimed `PhoenixKitComments` "stays optional
+  (guarded via `Code.ensure_loaded?/1`)", and `AGENTS.md` said the same. Neither
+  was true: `phoenix_kit_comments` is not declared `optional:` in `mix.exs`, and
+  six form LiveViews `use PhoenixKitComments.Embed`, which is macro expansion at
+  compile time and cannot be guarded. All four sibling packages are now
+  described as hard dependencies, with the distinction a reader actually needs
+  spelled out — a hard *package* dependency is not a required *module*, and
+  `required_modules/0` lists only `"catalogue"` and `"locations"`. The moduledoc
+  also no longer implies billing is enablement-checked; it isn't, its component
+  is imported unconditionally.
+- `PhoenixKitWarehouse.Comments`' moduledoc now states what "unavailable" covers
+  (installed-but-disabled) and what it does not (version skew — `available?/0`
+  returns `true` against comments 0.2.6/0.2.7, where `subscribe/2` and the batch
+  `count_comments/2` do not yet exist; the `>= 0.2.8` floor is what closes that,
+  not any guard in the module). The `Code.ensure_loaded?/1` check and the
+  `@compile {:no_warn_undefined, ...}` attribute are labelled as the always-true
+  residue they are.
+
+## 0.2.7 - 2026-08-06
+
+### Fixed
+
+- **Dependency floor raised to `phoenix_kit ~> 1.7.231`** (PR #12, from
+  `~> 1.7.214`) — seven index LiveViews `use PhoenixKitWeb.Live.UrlState`, which
+  first shipped in core 1.7.231. The old requirement declared a contract that
+  permitted a core without that module, so a consumer whose resolution landed
+  below 1.7.231 would fail to compile this package. `mix.lock` already carried
+  1.7.231, so this corrects the published contract, not the current build.
+- **Dependency floor raised to `phoenix_kit_comments ~> 0.2 and >= 0.2.8`**
+  (post-merge review of PR #12, from `~> 0.2`) — the same class of defect PR #12
+  fixed for core, left in place three lines below it. Six form LiveViews `use
+  PhoenixKitComments.Embed`, which first shipped in comments 0.2.6; a `use` is
+  macro expansion at compile time and cannot be guarded. `PhoenixKitWarehouse.
+  Comments` additionally calls `subscribe/2`, `unsubscribe/2` and the list form
+  of `count_comments/2`, all three of which arrived in 0.2.8 — and its
+  `available?/0` guard only covers `PhoenixKitComments` being absent entirely,
+  not an older release that is present but missing those functions. The ceiling
+  stays `< 1.0.0` rather than becoming `~> 0.2.8`'s `< 0.3.0`, so a future
+  comments 0.3.0 still resolves.
+- **The `—` placeholder never appeared in the read-only price and sum cells of
+  the inventory count sheet.** They rendered `format_input_decimal(value) ||
+  "—"`, but `format_input_decimal/1` returns `""` — never `nil` — for a missing
+  value, and `""` is truthy, so the cell went blank instead. Now goes through an
+  explicit `blank_to_dash/1`.
+
+### Changed
+
+- **`mix precommit` passes for the first time.** It had been failing on `main`
+  for a long time, on findings spread across the whole codebase rather than any
+  recent change. Cleared all 291 `mix credo --strict` issues (248
+  `Design.AliasUsage`, 37 `Readability.AliasOrder`, 2 `WithSingleClause`, plus
+  `PreferImplicitTry`, `StringSigils`, `CyclomaticComplexity` and `Nesting`) and
+  all four actionable dialyzer warnings.
+- `SupplierOrders.import_from_internal_orders/3` is split into
+  `load_posted_internal_orders/1`, `load_items_by_uuid/1`,
+  `collect_import_lines/2`, `import_line/6`, `sole_supplier?/2` and
+  `merge_import_lines/2` — behaviour preserved exactly, cyclomatic complexity 16
+  → under the limit and nesting depth 5 → 3.
+- `StorageFolders` drops the `parent_uuid` parameter that both call sites always
+  passed as `nil`; the folder lookup is now explicitly root-scoped. Dead
+  `pick_name/1` fallback clauses removed from `Inventories` and
+  `Web.Components.WarehouseBrowser` — `safe_get_translation/2` already rescues
+  to `%{}`, which is the real defensive layer.
+- New `.dialyzer_ignore.exs` documents the six `Ecto.Multi` opaqueness warnings
+  (one per context's `lock_status_step/3`), which are an artefact of Ecto's
+  `@opaque t()` and have no code-level fix. Wired up with
+  `list_unused_filters: true` so a stale filter is reported.
+
+## 0.2.6 - 2026-08-05
+
+### Added
+
+- **Warehouse list search and sort now live in the URL** (PR #11) — all seven
+  index screens (`stock`, `inventories`, `internal_orders`, `supplier_orders`,
+  `goods_receipts`, `goods_issues`, `transfers`) adopt core's
+  `PhoenixKitWeb.Live.UrlState` in `:patch` mode, exposing `?q=`, `?sort=` and
+  `?dir=`. A filtered list is now a real URL: shareable, reload-proof, and Back
+  returns to the previous query instead of leaving the page. List loading moves
+  from `handle_params/3` to the `handle_url_state/2` callback, so one code path
+  serves the first render, a shared link and the Back button. The debounced
+  search box patches with `replace: true`, leaving one history entry rather
+  than one per pause in typing. `stock_view` and `warehouse_scope` stay
+  per-user `ViewConfig` preferences and are deliberately **not** in the URL.
+- `StockLive` caches its ledger snapshot per mount behind an explicit
+  `:stock_items_loaded?` flag, so search and sort re-slice the loaded list
+  instead of re-running `Deficits.available_by_item/0`, the min-stock map and
+  the Catalogue load on every keystroke.
+
+### Fixed
+
+- **Hiding the active sort column could leave the list stale** — when a column
+  save hid the column being sorted by, `__view_config_changed__/1` re-picked
+  `List.first(selected_columns)`, which is the first *visible* column and need
+  not be **sortable** (`sub_order`, `supplier_order`, `location`,
+  `source_location`, `destination_location` never are, and column order is
+  user-controlled). `push_url_state/3` sanitizes anything outside the declared
+  `in:` whitelist back to the default, so the re-pick silently collapsed to
+  `"number"` / `"item"` — and when that was already the active sort, the URL
+  state did not move at all, `handle_url_state/2` never re-ran, and the column
+  or filter change that triggered it was never applied to the table. All seven
+  screens now pick the first visible column that is actually sortable and
+  refresh in place when the re-pick resolves to the current column.
+- `mix.lock` carried eight unused entries (`igniter`, `sourceror`, `spitfire`,
+  `rewrite`, `owl`, `text_diff`, `ex_ast`, `glob_ex`) left over from the
+  dependency bump in 0.2.5, which `mix deps.unlock --check-unused` rejects.
+
+### Testing
+
+- New DB-less unit test pins each index LiveView's `?sort=` whitelist to the
+  `sortable?: true` columns of its `ColumnConfig` — the two are the same fact
+  written twice, and drift is silent: a sortable column left out of the
+  whitelist cannot be sorted by at all. Also asserts each declared default sort
+  column is itself sortable and that `?dir=` stays `cast: :atom` restricted to
+  `[:asc, :desc]`.
+
+## 0.2.5 - 2026-07-27
+
+### Changed
+
+- **Stop calling the deprecated `PhoenixKit.Users.Auth.Scope.admin?/1`.** All 7
+  call sites — one per form/stock LiveView (`stock_live`,
+  `goods_receipt_form_live`, `goods_issue_form_live`,
+  `internal_order_form_live`, `transfer_form_live`,
+  `supplier_order_form_live`, `inventory_form_live`) — now call
+  `Scope.can_access_admin_area?/1`, the name core renamed it to in phoenix_kit
+  1.7.214. The old name is a pure `@deprecated` delegate, so **no behavior
+  change** — this only silences the deprecation warning host apps were eating
+  on every compile of this library, with no way to fix it themselves. The
+  `test/support/live_case.ex` doc comment was updated to match.
+- **Dependency floor raised to `phoenix_kit ~> 1.7.214`** (from `~> 1.7.190`) —
+  `can_access_admin_area?/1` does not exist below it, so an older core would be
+  an `UndefinedFunctionError` at call time rather than a warning. This was not
+  hypothetical: the lockfile was resolving 1.7.205.
+- Dependency lockfile bumps: `phoenix_kit` 1.7.205 → 1.7.216, `phoenix_kit_ai`
+  0.16.0 → 0.17.1, `phoenix_kit_catalogue` 0.12.1 → 0.12.3,
+  `phoenix_kit_comments` 0.2.14 → 0.2.15, `phoenix_live_view` 1.2.7 → 1.2.8,
+  `etcher` 0.8.1 → 0.9.0, `ex_ast` 0.12.10 → 0.13.1, `bandit` 1.12.0 → 1.12.4,
+  `grpc`/`grpc_core` 1.0.2 → 1.0.3, `igniter` 0.8.2 → 0.8.3, `leaf` 0.3.0 →
+  0.3.2, `plug_crypto` 2.1.1 → 2.2.0, `glob_ex` 0.1.11 → 0.1.12.
+
+## 0.2.4 - 2026-07-20
+
+### Fixed
+
+- **Row-link overlay escaped its row on Safari/iPad** (PR #10) — Safari
+  doesn't honor `position: relative` on `<tr>`, so the whole-row-clickable
+  `::after` overlay on every index table (goods issues, goods receipts,
+  internal orders, supplier orders, stocktakes, transfers) escaped to the
+  `<table>`'s containing block; every row's overlay covered the entire
+  table and the last row won hit-testing, so any row tap on iOS/iPadOS
+  navigated to the last item. Fixed by adding Tailwind's `transform-gpu`
+  utility alongside the existing `relative` class on each row — WebKit does
+  honor a `transform` as a containing block on table rows. Reviewed: no
+  affected file was missed, and the fix doesn't interact badly with the
+  per-row `⋮` action menu (which portals to `<body>` on open) or any
+  pinned/sticky table variant.
+
+### Changed (review of PR #9)
+
+- **`permission_metadata/0`'s attempted gettext declaration was reverted**
+  — PR #9 added `gettext_backend`/`gettext_domain` to the warehouse's
+  `permission_metadata/0`, intending to translate its label in the admin
+  permissions matrix the same way `admin_tabs/0` already translates sidebar
+  labels. Against the dependency actually pinned in `mix.lock`
+  (`phoenix_kit` 1.7.205, published 2026-07-19, before core's
+  `localized_module_label/1` work landed), no code reads those two keys —
+  the permissions matrix still renders through the plain, untranslated
+  `Permissions.module_label/1` — so the addition was inert in production
+  and only introduced a new `mix dialyzer` `callback_type_mismatch`
+  against the published `permission_meta()` behaviour type. Reverted
+  `permission_metadata/0` to its original 4-key shape. Re-adding the two
+  keys is the correct follow-up once `phoenix_kit` publishes a Hex release
+  containing the localized-permission-labels feature and this repo's pin
+  is bumped to it — `admin_tabs/0`'s per-tab gettext declarations are
+  unaffected (that feature is real and already published). Full findings:
+  `dev_docs/pull_requests/2026/9-permission-label-i18n/CLAUDE_REVIEW.md`
+  and `dev_docs/pull_requests/2026/10-safari-row-link/CLAUDE_REVIEW.md`.
+
+### Maintenance
+
+- Removed a stale, unused `mix.lock` entry (`beamlab_ex_aws_sqs`, hex
+  package v4.0.0) left over from the prior `phoenix_kit` 1.7.199 → 1.7.205
+  bump, which renamed the dependency's key to `ex_aws_sqs` (same hex
+  package, v5.0.0) and made the old lock entry unreferenced. Caught by
+  `mix deps.unlock --check-unused`.
+
 ## 0.2.3 - 2026-07-16
 
 ### Changed

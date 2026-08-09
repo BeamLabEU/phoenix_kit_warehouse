@@ -17,16 +17,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
   import Phoenix.LiveViewTest
   import Ecto.Query
 
-  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
+  alias PhoenixKit.Activity.Entry
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Inventories
-  alias PhoenixKit.Activity.Entry
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
+  alias PhoenixKitWarehouse.Test.Repo
 
   # Clear warehouse-owned tables before each test so count-sheet seeding and
   # stock assertions are deterministic regardless of shared DB state.
   setup do
-    PhoenixKitWarehouse.Test.Repo.delete_all(PhoenixKitWarehouse.InventoryDocument)
-    PhoenixKitWarehouse.Test.Repo.delete_all(PhoenixKitWarehouse.Stock)
+    Repo.delete_all(PhoenixKitWarehouse.InventoryDocument)
+    Repo.delete_all(PhoenixKitWarehouse.Stock)
     :ok
   end
 
@@ -39,38 +43,38 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email("admin"),
         "password" => "password123456789",
         "first_name" => "Posted",
         "last_name" => "Admin"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp create_regular_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email("regular"),
         "password" => "password123456789",
         "first_name" => "Posted",
         "last_name" => "Regular"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
   defp edit_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{uuid}")
+    do: Routes.path("/admin/warehouse/inventory/#{uuid}")
 
   # Returns the count of phoenix_kit_activities rows for a given resource_uuid
   # and optional action filter.
@@ -89,7 +93,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
         query
       end
 
-    PhoenixKitWarehouse.Test.Repo.aggregate(query, :count)
+    Repo.aggregate(query, :count)
   end
 
   # ---------------------------------------------------------------------------
@@ -306,7 +310,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
       # the original posted_at to be 1 second in the past for a clean comparison.
       old_ts = DateTime.add(original_posted_at, -2, :second)
 
-      PhoenixKitWarehouse.Test.Repo.update_all(
+      Repo.update_all(
         from(d in PhoenixKitWarehouse.InventoryDocument, where: d.uuid == ^posted.uuid),
         set: [posted_at: old_ts]
       )
@@ -334,15 +338,15 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
 
       # New performer for repost
       {:ok, admin2} =
-        PhoenixKit.Users.Auth.register_user(%{
+        Auth.register_user(%{
           "email" => unique_email("admin2"),
           "password" => "password123456789",
           "first_name" => "Second",
           "last_name" => "Admin"
         })
 
-      {:ok, admin2} = PhoenixKit.Users.Auth.admin_confirm_user(admin2)
-      {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(admin2)
+      {:ok, admin2} = Auth.admin_confirm_user(admin2)
+      {:ok, _} = Roles.promote_to_admin(admin2)
 
       {:ok, reposted} = Inventories.repost_document(posted, admin2.uuid)
 
@@ -508,7 +512,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
       ActivityLog.log_created(doc, actor: admin)
 
       entry =
-        PhoenixKitWarehouse.Test.Repo.one(
+        Repo.one(
           from(e in Entry,
             where: e.resource_uuid == ^doc.uuid and e.action == "warehouse.inventory.created",
             limit: 1

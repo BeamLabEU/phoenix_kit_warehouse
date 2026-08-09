@@ -9,12 +9,28 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  # Search and sort live in the query string so a filtered list is a real URL:
+  # shareable, reload-proof, and Back returns to the previous query instead of
+  # leaving the page.
+  use PhoenixKitWeb.Live.UrlState,
+    params: [
+      search: [default: "", url_key: "q"],
+      sort_by: [
+        default: "number",
+        url_key: "sort",
+        in: ~w(number status lines_count date posted_at note)
+      ],
+      sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
+    ]
+
   use PhoenixKitWarehouse.Web.ColumnManagement,
     column_config: PhoenixKitWarehouse.ColumnConfig.GoodsIssues,
     scope: "warehouse_goods_issues"
 
-  alias PhoenixKitWarehouse.{DocRefs, GoodsIssues}
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKitWarehouse.ColumnConfig.GoodsIssues, as: GoodsIssueColumnConfig
+  alias PhoenixKitWarehouse.{DocRefs, GoodsIssues}
+  alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -26,54 +42,59 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
   @impl true
   def mount(_params, _session, socket) do
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
 
+    # :search, :sort_by, and :sort_dir are assigned from the query string by
+    # UrlState before mount/3 runs — re-assigning them here would overwrite a
+    # shared link's state with defaults.
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:search, "")
-      |> assign(:sort_by, "number")
-      |> assign(:sort_dir, :desc)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:issues, [])
+      |> ColumnManagement.assign_column_state(GoodsIssueColumnConfig)
 
     {:ok, socket}
   end
 
+  # The list is loaded here rather than in mount/3: UrlState calls this after
+  # mount and on every change to the query string, so one code path serves the
+  # first render, a shared link, and the Back button alike.
   @impl true
-  def handle_params(_params, _uri, socket) do
-    socket =
-      socket
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(GoodsIssueColumnConfig)
-      |> assign_issues()
+  def handle_url_state(_state, socket), do: assign_issues(socket)
 
-    {:noreply, socket}
-  end
+  @impl true
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
 
   def __view_config_changed__(socket) do
-    socket =
-      if socket.assigns.sort_by in socket.assigns.selected_columns do
-        socket
-      else
-        assign(socket, :sort_by, List.first(socket.assigns.selected_columns) || "number")
-      end
+    # A hidden sort column has to be re-picked through the URL, not with a
+    # bare assign. push_url_state merges the next search onto the URL state
+    # map, so an assign alone leaves ?sort= naming the column that was just
+    # hidden — and a reload sorts by it again, invisibly.
+    next = next_sort_by(socket)
 
-    assign_issues(socket)
+    if next == socket.assigns.sort_by do
+      assign_issues(socket)
+    else
+      push_url_state(socket, sort_by: next)
+    end
   end
 
   # ---------------------------------------------------------------------------
   # Events
   # ---------------------------------------------------------------------------
 
+  # `replace: true` — debounced box, so a typed-out query would otherwise leave
+  # one history entry per pause and Back would walk the search string backwards.
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> assign_issues()}
+    {:noreply, push_url_state(socket, [search: search], replace: true)}
   end
 
   @impl true
   def handle_event("set_sort", %{"sort_by" => by}, socket) do
-    {:noreply, socket |> assign(:sort_by, parse_sort_by(by)) |> assign_issues()}
+    {:noreply, push_url_state(socket, sort_by: parse_sort_by(by))}
   end
 
   @impl true
@@ -85,13 +106,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
         do: {by_id, flip_dir(socket.assigns.sort_dir)},
         else: {by_id, default_dir(by_id)}
 
-    {:noreply,
-     socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir) |> assign_issues()}
+    {:noreply, push_url_state(socket, sort_by: sort_by, sort_dir: sort_dir)}
   end
 
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
-    {:noreply, socket |> assign(:sort_dir, flip_dir(socket.assigns.sort_dir)) |> assign_issues()}
+    {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
   # ---------------------------------------------------------------------------
@@ -175,6 +195,25 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
         true -> meta.filter_apply.(acc, value)
       end
     end)
+  end
+
+  # The column to sort by after a column save: the current one while it is still
+  # visible, else the first visible column that is actually sortable. Sortable
+  # is not optional here — push_url_state sanitizes anything outside the
+  # declared `in:` whitelist back to the default, so re-picking a non-sortable
+  # column can resolve to the sort column already in effect, and a state that
+  # does not move never re-runs handle_url_state/2. The list would then keep
+  # rendering the rows it had before the column change.
+  defp next_sort_by(socket) do
+    %{sort_by: sort_by, selected_columns: selected} = socket.assigns
+
+    if sort_by in selected,
+      do: sort_by,
+      else: selected |> Enum.find(&sortable_column?/1) |> parse_sort_by()
+  end
+
+  defp sortable_column?(column_id) do
+    match?(%{sortable?: true}, Map.get(GoodsIssueColumnConfig.column_metadata_map(), column_id))
   end
 
   defp parse_sort_by(value) when is_binary(value) do
@@ -384,7 +423,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
               </.table_default_row>
             <% end %>
             <%= for entry <- @issues do %>
-              <.table_default_row class="relative cursor-pointer">
+              <.table_default_row class="transform-gpu relative cursor-pointer">
                 <% meta_map = GoodsIssueColumnConfig.column_metadata_map() %>
                 <%= for col <- @selected_columns, meta = Map.get(meta_map, col), meta do %>
                   <.table_default_cell class={cell_class(col, meta)}>
