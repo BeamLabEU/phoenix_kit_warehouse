@@ -96,7 +96,9 @@ defmodule PhoenixKitWarehouse.MixProject do
       # `PhoenixKitWeb.Live.UrlState`, which 7 LiveView files in this
       # module `use`. Anything below it resolves a core with no such
       # module, and the failure surfaces in the consumer's build.
-      pk_dep(:phoenix_kit, "~> 1.7.231"),
+      # The ceiling admits the 1.8/2.x core lines (same bound as the sibling
+      # modules) so a core minor/major bump doesn't strand host resolution.
+      pk_dep(:phoenix_kit, ">= 1.7.231 and < 3.0.0"),
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.5"),
