@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.0 - 2026-08-10
+
+### Changed
+
+- **⚠️ Requires `phoenix_kit ~> 2.0`.** The core pin moved to `~> 2.0`, so this
+  release no longer resolves against core 1.7.
+
+  Core 2.0.0 squashes the migration chain into a single `V135` baseline and makes
+  V135 the chain's floor: `mix ecto.migrate` now *refuses* on a database below it
+  rather than migrating. Check `mix phoenix_kit.status` **before** upgrading. A
+  host below V135 must install `phoenix_kit 1.7.236` — the migration bridge, the
+  last release carrying the full pre-squash chain — migrate until the reported
+  version is at least V135, and only then move to 2.0.
+
+  This package does not call migration internals, so the change is the pin
+  itself.
+
+- Sibling pins raised in step, each to that package's first release requiring
+  core 2.0: `phoenix_kit_billing` → `~> 0.7`, `phoenix_kit_catalogue` → `~> 0.13`,
+  `phoenix_kit_comments` → `~> 0.3`, `phoenix_kit_locations` → `~> 0.4`.
+  `phoenix_kit_comments` 0.3.0 is a **security release** (stored XSS in comment
+  bodies); see its CHANGELOG.
+
+### Changed
+
+- **Stops calling the deprecated `Scope.admin?/1` (PR #13).** Core renamed it to
+  `can_access_admin_area?/1` in 1.7.214 and kept the old name as a
+  `@deprecated` delegate, so this is a pure rename with no behaviour change — it
+  silences a deprecation warning host apps were eating on every compile with no
+  way to fix it themselves.
+
+### Added
+
+- **Gettext keys in `permission_metadata` (PR #14)** so the permissions-matrix
+  rows render translated labels instead of falling back to a raw key, plus a
+  test pinning the metadata shape — a missing key degrades silently into an
+  untranslated label rather than an error.
+
 ## Unreleased
 
 ### Changed

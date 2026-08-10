@@ -1,7 +1,7 @@
 defmodule PhoenixKitWarehouse.MixProject do
   use Mix.Project
 
-  @version "0.2.7"
+  @version "0.3.0"
   @source_url "https://github.com/BeamLabEU/phoenix_kit_warehouse"
 
   def project do
@@ -96,19 +96,23 @@ defmodule PhoenixKitWarehouse.MixProject do
       # `PhoenixKitWeb.Live.UrlState`, which 7 LiveView files in this
       # module `use`. Anything below it resolves a core with no such
       # module, and the failure surfaces in the consumer's build.
-      pk_dep(:phoenix_kit, "~> 1.7.231"),
+      # Core 2.x only. Keep this a TWO-segment `~> 2.0`: a three-segment
+      # `~> 2.0.x` expands to `< 2.1.0` and would strand host resolution the
+      # moment core ships 2.1 — the same failure the old `~> 1.7.231` pin had
+      # against core 2.0.0, which is what PR #15 was opened to fix.
+      pk_dep(:phoenix_kit, "~> 2.0"),
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
-      pk_dep(:phoenix_kit_billing, "~> 0.5"),
-      pk_dep(:phoenix_kit_catalogue, "~> 0.10"),
+      pk_dep(:phoenix_kit_billing, "~> 0.7"),
+      pk_dep(:phoenix_kit_catalogue, "~> 0.13"),
       # 0.2.8 is the floor for the same reason `phoenix_kit` has one: six form
       # LiveViews `use PhoenixKitComments.Embed` (first shipped in 0.2.6, and a
       # `use` cannot be guarded), and `PhoenixKitWarehouse.Comments` calls
       # `subscribe/2`, `unsubscribe/2` and the list form of `count_comments/2`
       # — all three arrived in 0.2.8. `available?/0` only guards the module
       # being absent entirely, not an older one missing those functions.
-      pk_dep(:phoenix_kit_comments, "~> 0.2 and >= 0.2.8"),
-      pk_dep(:phoenix_kit_locations, "~> 0.2"),
+      pk_dep(:phoenix_kit_comments, "~> 0.3"),
+      pk_dep(:phoenix_kit_locations, "~> 0.4"),
       {:phoenix_live_view, "~> 1.1"},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
