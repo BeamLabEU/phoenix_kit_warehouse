@@ -54,4 +54,32 @@ defmodule PhoenixKitWarehouse.GettextTest do
       refute t("Posted") == "Sisestatud"
     end)
   end
+
+  describe "permission_metadata/0 gettext wiring" do
+    # Core ≥ 1.7.206 translates permission-matrix labels through the
+    # {gettext_backend, gettext_domain} pair a module declares, dropping any
+    # backend that fails its __gettext__/1 check at boot.
+    test "declares this module's backend and the default domain" do
+      meta = PhoenixKitWarehouse.permission_metadata()
+
+      assert meta.gettext_backend == PhoenixKitWarehouse.Gettext
+      assert meta.gettext_domain == "default"
+    end
+
+    test "the declared pair passes core's gate and translates the label" do
+      %{gettext_backend: backend, gettext_domain: domain, label: label} =
+        PhoenixKitWarehouse.permission_metadata()
+
+      assert Code.ensure_loaded?(backend)
+      assert function_exported?(backend, :__gettext__, 1)
+
+      with_locale("ru", fn ->
+        assert Gettext.dgettext(backend, domain, label) == "Склад"
+      end)
+
+      with_locale("et", fn ->
+        assert Gettext.dgettext(backend, domain, label) == "Ladu"
+      end)
+    end
+  end
 end
