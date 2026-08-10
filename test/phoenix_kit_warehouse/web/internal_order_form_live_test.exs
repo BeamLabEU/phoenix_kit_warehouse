@@ -4,15 +4,20 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.SupplierOrders
+  alias PhoenixKitWarehouse.Test.Fixtures
+  alias PhoenixKitWarehouse.Test.Repo
 
   @default_location_uuid "00000000-0000-0000-0000-000000000001"
 
   setup do
-    PhoenixKitWarehouse.Test.Repo.delete_all(InternalOrder)
+    Repo.delete_all(InternalOrder)
     :ok
   end
 
@@ -24,34 +29,34 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Admin",
         "last_name" => "User"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
   defp edit_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/#{uuid}")
+    do: Routes.path("/admin/warehouse/internal-orders/#{uuid}")
 
   defp items_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/#{uuid}/items")
+    do: Routes.path("/admin/warehouse/internal-orders/#{uuid}/items")
 
   defp files_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/#{uuid}/files")
+    do: Routes.path("/admin/warehouse/internal-orders/#{uuid}/files")
 
   defp comments_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/internal-orders/#{uuid}/comments")
+    do: Routes.path("/admin/warehouse/internal-orders/#{uuid}/comments")
 
   defp create_draft do
     {:ok, order} =
@@ -253,7 +258,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       order = create_draft()
-      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      customer_order = Fixtures.insert_order!()
 
       {:ok, lv, _html} = live(conn, edit_path(order.uuid))
 
@@ -276,7 +281,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
     test "removing an attached reference detaches it", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
-      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      customer_order = Fixtures.insert_order!()
 
       {:ok, order} =
         InternalOrders.create_internal_order(%{
@@ -346,8 +351,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       order = create_draft()
-      order1 = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
-      order2 = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      order1 = Fixtures.insert_order!()
+      order2 = Fixtures.insert_order!()
 
       {:ok, lv, _html} = live(conn, items_path(order.uuid))
 

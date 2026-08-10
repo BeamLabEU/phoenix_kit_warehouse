@@ -4,16 +4,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTest do
 
   import Phoenix.LiveViewTest
 
-  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
-  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitLocations.Locations
+  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
+  alias PhoenixKitWarehouse.Test.Repo
 
   # Start each test from a clean warehouse so count-sheet seeding (which reads
   # all current stock) is deterministic regardless of other data in the DB.
   setup do
-    PhoenixKitWarehouse.Test.Repo.delete_all(PhoenixKitWarehouse.InventoryDocument)
-    PhoenixKitWarehouse.Test.Repo.delete_all(PhoenixKitWarehouse.Stock)
+    Repo.delete_all(PhoenixKitWarehouse.InventoryDocument)
+    Repo.delete_all(PhoenixKitWarehouse.Stock)
     :ok
   end
 
@@ -25,27 +29,27 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Admin",
         "last_name" => "User"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
-  defp new_path, do: PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/new")
+  defp new_path, do: Routes.path("/admin/warehouse/inventory/new")
 
   defp edit_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{uuid}")
+    do: Routes.path("/admin/warehouse/inventory/#{uuid}")
 
   # :new immediately creates a draft and redirects to its edit page (General tab).
   # The count sheet lives on the Items tab, so follow the redirect and land there.

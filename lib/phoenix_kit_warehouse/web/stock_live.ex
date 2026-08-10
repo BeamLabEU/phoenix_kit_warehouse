@@ -32,18 +32,34 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   use PhoenixKitWeb, :live_view
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  # Search and sort live in the query string so a filtered list is a real URL:
+  # shareable, reload-proof, and Back returns to the previous query instead of
+  # leaving the page. `stock_view` and `warehouse_scope` are per-user
+  # ViewConfig preferences — they intentionally stay out of the URL.
+  use PhoenixKitWeb.Live.UrlState,
+    params: [
+      search: [default: "", url_key: "q"],
+      sort_by: [
+        default: "item",
+        url_key: "sort",
+        in:
+          ~w(item sku catalogue category unit quantity unit_value total_value min_quantity available deficit)
+      ],
+      sort_dir: [default: :asc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
+    ]
+
   use PhoenixKitWarehouse.Web.ColumnManagement,
     column_config: PhoenixKitWarehouse.ColumnConfig.Stock,
     scope: "warehouse_stock"
 
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
 
-  alias PhoenixKitWarehouse.ViewConfigs
+  alias PhoenixKitWarehouse.ColumnConfig.Stock, as: StockColumnConfig
   alias PhoenixKitWarehouse.Deficits
   alias PhoenixKitWarehouse.MinStockSettings
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrders
-  alias PhoenixKitWarehouse.ColumnConfig.Stock, as: StockColumnConfig
+  alias PhoenixKitWarehouse.ViewConfigs
 
   alias PhoenixKitWarehouse.Web.Components.{
     ColumnModal,
@@ -52,8 +68,10 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     WarehouseHeader
   }
 
+  alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.Web.ColumnManagement
 
   # Opt out of PhoenixKit's auto admin-chrome layout so this view self-wraps
   # with `LayoutWrapper.app_layout` in render/1. Same pattern as orders/index.ex.
@@ -68,31 +86,13 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     locale = socket.assigns[:current_locale] || Gettext.get_locale()
 
     scope = socket.assigns[:phoenix_kit_current_scope]
-    current_user = scope && PhoenixKit.Users.Auth.Scope.user(scope)
+    current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
-    admin? = !!(scope && PhoenixKit.Users.Auth.Scope.can_access_admin_area?(scope))
+    admin? = !!(scope && Scope.can_access_admin_area?(scope))
 
-    socket =
-      socket
-      |> assign(:page_title, dgettext("default", "Warehouse"))
-      |> assign(:locale, locale)
-      |> assign(:stock_items, [])
-      |> assign(:stock_view, "grouped")
-      |> assign(:warehouses, [])
-      |> assign(:warehouse_scope, nil)
-      |> assign(:search, "")
-      |> assign(:sort_by, "item")
-      |> assign(:sort_dir, :asc)
-      |> assign(:current_user_uuid, user_uuid)
-      |> assign(:admin?, admin?)
-
-    {:ok, socket}
-  end
-
-  @impl true
-  def handle_params(_params, _uri, socket) do
-    user_uuid = socket.assigns.current_user_uuid
-
+    # ViewConfig preferences (stock_view, warehouse_scope) are per-user stored
+    # settings, not URL state — they live in mount so handle_url_state can
+    # already see warehouse_scope when it builds stock_items.
     view_config =
       if is_binary(user_uuid),
         do: ViewConfigs.get_view_config(user_uuid, "warehouse_stock"),
@@ -101,34 +101,67 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     stock_view = Map.get(view_config, "stock_view") || "grouped"
     warehouse_scope = view_config |> Map.get("warehouse_scope") |> normalize_warehouse_scope()
 
-    # Computed once here (was: once for `:stock_items` in mount, then again
-    # inside assign_stock_rows/1 — 2x per mount cycle). assign_stock_rows/2
-    # reuses this result instead of re-querying.
-    items = build_stock_items(warehouse_scope)
-
     socket =
       socket
+      |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> assign(:locale, locale)
+      |> assign(:stock_items, [])
+      |> assign(:stock_items_loaded?, false)
+      |> assign(:stock_rows, [])
+      |> assign(:stock_view, stock_view)
       |> assign(:warehouses, StockLedger.list_warehouses())
       |> assign(:warehouse_scope, warehouse_scope)
-      |> assign(:stock_view, stock_view)
-      |> assign(:stock_items, items)
-      |> PhoenixKitWarehouse.Web.ColumnManagement.assign_column_state(StockColumnConfig)
-      |> assign_stock_rows(items)
+      |> assign(:current_user_uuid, user_uuid)
+      |> assign(:admin?, admin?)
+      |> ColumnManagement.assign_column_state(StockColumnConfig)
 
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_url_state(_state, socket) do
+    # Search and sort only re-slice the list already loaded for this mount, so
+    # they must reuse the cached :stock_items — rebuilding here would re-run
+    # Deficits.available_by_item/0, min_stock_map/0 and the Catalogue load on
+    # every debounced keystroke, which is exactly what the cache exists to
+    # prevent. The ledger is re-read only when there is nothing cached yet
+    # (first render of a mount); the events that genuinely invalidate it —
+    # set_warehouse_scope, set_min_quantity, create_supplier_order_from_deficit
+    # — refresh :stock_items themselves.
+    # Tracked with an explicit flag rather than by testing :stock_items for
+    # emptiness — an empty warehouse legitimately has no items, and would
+    # otherwise re-query the ledger on every keystroke forever.
+    if socket.assigns.stock_items_loaded? do
+      assign_stock_rows(socket, socket.assigns.stock_items)
+    else
+      items = build_stock_items(socket.assigns.warehouse_scope)
+
+      socket
+      |> assign(:stock_items, items)
+      |> assign(:stock_items_loaded?, true)
+      |> assign_stock_rows(items)
+    end
+  end
+
+  @impl true
+  def handle_params(_params, _uri, socket) do
     {:noreply, socket}
   end
 
   # Re-run the pipeline after a filter value change or a column save (called by
   # the ColumnManagement macro); reset sort if its column was hidden.
   def __view_config_changed__(socket) do
-    socket =
-      if socket.assigns.sort_by in socket.assigns.selected_columns do
-        socket
-      else
-        assign(socket, :sort_by, List.first(socket.assigns.selected_columns) || "item")
-      end
+    # A hidden sort column has to be re-picked through the URL, not with a
+    # bare assign. push_url_state merges the next search onto the URL state
+    # map, so an assign alone leaves ?sort= naming the column that was just
+    # hidden — and a reload sorts by it again, invisibly.
+    next = next_sort_by(socket)
 
-    assign_stock_rows(socket)
+    if next == socket.assigns.sort_by do
+      assign_stock_rows(socket)
+    else
+      push_url_state(socket, sort_by: next)
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -235,12 +268,12 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
-    {:noreply, socket |> assign(:search, search) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, [search: search], replace: true)}
   end
 
   @impl true
   def handle_event("set_sort", %{"sort_by" => by}, socket) do
-    {:noreply, socket |> assign(:sort_by, parse_sort_by(by)) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, sort_by: parse_sort_by(by))}
   end
 
   @impl true
@@ -252,14 +285,12 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         do: {by_id, flip_dir(socket.assigns.sort_dir)},
         else: {by_id, default_dir(by_id)}
 
-    {:noreply,
-     socket |> assign(:sort_by, sort_by) |> assign(:sort_dir, sort_dir) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, sort_by: sort_by, sort_dir: sort_dir)}
   end
 
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
-    {:noreply,
-     socket |> assign(:sort_dir, flip_dir(socket.assigns.sort_dir)) |> assign_stock_rows()}
+    {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
   # ---------------------------------------------------------------------------
@@ -361,6 +392,25 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         true -> meta.filter_apply.(acc, value)
       end
     end)
+  end
+
+  # The column to sort by after a column save: the current one while it is still
+  # visible, else the first visible column that is actually sortable. Sortable
+  # is not optional here — push_url_state sanitizes anything outside the
+  # declared `in:` whitelist back to the default, so re-picking a non-sortable
+  # column can resolve to the sort column already in effect, and a state that
+  # does not move never re-runs handle_url_state/2. The list would then keep
+  # rendering the rows it had before the column change.
+  defp next_sort_by(socket) do
+    %{sort_by: sort_by, selected_columns: selected} = socket.assigns
+
+    if sort_by in selected,
+      do: sort_by,
+      else: selected |> Enum.find(&sortable_column?/1) |> parse_sort_by()
+  end
+
+  defp sortable_column?(column_id) do
+    match?(%{sortable?: true}, Map.get(StockColumnConfig.column_metadata_map(), column_id))
   end
 
   defp parse_sort_by(value) when is_binary(value) do

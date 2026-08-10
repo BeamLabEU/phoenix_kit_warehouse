@@ -17,12 +17,12 @@ defmodule PhoenixKitWarehouse.DocRefs do
 
   import Ecto.Query
 
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitWarehouse.GoodsIssue
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.SupplierOrder
-  alias PhoenixKit.Utils.Routes
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 

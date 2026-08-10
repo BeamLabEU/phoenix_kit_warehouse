@@ -22,8 +22,8 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
     {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
   end
 
-  alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitLocations.Locations
+  alias PhoenixKitWarehouse.StockLedger
 
   @impl true
   def mount(_params, _session, socket) do

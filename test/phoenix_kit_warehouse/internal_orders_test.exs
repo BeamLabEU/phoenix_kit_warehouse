@@ -2,8 +2,10 @@ defmodule PhoenixKitWarehouse.InternalOrdersTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.Test.FakeOrderSources
+  alias PhoenixKitWarehouse.Test.Repo
 
   setup do
     Application.put_env(:phoenix_kit_warehouse, :source_kinds, [
@@ -28,7 +30,7 @@ defmodule PhoenixKitWarehouse.InternalOrdersTest do
 
   defp user_uuid do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => "io-test-#{System.unique_integer([:positive])}@example.com",
         "password" => "password123456789",
         "first_name" => "IO",
@@ -356,9 +358,9 @@ defmodule PhoenixKitWarehouse.InternalOrdersTest do
       actor = user_uuid()
       order = create_draft!(lines: sample_lines())
 
-      stock_before = PhoenixKitWarehouse.Test.Repo.all(PhoenixKitWarehouse.Stock)
+      stock_before = Repo.all(PhoenixKitWarehouse.Stock)
       {:ok, _posted} = InternalOrders.post_internal_order(order, actor)
-      stock_after = PhoenixKitWarehouse.Test.Repo.all(PhoenixKitWarehouse.Stock)
+      stock_after = Repo.all(PhoenixKitWarehouse.Stock)
 
       assert length(stock_before) == length(stock_after)
     end

@@ -164,7 +164,7 @@ defmodule PhoenixKitWarehouse.Web.ColumnManagement do
 
         active_filters = socket.assigns.temp_active_filters || socket.assigns.active_filters
 
-        PhoenixKitWarehouse.Web.ColumnManagement.save_view_config(
+        unquote(__MODULE__).save_view_config(
           socket,
           ordered,
           active_filters,

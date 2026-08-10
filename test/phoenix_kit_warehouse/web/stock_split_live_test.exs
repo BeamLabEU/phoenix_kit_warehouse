@@ -1,30 +1,33 @@
 defmodule PhoenixKitWarehouse.Web.StockSplitLiveTest do
   use PhoenixKitWarehouse.LiveCase, async: false
   import Phoenix.LiveViewTest
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
 
   defp email, do: "wh-#{System.unique_integer([:positive])}@example.com"
 
   defp admin do
     {:ok, u} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => email(),
         "password" => "password123456789",
         "first_name" => "W",
         "last_name" => "A"
       })
 
-    {:ok, u} = PhoenixKit.Users.Auth.admin_confirm_user(u)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(u)
-    PhoenixKit.Users.Auth.get_user!(u.uuid)
+    {:ok, u} = Auth.admin_confirm_user(u)
+    {:ok, _} = Roles.promote_to_admin(u)
+    Auth.get_user!(u.uuid)
   end
 
   defp login(conn, u) do
-    t = PhoenixKit.Users.Auth.generate_user_session_token(u)
+    t = Auth.generate_user_session_token(u)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, t)
   end
 
-  defp stock_path, do: PhoenixKit.Utils.Routes.path("/admin/warehouse")
-  defp inv_path, do: PhoenixKit.Utils.Routes.path("/admin/warehouse/inventories")
+  defp stock_path, do: Routes.path("/admin/warehouse")
+  defp inv_path, do: Routes.path("/admin/warehouse/inventories")
 
   test "stock route renders the grouped stock view via StockLive", %{conn: conn} do
     {:ok, _lv, html} = live(login(conn, admin()), stock_path())

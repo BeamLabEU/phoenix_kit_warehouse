@@ -2,6 +2,9 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
   use PhoenixKitWarehouse.LiveCase, async: false
   import Phoenix.LiveViewTest
 
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.MinStockSettings
@@ -12,24 +15,24 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
 
   defp admin do
     {:ok, u} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => email(),
         "password" => "password123456789",
         "first_name" => "W",
         "last_name" => "A"
       })
 
-    {:ok, u} = PhoenixKit.Users.Auth.admin_confirm_user(u)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(u)
-    PhoenixKit.Users.Auth.get_user!(u.uuid)
+    {:ok, u} = Auth.admin_confirm_user(u)
+    {:ok, _} = Roles.promote_to_admin(u)
+    Auth.get_user!(u.uuid)
   end
 
   defp login(conn, u) do
-    t = PhoenixKit.Users.Auth.generate_user_session_token(u)
+    t = Auth.generate_user_session_token(u)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, t)
   end
 
-  defp path, do: PhoenixKit.Utils.Routes.path("/admin/warehouse")
+  defp path, do: Routes.path("/admin/warehouse")
 
   defp create_catalogue! do
     {:ok, cat} =

@@ -2,13 +2,13 @@ defmodule PhoenixKitWarehouse.DocRefsTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.DocRefs
   alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.GoodsReceipts
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Test.FakeOrderSources
-  alias PhoenixKitCatalogue.Catalogue
 
   setup do
     Application.put_env(:phoenix_kit_warehouse, :source_kinds, [

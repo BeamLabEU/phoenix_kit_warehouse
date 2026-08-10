@@ -4,17 +4,22 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Roles
+  alias PhoenixKit.Utils.Routes
+  alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.GoodsReceipts
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.SupplierOrders
-  alias PhoenixKitCatalogue.Catalogue
-  alias PhoenixKitLocations.Locations
+  alias PhoenixKitWarehouse.Test.Fixtures
+  alias PhoenixKitWarehouse.Test.Repo
 
   @default_location_uuid "00000000-0000-0000-0000-000000000001"
 
   setup do
-    PhoenixKitWarehouse.Test.Repo.delete_all(GoodsReceipt)
+    Repo.delete_all(GoodsReceipt)
     :ok
   end
 
@@ -26,20 +31,20 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
 
   defp create_admin_user do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => unique_email(),
         "password" => "password123456789",
         "first_name" => "Admin",
         "last_name" => "User"
       })
 
-    {:ok, user} = PhoenixKit.Users.Auth.admin_confirm_user(user)
-    {:ok, _} = PhoenixKit.Users.Roles.promote_to_admin(user)
-    PhoenixKit.Users.Auth.get_user!(user.uuid)
+    {:ok, user} = Auth.admin_confirm_user(user)
+    {:ok, _} = Roles.promote_to_admin(user)
+    Auth.get_user!(user.uuid)
   end
 
   defp log_in_admin(conn, user) do
-    token = PhoenixKit.Users.Auth.generate_user_session_token(user)
+    token = Auth.generate_user_session_token(user)
     conn |> Plug.Test.init_test_session(%{}) |> Plug.Conn.put_session(:user_token, token)
   end
 
@@ -135,16 +140,16 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
   end
 
   defp edit_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/#{uuid}")
+    do: Routes.path("/admin/warehouse/goods-receipts/#{uuid}")
 
   defp lines_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/#{uuid}/lines")
+    do: Routes.path("/admin/warehouse/goods-receipts/#{uuid}/lines")
 
   defp files_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/#{uuid}/files")
+    do: Routes.path("/admin/warehouse/goods-receipts/#{uuid}/files")
 
   defp comments_path(uuid),
-    do: PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-receipts/#{uuid}/comments")
+    do: Routes.path("/admin/warehouse/goods-receipts/#{uuid}/comments")
 
   # Creates real Location records tagged with a fresh warehouse LocationType and
   # marks that type as the warehouse type. The per-test sandbox rolls both the
@@ -573,7 +578,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)
       {receipt, _supplier} = create_draft_with_lines()
-      customer_order = PhoenixKitWarehouse.Test.Fixtures.insert_order!()
+      customer_order = Fixtures.insert_order!()
 
       {:ok, lv, _html} = live(conn, edit_path(receipt.uuid))
 
@@ -626,7 +631,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
       {so, _supplier} = create_posted_supplier_order!(admin.uuid)
 
       so_edit_path =
-        PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders/#{so.uuid}")
+        Routes.path("/admin/warehouse/supplier-orders/#{so.uuid}")
 
       {:ok, _lv, html} = live(conn, so_edit_path)
 
@@ -639,7 +644,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
       {so, _supplier} = create_posted_supplier_order!(admin.uuid)
 
       so_edit_path =
-        PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders/#{so.uuid}")
+        Routes.path("/admin/warehouse/supplier-orders/#{so.uuid}")
 
       {:ok, lv, _html} = live(conn, so_edit_path)
 

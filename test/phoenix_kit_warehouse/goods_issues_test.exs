@@ -2,12 +2,13 @@ defmodule PhoenixKitWarehouse.GoodsIssuesTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
-  alias PhoenixKitWarehouse.Test.Repo
-  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.Stock
-  alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.StockLedger, as: Warehouse
+  alias PhoenixKitWarehouse.Test.Repo
 
   # ---------------------------------------------------------------------------
   # Fixtures
@@ -17,7 +18,7 @@ defmodule PhoenixKitWarehouse.GoodsIssuesTest do
 
   defp user_uuid do
     {:ok, user} =
-      PhoenixKit.Users.Auth.register_user(%{
+      Auth.register_user(%{
         "email" => "gi-test-#{System.unique_integer([:positive])}@example.com",
         "password" => "password123456789",
         "first_name" => "GI",
