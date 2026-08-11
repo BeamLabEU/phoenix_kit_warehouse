@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.1 - 2026-08-11
+
+### Fixed
+
+- **`priv/` is now shipped in the Hex package** (#17). It was missing from the
+  `files:` list, so `priv/gettext` never reached anyone installing from Hex and
+  every string rendered as its English msgid no matter what locale the host was
+  in. The translations were only ever working for people running from a
+  checkout of this repo.
+
+### Changed
+
+- Dependency updates (`phoenix_kit` 2.2.0, `phoenix_kit_catalogue` 0.14.0,
+  `phoenix_kit_comments` 0.4.0, `phoenix_kit_locations` 0.4.1, `phoenix`
+  1.8.10, `hackney` 4.7.3).
+
 ## 0.3.0 - 2026-08-10
 
 ### Changed
