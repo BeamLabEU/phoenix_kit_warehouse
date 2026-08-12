@@ -22,7 +22,7 @@ borrows the host's via `phoenix_kit`.
 Add to your host app's `mix.exs`:
 
 ```elixir
-{:phoenix_kit_warehouse, "~> 0.1"}
+{:phoenix_kit_warehouse, "~> 0.3"}
 ```
 
 Then fetch deps, apply the module's tables, and enable it in
