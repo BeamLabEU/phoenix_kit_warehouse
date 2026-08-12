@@ -1587,6 +1587,11 @@ msgstr "Vaade:"
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:233
 #: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:39
 #: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:216
+#: lib/phoenix_kit_warehouse.ex:134
+#, elixir-format
+msgid "Warehouse stock, stocktakes, and document management"
+msgstr "Laoseisud, inventuurid ja dokumendihaldus"
+
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:47
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:145
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:180

@@ -34,6 +34,7 @@ defmodule PhoenixKitWarehouse do
   """
 
   use PhoenixKit.Module
+  use Gettext, backend: PhoenixKitWarehouse.Gettext
 
   alias PhoenixKit.Dashboard.Tab
   alias PhoenixKit.Settings
@@ -132,6 +133,10 @@ defmodule PhoenixKitWarehouse do
       label: "Warehouse",
       icon: "hero-building-storefront",
       description: "Warehouse stock, stocktakes, and document management",
+      # The strings above and in `admin_tabs/0` are plain data — `mix
+      # gettext.extract` never sees this file, so their msgids only reach the
+      # catalogue if something else happens to use the same English. See
+      # `translatable_labels/0` at the bottom of this module, which pins them.
       # Lets the admin permissions matrix render this label translated,
       # the same way the sidebar tabs below translate theirs.
       gettext_backend: PhoenixKitWarehouse.Gettext,
@@ -613,6 +618,39 @@ defmodule PhoenixKitWarehouse do
         gettext_backend: PhoenixKitWarehouse.Gettext,
         gettext_domain: "default"
       }
+    ]
+  end
+
+  @doc """
+  Pins every label this module declares as a gettext msgid.
+
+  `permission_metadata/0`, `admin_tabs/0`, `hidden_crud_tabs/0` and
+  `settings_tabs/0` declare their labels as plain string literals, so
+  `mix gettext.extract` never sees this file. PhoenixKit translates them at
+  render time through each declaration's `gettext_backend`/`gettext_domain` —
+  but only if the msgid exists in this module's own catalogue.
+
+  Until this function existed, the tab labels were in `default.pot` purely by
+  coincidence: `Web.WarehouseHeader` and `Web.TurnoverReportLive` happen to use
+  the same English strings, and their `gettext` macro calls are what the
+  extractor found. Rewording either file would have silently reverted eight
+  admin tabs to English with no compile error and no failing test.
+
+  `dgettext_noop/2` registers the msgid and returns it unchanged — nothing here
+  runs at request time.
+  """
+  @spec translatable_labels() :: [String.t()]
+  def translatable_labels do
+    [
+      dgettext_noop("default", "Warehouse"),
+      dgettext_noop("default", "Warehouse stock, stocktakes, and document management"),
+      dgettext_noop("default", "Stocktakes"),
+      dgettext_noop("default", "Internal Orders"),
+      dgettext_noop("default", "Supplier Orders"),
+      dgettext_noop("default", "Goods Receipt"),
+      dgettext_noop("default", "Goods Issue"),
+      dgettext_noop("default", "Transfers"),
+      dgettext_noop("default", "Turnover")
     ]
   end
 end
