@@ -796,7 +796,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                   <dd class="mt-0.5">
                     <%= if !@posted? and warehouse_options?(@warehouses) do %>
                       <form phx-change="set_location" phx-submit="set_location">
-                        <select name="location_uuid" class="select select-sm select-bordered">
+                        <select name="location_uuid" class="select select-sm">
                           <%= for warehouse <- @warehouses do %>
                             <option
                               value={warehouse.uuid}

@@ -161,7 +161,7 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
               type="date"
               name="date_from"
               value={Date.to_iso8601(@date_from)}
-              class="input input-sm input-bordered"
+              class="input input-sm"
             />
           </div>
           <div class="flex flex-col gap-1">
@@ -172,14 +172,14 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
               type="date"
               name="date_to"
               value={Date.to_iso8601(@date_to)}
-              class="input input-sm input-bordered"
+              class="input input-sm"
             />
           </div>
           <div :if={warehouse_options?(@warehouses)} class="flex flex-col gap-1">
             <label class="text-xs font-medium text-base-content/60">
               {dgettext("default", "Warehouse")}
             </label>
-            <select name="location_uuid" class="select select-sm select-bordered">
+            <select name="location_uuid" class="select select-sm">
               <option value="" selected={@location_uuid == nil}>
                 {dgettext("default", "All warehouses")}
               </option>

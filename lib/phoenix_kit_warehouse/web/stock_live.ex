@@ -611,7 +611,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
           <%= if warehouse_options?(@warehouses) do %>
             <form id="stock-warehouse-scope" phx-change="set_warehouse_scope" class="contents">
-              <select name="location_uuid" class="select select-sm select-bordered">
+              <select name="location_uuid" class="select select-sm">
                 <option value="" selected={@warehouse_scope == nil}>
                   {dgettext("default", "All warehouses")}
                 </option>
