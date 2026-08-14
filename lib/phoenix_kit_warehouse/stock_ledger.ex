@@ -307,6 +307,24 @@ defmodule PhoenixKitWarehouse.StockLedger do
 
       {_n, [%Stock{quantity: new_qty} | _]} ->
         {:ok, to_decimal(new_qty)}
+
+      # `returning:` is honoured on Postgres, but not universally: a repo
+      # without it (or an adapter that ignores the option) answers `{n, nil}`
+      # for the same successful update. That shape had no clause, so a
+      # perfectly good decrement raised CaseClauseError from inside the
+      # transaction and took the whole transfer down. Read the row back
+      # instead — the UPDATE already committed the decrement, so this only
+      # recovers the value we could not be told.
+      {_n, _} ->
+        case target_repo.one(
+               from(s in Stock,
+                 where: s.item_uuid == ^item_uuid and s.location_uuid == ^location_uuid,
+                 select: s.quantity
+               )
+             ) do
+          nil -> {:error, {:insufficient_stock, item_uuid}}
+          qty -> {:ok, to_decimal(qty)}
+        end
     end
   end
 
