@@ -1039,7 +1039,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
                   <dd class="mt-0.5">
                     <%= if !@posted? and warehouse_options?(@warehouses) do %>
                       <form phx-change="set_location" phx-submit="set_location">
-                        <select name="location_uuid" class="select select-sm select-bordered">
+                        <select name="location_uuid" class="select select-sm">
                           <%= for warehouse <- @warehouses do %>
                             <option
                               value={warehouse.uuid}
@@ -1534,7 +1534,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
         <form phx-change="set_responsibility" onsubmit="return false">
           <select
             name={@field_name}
-            class="select select-sm select-bordered w-full"
+            class="select select-sm w-full"
           >
             <option value="">{dgettext("default", "— not set —")}</option>
             <%= for user <- @selectable_users do %>

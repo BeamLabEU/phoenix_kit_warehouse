@@ -1249,7 +1249,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     ~H"""
     <%= if @editable? do %>
       <form phx-change={@event} phx-submit={@event}>
-        <select name="location_uuid" class="select select-sm select-bordered">
+        <select name="location_uuid" class="select select-sm">
           <option value="" selected={is_nil(@selected_uuid)}>
             {dgettext("default", "— select —")}
           </option>

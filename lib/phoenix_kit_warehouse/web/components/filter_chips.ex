@@ -60,7 +60,7 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
       name="value"
       value={@value || ""}
       placeholder={dgettext("default", "Contains...")}
-      class="input input-xs input-bordered w-32"
+      class="input input-xs w-32"
       phx-debounce="300"
     />
     """
@@ -76,7 +76,7 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
     assigns = assign(assigns, :options, options)
 
     ~H"""
-    <select name="value" class="select select-xs select-bordered">
+    <select name="value" class="select select-xs">
       <option value="" selected={@value in [nil, ""]}>
         {dgettext("default", "Any")}
       </option>
@@ -98,7 +98,7 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
       name="value[min]"
       value={@min}
       placeholder={dgettext("default", "Min")}
-      class="input input-xs input-bordered w-20"
+      class="input input-xs w-20"
       phx-debounce="300"
     />
     <span class="text-xs text-base-content/40">–</span>
@@ -108,7 +108,7 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
       name="value[max]"
       value={@max}
       placeholder={dgettext("default", "Max")}
-      class="input input-xs input-bordered w-20"
+      class="input input-xs w-20"
       phx-debounce="300"
     />
     """
@@ -123,14 +123,14 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
       type="date"
       name="value[from]"
       value={@from}
-      class="input input-xs input-bordered w-36"
+      class="input input-xs w-36"
     />
     <span class="text-xs text-base-content/40">–</span>
     <input
       type="date"
       name="value[to]"
       value={@to}
-      class="input input-xs input-bordered w-36"
+      class="input input-xs w-36"
     />
     """
   end

@@ -116,7 +116,11 @@ defmodule PhoenixKitWarehouse.MixProject do
       {:phoenix_live_view, "~> 1.1"},
       {:ex_doc, "~> 0.39", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      # `Phoenix.LiveViewTest` parses HTML via `lazy_html` for `element/2`,
+      # `render(view) =~ "..."`, etc. Test-only. Without it every LiveView
+      # test raises "Phoenix LiveView requires lazy_html as a test dependency".
+      {:lazy_html, ">= 0.1.0", only: :test}
     ]
   end
 

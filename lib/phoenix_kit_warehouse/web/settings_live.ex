@@ -99,7 +99,7 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
             <label class="text-sm font-medium">
               {dgettext("default", "Warehouse location type")}
             </label>
-            <select name="value" class="select select-bordered select-sm">
+            <select name="value" class="select select-sm">
               <option value="">{dgettext("default", "Not set")}</option>
               <option
                 :for={t <- @location_types}
@@ -115,7 +115,7 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
             <label class="text-sm font-medium">{dgettext("default", "Default warehouse")}</label>
             <select
               name="value"
-              class="select select-bordered select-sm"
+              class="select select-sm"
               disabled={@warehouse_type_uuid == nil}
             >
               <option value="">{dgettext("default", "Not set")}</option>
