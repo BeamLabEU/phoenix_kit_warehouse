@@ -82,4 +82,33 @@ defmodule PhoenixKitWarehouse.GettextTest do
       end)
     end
   end
+
+  describe "translatable_labels/0 pins every gettext-backed label" do
+    # translatable_labels/0 exists to survive rewording elsewhere (see its
+    # moduledoc) — this test is what actually enforces that: it re-derives
+    # the full set of labels declared with a gettext_backend and fails if
+    # one falls out of translatable_labels/0's hand-maintained list.
+    test "covers every admin_tabs/settings_tabs label declaring a gettext_backend" do
+      pinned = PhoenixKitWarehouse.translatable_labels()
+
+      declared_labels =
+        (PhoenixKitWarehouse.admin_tabs() ++ PhoenixKitWarehouse.settings_tabs())
+        |> Enum.filter(& &1.gettext_backend)
+        |> Enum.map(& &1.label)
+        |> Enum.uniq()
+
+      for label <- declared_labels do
+        assert label in pinned,
+               "#{inspect(label)} declares a gettext_backend but is missing from translatable_labels/0"
+      end
+    end
+
+    test "covers permission_metadata/0's label and description" do
+      pinned = PhoenixKitWarehouse.translatable_labels()
+      meta = PhoenixKitWarehouse.permission_metadata()
+
+      assert meta.label in pinned
+      assert meta.description in pinned
+    end
+  end
 end
