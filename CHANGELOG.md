@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.3.2 - 2026-08-16
+
+### Fixed
+
+- **Permission-matrix and admin-tab labels stay translated regardless of
+  unrelated wording changes elsewhere** (#18). Pins all eight admin-tab
+  labels and the `permission_metadata/0` label/description as gettext
+  msgids via a new `translatable_labels/0`, so they no longer depend on
+  `Web.WarehouseHeader`/`Web.TurnoverReportLive` happening to use the same
+  English strings. Before this, rewording either file would have silently
+  reverted eight admin tabs to English with no compile error and no failing
+  test — locked in with new test coverage.
+
+### Changed
+
+- Dependency updates (`phoenix_kit` 2.8.0, `phoenix_kit_catalogue` 0.16.1,
+  `ecto` 3.14.2, `grpc`/`grpc_core` 1.0.4, `beamlab_countries` 1.2.0,
+  `etcher` 0.12.1, `quic` 1.8.1).
+
 ## 0.3.1 - 2026-08-11
 
 ### Fixed
