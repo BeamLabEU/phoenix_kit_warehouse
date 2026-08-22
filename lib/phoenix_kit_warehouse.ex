@@ -160,6 +160,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {StockLive, :index}
       },
       %Tab{
@@ -174,6 +175,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {InventoriesLive, :inventories}
       },
       %Tab{
@@ -188,6 +190,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {InternalOrderIndexLive, :index}
       },
       %Tab{
@@ -202,6 +205,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {SupplierOrderIndexLive, :index}
       },
       %Tab{
@@ -216,6 +220,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {GoodsReceiptIndexLive, :index}
       },
       %Tab{
@@ -230,6 +235,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {GoodsIssueIndexLive, :index}
       },
       %Tab{
@@ -244,6 +250,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {TransferIndexLive, :index}
       },
       %Tab{
@@ -258,6 +265,7 @@ defmodule PhoenixKitWarehouse do
         level: :admin,
         permission: module_key(),
         group: :admin_main,
+        visible: true,
         live_view: {TurnoverReportLive, :index}
       }
     ] ++ hidden_crud_tabs()

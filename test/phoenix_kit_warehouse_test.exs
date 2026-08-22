@@ -25,9 +25,9 @@ defmodule PhoenixKitWarehouseTest do
              ]
     end
 
-    test "admin_tabs/0 returns 37 tabs, all under module_key() permission" do
+    test "admin_tabs/0 returns 38 tabs, all under module_key() permission" do
       tabs = PhoenixKitWarehouse.admin_tabs()
-      assert length(tabs) == 37
+      assert length(tabs) == 38
       assert Enum.all?(tabs, &(&1.permission == "warehouse"))
     end
 
