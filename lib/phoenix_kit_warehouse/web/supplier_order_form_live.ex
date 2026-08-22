@@ -224,10 +224,14 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
   defp resolve_supplier_name(nil), do: nil
 
+  # Cross-source: a supplier row linked to a CRM company resolves to the
+  # party's current name, not the local row's stored snapshot. Falls back to
+  # the local name when the link is unset, the party is gone, or CRM isn't
+  # installed — see `Suppliers.resolve/1`.
   defp resolve_supplier_name(supplier_uuid) do
-    case Catalogue.get_supplier(supplier_uuid) do
-      nil -> nil
-      supplier -> supplier.name
+    case Catalogue.resolve_supplier(supplier_uuid) do
+      {:ok, %{name: name}} -> name
+      :error -> nil
     end
   end
 
