@@ -101,6 +101,11 @@ defmodule PhoenixKitWarehouse.MixProject do
       # moment core ships 2.1 — the same failure the old `~> 1.7.231` pin had
       # against core 2.0.0, which is what PR #15 was opened to fix.
       pk_dep(:phoenix_kit, "~> 2.0"),
+      # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
+      # builds from source when MDEX_NATIVE_BUILD=1 is set in the
+      # environment; that path requires rustler itself, not just
+      # rustler_precompiled. Same declaration as phoenix_kit's own mix.exs.
+      {:rustler, ">= 0.0.0", optional: true},
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.7"),
