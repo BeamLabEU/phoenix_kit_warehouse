@@ -1,11 +1,16 @@
 support_dir = Path.expand("support", __DIR__)
 
-["test_repo.ex", "data_case.ex"]
+["test_repo.ex", "data_case.ex", "live_database_guard.ex"]
 |> Enum.each(&Code.require_file(&1, support_dir))
 
 db_name =
   Application.get_env(:phoenix_kit_warehouse, PhoenixKitWarehouse.Test.Repo)[:database] ||
     "phoenix_kit_warehouse_test"
+
+# S014: refuse before anything else touches the database — see
+# PhoenixKitWarehouse.Test.LiveDatabaseGuard's moduledoc for why this
+# exists alongside (not instead of) the external `pk-test` wrapper.
+PhoenixKitWarehouse.Test.LiveDatabaseGuard.check!(db_name)
 
 db_check =
   try do

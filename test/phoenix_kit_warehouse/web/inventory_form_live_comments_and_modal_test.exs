@@ -147,6 +147,14 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveCommentsAndModalTest do
 
       {:ok, user} = Auth.admin_confirm_user(user)
 
+      # Comments off is the correct default (PhoenixKitComments.enabled?/0
+      # gates on the "comments_enabled" Setting, absent by default) — nothing
+      # in test_helper.exs or this test enables it, so create_comment/4
+      # writes the row but Comments.count/2's own availability check reads
+      # the module as off and reports 0 regardless. A real deployment always
+      # has this decided one way or the other; this test needs it on.
+      {:ok, _} = PhoenixKitComments.enable_system()
+
       test_uuid = Ecto.UUID.generate()
 
       t0 = System.monotonic_time(:millisecond)

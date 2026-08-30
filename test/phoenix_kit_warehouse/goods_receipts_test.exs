@@ -10,7 +10,23 @@ defmodule PhoenixKitWarehouse.GoodsReceiptsTest do
   alias PhoenixKitWarehouse.Stock
   alias PhoenixKitWarehouse.StockLedger, as: Warehouse
   alias PhoenixKitWarehouse.SupplierOrders
+  alias PhoenixKitWarehouse.Test.FakeOrderSources
   alias PhoenixKitWarehouse.Test.Repo
+
+  # `add_source_ref/3`'s "order" source_kind is host-configured (see
+  # SourceKinds's own moduledoc) — nothing registers it by default, so the
+  # two tests below that reference kind "order" need the same fixture
+  # `internal_orders_test.exs`/`doc_refs_test.exs`/`transfers_test.exs`/
+  # `source_kinds_test.exs` already use.
+  setup do
+    Application.put_env(:phoenix_kit_warehouse, :source_kinds, [
+      FakeOrderSources.order_kind(),
+      FakeOrderSources.sub_order_kind()
+    ])
+
+    on_exit(fn -> Application.delete_env(:phoenix_kit_warehouse, :source_kinds) end)
+    :ok
+  end
 
   # ---------------------------------------------------------------------------
   # Fixtures

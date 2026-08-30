@@ -2,6 +2,7 @@ defmodule PhoenixKitWarehouse.CommittedQuantitiesTest do
   @moduledoc false
   use PhoenixKitWarehouse.DataCase, async: false
 
+  alias PhoenixKit.Users.Auth
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.GoodsIssue
   alias PhoenixKitWarehouse.GoodsIssues
@@ -13,6 +14,25 @@ defmodule PhoenixKitWarehouse.CommittedQuantitiesTest do
       GoodsIssues.create_goods_issue(Map.merge(%{location_uuid: @default_location_uuid}, attrs))
 
     issue
+  end
+
+  # `post_goods_issue/2`'s second argument is a real FK
+  # (phoenix_kit_warehouse_goods_issues_performed_by_uuid_fkey) into
+  # phoenix_kit_users, not a bare UUID slot — a real deployment always has a
+  # real performer. Same fixture shape
+  # `inventory_form_live_comments_and_modal_test.exs` already uses for "need
+  # a real user for the FK constraint".
+  defp user_uuid do
+    {:ok, user} =
+      Auth.register_user(%{
+        "email" => "cq-test-#{System.unique_integer([:positive])}@example.com",
+        "password" => "password123456789",
+        "first_name" => "CQ",
+        "last_name" => "Test"
+      })
+
+    {:ok, user} = Auth.admin_confirm_user(user)
+    user.uuid
   end
 
   describe "compute/4" do
@@ -164,7 +184,7 @@ defmodule PhoenixKitWarehouse.CommittedQuantitiesTest do
           ]
         })
 
-      {:ok, _} = GoodsIssues.post_goods_issue(posted_issue, Ecto.UUID.generate())
+      {:ok, _} = GoodsIssues.post_goods_issue(posted_issue, user_uuid())
 
       posted_only =
         CommittedQuantities.compute(
