@@ -272,11 +272,20 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
     end
 
     test "both warehouses show as read-only text once shipped", %{conn: conn} do
+      # `admin` must be created before `ship!/4`: `ship!/4` registers its own
+      # internal actor first, and `Roles.ensure_first_user_is_owner/1` makes
+      # whichever user registers FIRST in this sandboxed transaction the
+      # Owner. A later `Roles.promote_to_admin/1` (what `create_admin_user/0`
+      # does) only assigns the Admin role — it does not seed baseline
+      # permission rows — so an `admin` created after `ship!/4` has already
+      # taken the Owner slot ends up with zero held permissions and is
+      # correctly denied by `:phoenix_kit_ensure_admin`'s unmapped-view
+      # fallback (I170).
+      admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
       [loc_a, loc_b] = setup_warehouses!(["TR Site A", "TR Site B"])
       shipped = ship!(loc_a, loc_b, item_uuid, "5")
 
-      admin = create_admin_user()
       conn = log_in_admin(conn, admin)
 
       {:ok, _lv, html} = live(conn, edit_path(shipped.uuid))
@@ -311,11 +320,13 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
     end
 
     test "transfer_quantity is read-only once in_transit", %{conn: conn} do
+      # Order matters — see the I170 comment on the "both warehouses show as
+      # read-only text once shipped" test above.
+      admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
       [loc_a, loc_b] = setup_warehouses!(["TR Site A", "TR Site B"])
       shipped = ship!(loc_a, loc_b, item_uuid, "5")
 
-      admin = create_admin_user()
       conn = log_in_admin(conn, admin)
 
       {:ok, _lv, html} = live(conn, items_path(shipped.uuid))
@@ -494,11 +505,13 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
     test "renders Receive and Cancel buttons, and an In transit badge, when in_transit", %{
       conn: conn
     } do
+      # Order matters — see the I170 comment on the "both warehouses show as
+      # read-only text once shipped" test above.
+      admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
       [loc_a, loc_b] = setup_warehouses!(["TR Site A", "TR Site B"])
       shipped = ship!(loc_a, loc_b, item_uuid, "5")
 
-      admin = create_admin_user()
       conn = log_in_admin(conn, admin)
 
       {:ok, lv, html} = live(conn, edit_path(shipped.uuid))
@@ -510,11 +523,13 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
     end
 
     test "clicking Receive transitions to done and increases destination stock", %{conn: conn} do
+      # Order matters — see the I170 comment on the "both warehouses show as
+      # read-only text once shipped" test above.
+      admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
       [loc_a, loc_b] = setup_warehouses!(["TR Site A", "TR Site B"])
       shipped = ship!(loc_a, loc_b, item_uuid, "5")
 
-      admin = create_admin_user()
       conn = log_in_admin(conn, admin)
 
       {:ok, lv, _html} = live(conn, edit_path(shipped.uuid))
@@ -558,11 +573,13 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
 
     test "cancelling an in_transit transfer requires confirming the modal, then reverses stock",
          %{conn: conn} do
+      # Order matters — see the I170 comment on the "both warehouses show as
+      # read-only text once shipped" test above.
+      admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
       [loc_a, loc_b] = setup_warehouses!(["TR Site A", "TR Site B"])
       shipped = ship!(loc_a, loc_b, item_uuid, "4", "10")
 
-      admin = create_admin_user()
       conn = log_in_admin(conn, admin)
 
       {:ok, lv, _html} = live(conn, edit_path(shipped.uuid))
@@ -595,13 +612,16 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
     end
 
     test "cancel is unavailable once done", %{conn: conn} do
+      # `admin` (the one that logs in) must be created before `ship!/4` and
+      # the receiving `create_admin_user/0` call — see the I170 comment on
+      # the "both warehouses show as read-only text once shipped" test above.
+      admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
       [loc_a, loc_b] = setup_warehouses!(["TR Site A", "TR Site B"])
       shipped = ship!(loc_a, loc_b, item_uuid, "5")
       admin_uuid = create_admin_user().uuid
       {:ok, received} = Transfers.receive_transfer(shipped, admin_uuid)
 
-      admin = create_admin_user()
       conn = log_in_admin(conn, admin)
 
       {:ok, _lv, html} = live(conn, edit_path(received.uuid))
@@ -628,7 +648,27 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
       assert has_element?(lv, "button[phx-click='save_correction']", "Save correction")
     end
 
-    test "non-admin sees an info banner instead of edit controls", %{conn: conn} do
+    test "non-admin is redirected away from the admin transfer page (admin-gated route)", %{
+      conn: conn
+    } do
+      # I170: this test previously logged in a plain confirmed non-admin
+      # and asserted a successful read-only render (`{:ok, _lv, html}`).
+      # That never matched production: `/admin/warehouse/transfers/:uuid`
+      # is registered via `hidden_crud_tabs/0` with `level: :admin,
+      # permission: module_key()`, the exact same Tab shape as every other
+      # warehouse CRUD form, and `PhoenixKitWeb.Integration` folds ALL of
+      # them into the single core `live_session :phoenix_kit_admin` gated
+      # by `:phoenix_kit_ensure_admin` — there is no separate, lower-bar
+      # live_session for this route. A confirmed user holding no role and
+      # no permission grant is denied by that gate's `:deny` branch
+      # (`Scope.can_access_admin_area?/1` is false) before the LiveView
+      # ever mounts, exactly like
+      # `PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest`'s sibling
+      # test — see that file's moduledoc-adjacent comment, and
+      # `inventory_form_live_tabs_test.exs`'s own note that "a non-admin
+      # user cannot reach the page via HTTP". This test passed before only
+      # because the test-only router's on_mount hook didn't apply the
+      # gate at all (I170); it never exercised real authorization.
       admin = create_admin_user()
       transfer = create_draft()
       {:ok, cancelled} = Transfers.cancel_transfer(transfer, admin.uuid)
@@ -644,10 +684,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
       {:ok, user} = Auth.admin_confirm_user(user)
       conn = log_in_admin(conn, user)
 
-      {:ok, _lv, html} = live(conn, edit_path(cancelled.uuid))
-
-      assert html =~ "cancelled"
-      refute html =~ ~s(phx-click="save_correction")
+      assert {:error, {:redirect, _}} = live(conn, edit_path(cancelled.uuid))
     end
   end
 

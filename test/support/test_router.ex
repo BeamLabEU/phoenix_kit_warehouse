@@ -6,11 +6,24 @@ defmodule PhoenixKitWarehouse.Test.Router do
   prepends), so `live/2` calls in tests work with exactly the same URLs
   the LiveViews navigate to themselves.
 
-  `on_mount: [{PhoenixKitWeb.Users.Auth, :phoenix_kit_mount_current_scope}]`
-  is the same real, production on_mount every `phoenix_kit_routes()`
-  pipeline wires — it resolves `phoenix_kit_current_scope` from the
-  `:user_token` session key, so tests can use PhoenixKit's real
-  register/confirm/promote/login helpers unmodified (see Task 14).
+  `on_mount: [{PhoenixKitWeb.Users.Auth, :phoenix_kit_ensure_admin}]` is the
+  same on_mount hook production's `phoenix_kit_admin_routes/1` wires for
+  every plugin admin tab (`PhoenixKitWeb.Integration.generate_admin_routes/1`
+  — `PhoenixKit.ModuleDiscovery` auto-discovers `PhoenixKitWarehouse` via its
+  `use PhoenixKit.Module` beam attribute and folds its `admin_tabs/0`,
+  hidden CRUD tabs included, into the SAME `live_session :phoenix_kit_admin`
+  as core's own admin views).
+
+  I170: this previously used `:phoenix_kit_mount_current_scope` — the
+  PUBLIC surface's on_mount, which only resolves the scope and never denies
+  anyone — despite an earlier (incorrect) version of this moduledoc calling
+  it "the same real, production on_mount". It was not: production's admin
+  surface gates on `:phoenix_kit_ensure_admin`, which redirects a
+  confirmed-but-permission-less scope before the LiveView ever mounts. That
+  mismatch is why a non-admin got `{:ok, view}` here while every real
+  deployment (routed through `PhoenixKitWeb.Integration.phoenix_kit_routes/0`)
+  redirects — this router's own on_mount simply never ran the gate, in this
+  test app only.
   """
 
   use Phoenix.Router
@@ -29,7 +42,7 @@ defmodule PhoenixKitWarehouse.Test.Router do
     pipe_through(:browser)
 
     live_session :warehouse_test,
-      on_mount: [{PhoenixKitWeb.Users.Auth, :phoenix_kit_mount_current_scope}],
+      on_mount: [{PhoenixKitWeb.Users.Auth, :phoenix_kit_ensure_admin}],
       layout: {PhoenixKitWarehouse.Test.Layouts, :app} do
       live("/", StockLive, :index)
       live("/inventories", InventoriesLive, :inventories)
