@@ -149,10 +149,17 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
     } do
       # The /admin/warehouse/inventory/:uuid route is behind
       # :phoenix_kit_ensure_admin — a confirmed but non-admin user is redirected.
+      #
+      # `admin` MUST be created before `regular`: `Auth.register_user/2` calls
+      # `Roles.ensure_first_user_is_owner/1`, which makes the very first
+      # active user ever registered an Owner. In a fresh sandboxed
+      # transaction with zero active owners, registering `regular` first
+      # would silently make IT the Owner instead of a permission-less user,
+      # defeating this test regardless of the route's own gate.
+      admin = create_admin_user()
       regular = create_regular_user()
       conn = log_in(conn, regular)
 
-      admin = create_admin_user()
       {:ok, doc} = Inventories.create_draft(%{lines: []})
       {:ok, posted} = Inventories.post_document(doc, admin.uuid)
 
