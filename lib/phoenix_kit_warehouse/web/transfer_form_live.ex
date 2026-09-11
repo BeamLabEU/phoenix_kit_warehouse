@@ -1370,16 +1370,6 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   defp warehouse_options?([]), do: false
   defp warehouse_options?(_), do: true
 
-  defp status_label("draft"), do: dgettext("default", "Draft")
-  defp status_label("in_transit"), do: dgettext("default", "In transit")
-  defp status_label("done"), do: dgettext("default", "Done")
-  defp status_label("cancelled"), do: dgettext("default", "Cancelled")
-  defp status_label(other), do: other
-
-  defp status_badge_class("draft"), do: "badge-ghost"
-  defp status_badge_class("in_transit"), do: "badge-warning"
-  defp status_badge_class("done"), do: "badge-success"
-  defp status_badge_class("cancelled"), do: "badge-error"
   # A posted document's quantity is read straight out of its jsonb line, where
   # it may still carry the `numeric(_, 6)` padding that a pre-normalisation
   # write left behind ("5.000000"). The editable branch renders through an
@@ -1393,6 +1383,16 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   defp fmt_stored_qty(""), do: "—"
   defp fmt_stored_qty(value), do: StockLedger.format_quantity(value)
 
+  defp status_label("draft"), do: dgettext("default", "Draft")
+  defp status_label("in_transit"), do: dgettext("default", "In transit")
+  defp status_label("done"), do: dgettext("default", "Done")
+  defp status_label("cancelled"), do: dgettext("default", "Cancelled")
+  defp status_label(other), do: other
+
+  defp status_badge_class("draft"), do: "badge-ghost"
+  defp status_badge_class("in_transit"), do: "badge-warning"
+  defp status_badge_class("done"), do: "badge-success"
+  defp status_badge_class("cancelled"), do: "badge-error"
   defp status_badge_class(_other), do: "badge-ghost"
 
   defp transfer_status_banner("in_transit"),

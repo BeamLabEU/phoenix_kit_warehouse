@@ -1296,9 +1296,6 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
     {:ok, order}
   end
 
-  # ItemSelectorModal's `selected` attr: %{uuid => qty} for every line already
-  # on the order, so an already-added item shows in the modal's tray instead
-  # of being re-added as a duplicate.
   # A posted document's quantity is read straight out of its jsonb line, where
   # it may still carry the `numeric(_, 6)` padding that a pre-normalisation
   # write left behind ("5.000000"). The editable branch renders through an
@@ -1312,6 +1309,9 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   defp fmt_stored_qty(""), do: "—"
   defp fmt_stored_qty(value), do: StockLedger.format_quantity(value)
 
+  # ItemSelectorModal's `selected` attr: %{uuid => qty} for every line already
+  # on the order, so an already-added item shows in the modal's tray instead
+  # of being re-added as a duplicate.
   defp selected_items(lines) do
     Enum.reduce(lines, %{}, fn
       %{"item_uuid" => uuid} = line, acc when is_binary(uuid) ->
