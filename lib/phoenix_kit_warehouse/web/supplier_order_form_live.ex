@@ -1228,16 +1228,16 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
               </td>
               <td class="text-right tabular-nums text-sm text-base-content/60">
                 <%= if Decimal.compare(reserve, Decimal.new("0")) == :gt do %>
-                  +{Decimal.to_string(reserve, :normal)}
+                  +{fmt_qty(reserve)}
                 <% else %>
                   —
                 <% end %>
               </td>
               <td class="text-right tabular-nums text-sm">
-                {Decimal.to_string(received, :normal)}
+                {fmt_qty(received)}
               </td>
               <td class="text-right tabular-nums text-sm">
-                {Decimal.to_string(outstanding, :normal)}
+                {fmt_qty(outstanding)}
               </td>
               <td class="text-right tabular-nums text-sm text-base-content/60">
                 {fmt_price(line["base_price"])}
@@ -1268,7 +1268,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   end
 
   defp fmt_qty(nil), do: "—"
-  defp fmt_qty(%Decimal{} = d), do: Decimal.to_string(d, :normal)
+  defp fmt_qty(%Decimal{} = d), do: StockLedger.format_quantity(d)
   defp fmt_qty(v), do: to_string(v)
 
   defp fmt_price(nil), do: "—"

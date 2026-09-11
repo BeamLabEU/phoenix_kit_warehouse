@@ -283,7 +283,7 @@ defmodule PhoenixKitWarehouse.InternalOrders do
             required = parse_decimal(line["required_quantity"])
             already = Map.get(source_committed, line["item_uuid"], Decimal.new(0))
             remaining = Decimal.max(Decimal.new(0), Decimal.sub(required, already))
-            Map.put(line, "required_quantity", Decimal.to_string(remaining, :normal))
+            Map.put(line, "required_quantity", StockLedger.format_quantity(remaining))
           end)
 
         {ref, clamped_lines}
@@ -306,7 +306,7 @@ defmodule PhoenixKitWarehouse.InternalOrders do
               old_qty = parse_decimal(existing_line["required_quantity"])
               new_qty = parse_decimal(new_line["required_quantity"])
               summed = Decimal.add(old_qty, new_qty)
-              Map.put(existing_line, "required_quantity", Decimal.to_string(summed, :normal))
+              Map.put(existing_line, "required_quantity", StockLedger.format_quantity(summed))
             end)
         end
       end)

@@ -125,7 +125,7 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
   defp warehouse_options?([]), do: false
   defp warehouse_options?(_), do: true
 
-  defp fmt_qty(%Decimal{} = d), do: Decimal.to_string(d, :normal)
+  defp fmt_qty(%Decimal{} = d), do: StockLedger.format_quantity(d)
 
   defp emdash(nil), do: "—"
   defp emdash(""), do: "—"

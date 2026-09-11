@@ -349,6 +349,25 @@ defmodule PhoenixKitWarehouse.StockLedger do
   def to_decimal(_), do: Decimal.new("0")
 
   @doc """
+  Renders a quantity for display without the column's padding zeros.
+
+  Quantities live in `numeric(_, 6)` columns, so a whole count reads back as
+  `5.000000` and `Decimal.to_string/2` prints every one of those zeros. The
+  scale carries no information here — nobody counts a sixth of a screw — so
+  the value is normalised first and only the digits that were actually
+  entered survive: `5.000000 -> "5"`, `1.500000 -> "1.5"`, `0.000000 -> "0"`.
+
+  `Decimal.normalize/1` leaves an integral value in exponent form (`5E+0`),
+  which `:normal` formatting then prints as plain `5`.
+  """
+  def format_quantity(value) do
+    value
+    |> to_decimal()
+    |> Decimal.normalize()
+    |> Decimal.to_string(:normal)
+  end
+
+  @doc """
   Coerces a value to Decimal or nil. nil, blank strings, and empty strings
   return nil. All other values convert like `to_decimal/1`.
   """

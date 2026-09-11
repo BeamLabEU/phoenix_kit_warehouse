@@ -1136,7 +1136,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               </td>
               <td class="text-center">
                 <%= if @posted? do %>
-                  <span class="tabular-nums">{line["required_quantity"] || "—"}</span>
+                  <span class="tabular-nums">{fmt_stored_qty(line["required_quantity"])}</span>
                 <% else %>
                   <form
                     id={"io-qty-form-#{index}"}
@@ -1261,7 +1261,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               "catalogue_uuid" => item.catalogue_uuid,
               "category_uuid" => item.category_uuid,
               "unit" => item.unit,
-              "required_quantity" => qty |> StockLedger.to_decimal() |> Decimal.to_string(:normal)
+              "required_quantity" => StockLedger.format_quantity(qty)
             }
 
             lines ++ [new_line]
@@ -1295,6 +1295,19 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   defp ensure_saved(%PhoenixKitWarehouse.InternalOrder{} = order, _attrs) do
     {:ok, order}
   end
+
+  # A posted document's quantity is read straight out of its jsonb line, where
+  # it may still carry the `numeric(_, 6)` padding that a pre-normalisation
+  # write left behind ("5.000000"). The editable branch renders through an
+  # input, which is trimmed on the way in; this read-only branch had no such
+  # step, so the same number read differently depending on whether the document
+  # was posted before or after quantities started being normalised on write —
+  # and on a posted document nobody can edit the value to "fix" the display.
+  # A blank stays an em dash: `format_quantity/1` would turn a missing value
+  # into "0", a claim the document does not make.
+  defp fmt_stored_qty(nil), do: "—"
+  defp fmt_stored_qty(""), do: "—"
+  defp fmt_stored_qty(value), do: StockLedger.format_quantity(value)
 
   # ItemSelectorModal's `selected` attr: %{uuid => qty} for every line already
   # on the order, so an already-added item shows in the modal's tray instead

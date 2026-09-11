@@ -387,7 +387,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   def handle_event("set_transfer_qty", params, socket) do
     lines = socket.assigns.lines
     raw = params["transfer_quantity"] || "0"
-    qty = raw |> StockLedger.to_decimal() |> clamp_non_negative() |> Decimal.to_string(:normal)
+    qty = raw |> StockLedger.to_decimal() |> clamp_non_negative() |> StockLedger.format_quantity()
 
     case parse_line_index(params["index"], lines) do
       {:ok, index} ->
@@ -1148,7 +1148,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
                     />
                   </form>
                 <% else %>
-                  <span class="tabular-nums">{line["transfer_quantity"] || "—"}</span>
+                  <span class="tabular-nums">{fmt_stored_qty(line["transfer_quantity"])}</span>
                 <% end %>
               </td>
               <%= if @editable? do %>
@@ -1253,7 +1253,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
               "catalogue_uuid" => item.catalogue_uuid,
               "category_uuid" => item.category_uuid,
               "unit" => item.unit,
-              "transfer_quantity" => qty |> StockLedger.to_decimal() |> Decimal.to_string(:normal)
+              "transfer_quantity" => StockLedger.format_quantity(qty)
             }
 
             lines ++ [new_line]
@@ -1369,6 +1369,19 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   defp warehouse_options?(nil), do: false
   defp warehouse_options?([]), do: false
   defp warehouse_options?(_), do: true
+
+  # A posted document's quantity is read straight out of its jsonb line, where
+  # it may still carry the `numeric(_, 6)` padding that a pre-normalisation
+  # write left behind ("5.000000"). The editable branch renders through an
+  # input, which is trimmed on the way in; this read-only branch had no such
+  # step, so the same number read differently depending on whether the document
+  # was posted before or after quantities started being normalised on write —
+  # and on a posted document nobody can edit the value to "fix" the display.
+  # A blank stays an em dash: `format_quantity/1` would turn a missing value
+  # into "0", a claim the document does not make.
+  defp fmt_stored_qty(nil), do: "—"
+  defp fmt_stored_qty(""), do: "—"
+  defp fmt_stored_qty(value), do: StockLedger.format_quantity(value)
 
   defp status_label("draft"), do: dgettext("default", "Draft")
   defp status_label("in_transit"), do: dgettext("default", "In transit")

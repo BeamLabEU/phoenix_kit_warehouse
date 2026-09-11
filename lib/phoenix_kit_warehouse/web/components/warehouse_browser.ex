@@ -23,6 +23,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   use Phoenix.Component
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  alias PhoenixKitWarehouse.StockLedger
+
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
   import PhoenixKitWeb.Components.Core.Icon, only: [icon: 1]
   import PhoenixKitWeb.Components.Core.Modal, only: [modal: 1]
@@ -503,7 +505,17 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                         </thead>
                         <tbody>
                           <%= for entry <- category_items do %>
-                            <tr class="hover">
+                            <%!--
+                              The whole row opens the catalogue's product card
+                              (handled by StockLive). Nothing in this row is
+                              interactive on its own, so a row-level click has
+                              nothing to collide with.
+                            --%>
+                            <tr
+                              class="hover cursor-pointer"
+                              phx-click="show_product_card"
+                              phx-value-uuid={entry.item.uuid}
+                            >
                               <td>
                                 <div class="font-medium flex items-center gap-1">
                                   {localized_name(entry.item, @locale)}
@@ -823,9 +835,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   defp open_class(false), do: "collapse-close"
 
   defp format_quantity(nil), do: "0"
-  defp format_quantity(%Decimal{} = d), do: Decimal.to_string(d, :normal)
   defp format_quantity(n) when is_integer(n), do: Integer.to_string(n)
-  defp format_quantity(s) when is_binary(s), do: s
+  defp format_quantity(value), do: trim_scale(value, "0")
 
   # format_input_decimal/1 returns "" — never nil — for a missing value, and ""
   # is truthy, so the `|| "—"` these read-only cells used to carry could never
@@ -835,10 +846,26 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
 
   defp format_input_decimal(nil), do: ""
   defp format_input_decimal(""), do: ""
-  defp format_input_decimal(%Decimal{} = d), do: Decimal.to_string(d, :normal)
   defp format_input_decimal(n) when is_integer(n), do: Integer.to_string(n)
-  defp format_input_decimal(n) when is_float(n), do: Float.to_string(n)
-  defp format_input_decimal(s) when is_binary(s), do: s
+  defp format_input_decimal(value), do: trim_scale(value, "")
+
+  # Quantities come out of `numeric(_, 6)` columns (and out of jsonb line maps
+  # that were written from them), so a whole count arrives as `5.000000` and
+  # printing it verbatim shows six zeros nobody typed. StockLedger.format_quantity/1
+  # drops the padding. A value that is not a number at all (a half-typed input
+  # string, say) would parse to 0 there and silently rewrite what the user is
+  # holding, so it is handed back untouched instead.
+  defp trim_scale(%Decimal{} = d, _fallback), do: StockLedger.format_quantity(d)
+  defp trim_scale(n, _fallback) when is_float(n), do: StockLedger.format_quantity(n)
+
+  defp trim_scale(s, _fallback) when is_binary(s) do
+    case s |> String.replace(",", ".") |> Decimal.parse() do
+      {_d, ""} -> StockLedger.format_quantity(s)
+      _ -> s
+    end
+  end
+
+  defp trim_scale(_other, fallback), do: fallback
 
   defp line_sum(counted, unit_value) do
     with %Decimal{} <- safe_decimal(counted),
