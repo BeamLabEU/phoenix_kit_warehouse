@@ -2035,3 +2035,8 @@ msgstr "Да"
 #, elixir-autogen, elixir-format
 msgid "— select —"
 msgstr "— выберите —"
+
+#: lib/phoenix_kit_warehouse/column_config/inventories.ex:88
+#, elixir-autogen, elixir-format
+msgid "Created by"
+msgstr "Создал"

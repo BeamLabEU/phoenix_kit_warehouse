@@ -54,6 +54,9 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
 
+  alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitCatalogue.Schemas.Item
+  alias PhoenixKitCatalogue.Web.Components.ProductCard
   alias PhoenixKitWarehouse.ColumnConfig.Stock, as: StockColumnConfig
   alias PhoenixKitWarehouse.Deficits
   alias PhoenixKitWarehouse.MinStockSettings
@@ -113,6 +116,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       |> assign(:warehouse_scope, warehouse_scope)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:admin?, admin?)
+      |> assign_closed_product_card()
       |> ColumnManagement.assign_column_state(StockColumnConfig)
 
     {:ok, socket}
@@ -169,6 +173,35 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   # ---------------------------------------------------------------------------
 
   @impl true
+  # A stock row is a catalogue item seen from the warehouse's side: it says how
+  # many there are, never what the thing IS. Clicking the row opens the
+  # catalogue's own read-only product card — photos, files, the item's filled
+  # fields — so "what is item 4417?" is answered here instead of in a second tab
+  # on the catalogue page. The card is the catalogue's exported component, so it
+  # shows exactly what the catalogue shows, and stays in step with it.
+  def handle_event("show_product_card", %{"uuid" => uuid}, socket) do
+    case Catalogue.get_item(uuid) do
+      %Item{} = item ->
+        {:noreply,
+         assign(socket,
+           card_open: true,
+           card_name: ProductCard.resolve_name(item, socket.assigns.locale),
+           card_images: ProductCard.resolve_images(item),
+           card_fields: ProductCard.build_fields(item, socket.assigns.locale),
+           card_files: ProductCard.resolve_files(item)
+         )}
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("show_product_card", _params, socket), do: {:noreply, socket}
+
+  def handle_event("card_close", _params, socket) do
+    {:noreply, assign(socket, :card_open, false)}
+  end
+
   def handle_event("set_stock_view", %{"view" => v}, socket) when v in ["grouped", "flat"] do
     uuid = socket.assigns.current_user_uuid
 
@@ -753,7 +786,10 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
                 <.table_default_row class={["relative", row.below_min? && "bg-error/5"]}>
                   <% meta_map = StockColumnConfig.column_metadata_map() %>
                   <%= for col <- @selected_columns, meta = Map.get(meta_map, col), meta do %>
-                    <.table_default_cell class={cell_class(col, meta)}>
+                    <.table_default_cell
+                      class={[cell_class(col, meta), card_openable?(col) && "cursor-pointer"]}
+                      {card_click_attrs(col, row)}
+                    >
                       {render_cell(col, row)}
                     </.table_default_cell>
                   <% end %>
@@ -786,6 +822,22 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
           <%!-- Grouped view (default): catalogue → category tree --%>
           <WarehouseBrowser.stock_sheet stock_items={@stock_items} locale={@locale} />
         <% end %>
+
+        <%!--
+          One card for the page, outside the view switch: both the flat table
+          and the grouped sheet raise the same "show_product_card" event, so
+          the modal must not live inside either branch.
+        --%>
+        <ProductCard.product_card
+          id="warehouse-stock-product"
+          show={@card_open}
+          item_name={@card_name}
+          images={@card_images}
+          fields={@card_fields}
+          files={@card_files}
+          target={nil}
+          on_close="card_close"
+        />
       </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
@@ -811,10 +863,16 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       ]}
     >
       <span>{@label}</span>
+      <%!--
+        The chevron is always in the layout and only its VISIBILITY flips.
+        Rendering it with `:if` made the header cell 14px narrower/shorter on
+        every column but the sorted one, so picking a sort visibly resized the
+        header row — and with it the whole table's first row. `invisible` keeps
+        the box, so sorting changes what the header says, never how big it is.
+      --%>
       <.icon
-        :if={@active?}
         name={if @sort_dir == :asc, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
-        class="w-3.5 h-3.5"
+        class={"w-3.5 h-3.5 shrink-0" <> if(@active?, do: "", else: " invisible")}
       />
     </button>
     """
@@ -946,7 +1004,34 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   defp emdash(""), do: "—"
   defp emdash(v), do: v
 
+  # The click lands on the CELLS, not on the row, and skips the two cells that
+  # own an interactive control of their own: "Min. quantity" holds an inline
+  # input (clicking it to type must not also pop a modal over the field) and the
+  # trailing action cell holds the deficit button. A row-level phx-click would
+  # fire for those too — the click bubbles, and LiveView would deliver both
+  # events.
+  defp card_openable?("min_quantity"), do: false
+  defp card_openable?(_col), do: true
+
+  defp card_click_attrs(col, row) do
+    if card_openable?(col) and row.item != nil and row.item.uuid != nil do
+      %{"phx-click" => "show_product_card", "phx-value-uuid" => row.item.uuid}
+    else
+      %{}
+    end
+  end
+
+  defp assign_closed_product_card(socket) do
+    assign(socket,
+      card_open: false,
+      card_name: nil,
+      card_images: [],
+      card_fields: [],
+      card_files: []
+    )
+  end
+
   defp fmt_qty(nil), do: "0"
-  defp fmt_qty(%Decimal{} = d), do: Decimal.to_string(d, :normal)
+  defp fmt_qty(%Decimal{} = d), do: StockLedger.format_quantity(d)
   defp fmt_qty(v), do: to_string(v)
 end

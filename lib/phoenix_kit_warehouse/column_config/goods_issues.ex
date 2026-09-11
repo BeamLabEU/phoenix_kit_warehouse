@@ -109,6 +109,35 @@ defmodule PhoenixKitWarehouse.ColumnConfig.GoodsIssues do
         filterable?: true,
         filter_type: :text,
         filter_apply: text_filter(&(&1.note || ""))
+      },
+      # Who opened the document and who is answerable for it. Off by default —
+      # the lists are already wide — but available in the column picker, since
+      # "who did this" is the first question asked about a document nobody
+      # recognises. Both come from the same enrich step, so switching them on
+      # costs no extra query.
+      %{
+        id: "created_by",
+        label: fn -> dgettext("default", "Created by") end,
+        default?: false,
+        align: :left,
+        sortable?: true,
+        sort_key: &(&1.created_by || ""),
+        default_dir: :asc,
+        filterable?: true,
+        filter_type: :text,
+        filter_apply: text_filter(&(&1.created_by || ""))
+      },
+      %{
+        id: "performed_by",
+        label: fn -> dgettext("default", "Responsible") end,
+        default?: false,
+        align: :left,
+        sortable?: true,
+        sort_key: &(&1.performed_by || ""),
+        default_dir: :asc,
+        filterable?: true,
+        filter_type: :text,
+        filter_apply: text_filter(&(&1.performed_by || ""))
       }
     ]
   end

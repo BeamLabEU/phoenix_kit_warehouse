@@ -18,7 +18,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
       sort_by: [
         default: "number",
         url_key: "sort",
-        in: ~w(number status supplier lines_count date posted_at note)
+        in: ~w(number status supplier lines_count date posted_at note created_by performed_by)
       ],
       sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
     ]
@@ -33,6 +33,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   alias PhoenixKitWarehouse.{DocRefs, SupplierOrders}
   alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+  alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -127,6 +128,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   end
 
   defp enrich_orders(orders) do
+    user_names = UserNames.resolve(orders)
+
     supplier_uuids =
       orders
       |> Enum.map(& &1.supplier_uuid)
@@ -146,6 +149,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
 
       %{
         uuid: order.uuid,
+        created_by: UserNames.label(user_names, order.created_by_uuid),
+        performed_by: UserNames.label(user_names, order.performed_by_uuid),
         number: order.number,
         status: order.status,
         status_label: status_label(order.status),
@@ -473,10 +478,16 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
       ]}
     >
       <span>{@label}</span>
+      <%!--
+        The chevron is always in the layout and only its VISIBILITY flips.
+        Rendering it with `:if` made the header cell 14px narrower/shorter on
+        every column but the sorted one, so picking a sort visibly resized the
+        header row — and with it the whole table's first row. `invisible` keeps
+        the box, so sorting changes what the header says, never how big it is.
+      --%>
       <.icon
-        :if={@active?}
         name={if @sort_dir == :asc, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
-        class="w-3.5 h-3.5"
+        class={"w-3.5 h-3.5 shrink-0" <> if(@active?, do: "", else: " invisible")}
       />
     </button>
     """
@@ -546,6 +557,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   defp render_cell("date", entry), do: fmt_date(entry.inserted_at)
   defp render_cell("posted_at", entry), do: fmt_date(entry.posted_at)
   defp render_cell("note", entry), do: emdash(entry.note)
+  defp render_cell("created_by", entry), do: entry.created_by
+  defp render_cell("performed_by", entry), do: entry.performed_by
   defp render_cell(_col, _entry), do: "—"
 
   defp render_card_value("number", entry), do: "#SO-#{entry.number}"
@@ -577,6 +590,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     """
   end
 
+  defp render_card_value("created_by", entry), do: entry.created_by
+  defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"
 
   defp fmt_date(nil), do: "—"

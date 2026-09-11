@@ -1191,7 +1191,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   end
 
   defp fmt_qty(nil), do: "0"
-  defp fmt_qty(%Decimal{} = d), do: Decimal.to_string(d, :normal)
+  defp fmt_qty(%Decimal{} = d), do: StockLedger.format_quantity(d)
   defp fmt_qty(v), do: to_string(v)
 
   defp warehouse_options?(nil), do: false

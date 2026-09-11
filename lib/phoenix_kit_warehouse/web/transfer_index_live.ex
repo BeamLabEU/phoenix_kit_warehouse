@@ -23,7 +23,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
       sort_by: [
         default: "number",
         url_key: "sort",
-        in: ~w(number status date lines_count shipped_at received_at note)
+        in: ~w(number status date lines_count shipped_at received_at note created_by performed_by)
       ],
       sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
     ]
@@ -37,6 +37,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
   alias PhoenixKitWarehouse.{StockLedger, Transfers}
   alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+  alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -131,6 +132,8 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
   end
 
   defp enrich_transfers(transfers) do
+    user_names = UserNames.resolve(transfers)
+
     location_names =
       (StockLedger.list_warehouses() || [])
       |> Map.new(&{&1.uuid, &1.name})
@@ -138,6 +141,8 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     Enum.map(transfers, fn t ->
       %{
         uuid: t.uuid,
+        created_by: UserNames.label(user_names, t.created_by_uuid),
+        performed_by: UserNames.label(user_names, t.performed_by_uuid),
         number: t.number,
         status: t.status,
         status_label: status_label(t.status),
@@ -461,10 +466,16 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
       ]}
     >
       <span>{@label}</span>
+      <%!--
+        The chevron is always in the layout and only its VISIBILITY flips.
+        Rendering it with `:if` made the header cell 14px narrower/shorter on
+        every column but the sorted one, so picking a sort visibly resized the
+        header row — and with it the whole table's first row. `invisible` keeps
+        the box, so sorting changes what the header says, never how big it is.
+      --%>
       <.icon
-        :if={@active?}
         name={if @sort_dir == :asc, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
-        class="w-3.5 h-3.5"
+        class={"w-3.5 h-3.5 shrink-0" <> if(@active?, do: "", else: " invisible")}
       />
     </button>
     """
@@ -516,6 +527,8 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     """
   end
 
+  defp render_cell("created_by", entry), do: entry.created_by
+  defp render_cell("performed_by", entry), do: entry.performed_by
   defp render_cell(_col, _entry), do: "—"
 
   defp render_card_value("status", entry) do
@@ -539,6 +552,8 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     do: emdash(entry.destination_location_name)
 
   defp render_card_value("note", entry), do: emdash(entry.note)
+  defp render_card_value("created_by", entry), do: entry.created_by
+  defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"
 
   defp fmt_date(nil), do: "—"

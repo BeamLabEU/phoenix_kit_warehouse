@@ -387,7 +387,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   def handle_event("set_transfer_qty", params, socket) do
     lines = socket.assigns.lines
     raw = params["transfer_quantity"] || "0"
-    qty = raw |> StockLedger.to_decimal() |> clamp_non_negative() |> Decimal.to_string(:normal)
+    qty = raw |> StockLedger.to_decimal() |> clamp_non_negative() |> StockLedger.format_quantity()
 
     case parse_line_index(params["index"], lines) do
       {:ok, index} ->
@@ -1253,7 +1253,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
               "catalogue_uuid" => item.catalogue_uuid,
               "category_uuid" => item.category_uuid,
               "unit" => item.unit,
-              "transfer_quantity" => qty |> StockLedger.to_decimal() |> Decimal.to_string(:normal)
+              "transfer_quantity" => StockLedger.format_quantity(qty)
             }
 
             lines ++ [new_line]

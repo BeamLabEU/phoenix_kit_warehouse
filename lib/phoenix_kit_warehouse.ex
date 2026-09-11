@@ -148,6 +148,12 @@ defmodule PhoenixKitWarehouse do
   def admin_tabs do
     [
       # --- Root: "In stock" — hosts StockLive directly, not a redirect stub.
+      #
+      # `match: :prefix` so the section stays open (and its subtabs rendered)
+      # while you are anywhere under /admin/warehouse; `highlight_with_subtabs:
+      # false` keeps the parent row itself unlit when a subtab is the active
+      # page, so the sidebar points at ONE place. This is exactly how core
+      # arranges its own "Users" parent + "Users" subtab pair.
       %Tab{
         id: :warehouse,
         label: "Warehouse",
@@ -155,13 +161,37 @@ defmodule PhoenixKitWarehouse do
         gettext_domain: "default",
         icon: "hero-building-storefront",
         path: "warehouse",
-        match: :exact,
+        match: :prefix,
+        subtab_display: :when_active,
+        highlight_with_subtabs: false,
         priority: 153,
         level: :admin,
         permission: module_key(),
         group: :admin_main,
         visible: true,
         live_view: {StockLive, :index}
+      },
+      # The root page needs its own entry among the subtabs, or "In stock" is
+      # the one warehouse view you cannot navigate BACK to from the sidebar —
+      # clicking the parent is the only way, and once a subtab is open nothing
+      # in the menu says the stock list is still there. No `live_view`: the
+      # parent above already declares the route for this exact path, and a
+      # second declaration would compile to a dead duplicate. The regex keeps
+      # it lit only on the list itself, never on a sibling subtab's page.
+      %Tab{
+        id: :warehouse_stock,
+        label: "In stock",
+        gettext_backend: PhoenixKitWarehouse.Gettext,
+        gettext_domain: "default",
+        icon: "hero-cube",
+        path: "warehouse",
+        parent: :warehouse,
+        match: {:regex, ~r{^/admin/warehouse$}},
+        priority: 154,
+        level: :admin,
+        permission: module_key(),
+        group: :admin_main,
+        visible: true
       },
       %Tab{
         id: :warehouse_inventories,
@@ -171,6 +201,14 @@ defmodule PhoenixKitWarehouse do
         icon: "hero-clipboard-document-check",
         path: "warehouse/inventories",
         parent: :warehouse,
+        # The list lives at /warehouse/inventories but a single stocktake lives
+        # at /warehouse/inventory/:uuid — a different first segment, so the
+        # default :prefix match dropped the sidebar back to the section root the
+        # moment you opened a document. Every other document type is
+        # /warehouse/<list-path>/:uuid and never had the problem. Match both
+        # spellings so the open stocktake keeps its own menu entry lit, the way
+        # an open internal order or goods receipt does.
+        match: {:regex, ~r{^/admin/warehouse/inventor(ies|y)(/.*)?$}},
         priority: 155,
         level: :admin,
         permission: module_key(),
@@ -216,7 +254,7 @@ defmodule PhoenixKitWarehouse do
         icon: "hero-arrow-down-tray",
         path: "warehouse/goods-receipts",
         parent: :warehouse,
-        priority: 158,
+        priority: 159,
         level: :admin,
         permission: module_key(),
         group: :admin_main,
@@ -231,7 +269,7 @@ defmodule PhoenixKitWarehouse do
         icon: "hero-arrow-up-tray",
         path: "warehouse/goods-issues",
         parent: :warehouse,
-        priority: 159,
+        priority: 160,
         level: :admin,
         permission: module_key(),
         group: :admin_main,
@@ -246,7 +284,7 @@ defmodule PhoenixKitWarehouse do
         icon: "hero-arrows-right-left",
         path: "warehouse/transfers",
         parent: :warehouse,
-        priority: 160,
+        priority: 158,
         level: :admin,
         permission: module_key(),
         group: :admin_main,
