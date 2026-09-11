@@ -1261,7 +1261,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               "catalogue_uuid" => item.catalogue_uuid,
               "category_uuid" => item.category_uuid,
               "unit" => item.unit,
-              "required_quantity" => qty |> StockLedger.to_decimal() |> Decimal.to_string(:normal)
+              "required_quantity" => StockLedger.format_quantity(qty)
             }
 
             lines ++ [new_line]

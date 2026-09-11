@@ -28,7 +28,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
       sort_by: [
         default: "number",
         url_key: "sort",
-        in: ~w(number date status note posted_at lines_count)
+        in: ~w(number date status note posted_at lines_count created_by performed_by)
       ],
       sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
     ]
@@ -42,6 +42,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitWarehouse.Web.ColumnManagement
   alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+  alias PhoenixKitWarehouse.Web.UserNames
 
   # Opt out of PhoenixKit's auto admin-chrome layout (applied to external Andi
   # views via `socket.private[:live_layout]`) so this view self-wraps with
@@ -146,9 +147,13 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   end
 
   defp enrich_documents(docs) do
+    user_names = UserNames.resolve(docs)
+
     Enum.map(docs, fn doc ->
       %{
         uuid: doc.uuid,
+        created_by: UserNames.label(user_names, doc.created_by_uuid),
+        performed_by: UserNames.label(user_names, doc.performed_by_uuid),
         number: doc.number,
         status: doc.status,
         status_label: status_label(doc.status),
@@ -468,10 +473,16 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
       ]}
     >
       <span>{@label}</span>
+      <%!--
+        The chevron is always in the layout and only its VISIBILITY flips.
+        Rendering it with `:if` made the header cell 14px narrower/shorter on
+        every column but the sorted one, so picking a sort visibly resized the
+        header row — and with it the whole table's first row. `invisible` keeps
+        the box, so sorting changes what the header says, never how big it is.
+      --%>
       <.icon
-        :if={@active?}
         name={if @sort_dir == :asc, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
-        class="w-3.5 h-3.5"
+        class={"w-3.5 h-3.5 shrink-0" <> if(@active?, do: "", else: " invisible")}
       />
     </button>
     """
@@ -524,6 +535,8 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   end
 
   defp render_cell("note", entry), do: emdash(entry.note)
+  defp render_cell("created_by", entry), do: entry.created_by
+  defp render_cell("performed_by", entry), do: entry.performed_by
   defp render_cell(_col, _entry), do: "—"
 
   # Card values: plain text/markup, no row-overlay link.
@@ -546,6 +559,8 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   defp render_card_value("posted_at", entry), do: fmt_date(entry.posted_at)
   defp render_card_value("lines_count", entry), do: entry.lines_count
   defp render_card_value("note", entry), do: emdash(entry.note)
+  defp render_card_value("created_by", entry), do: entry.created_by
+  defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"
 
   defp fmt_date(nil), do: "—"

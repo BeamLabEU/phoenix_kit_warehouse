@@ -1307,12 +1307,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                   <% Decimal.compare(diff, Decimal.new("0")) == :lt -> %>
                     <span class="badge badge-warning badge-sm">
                       {dgettext("default", "short %{n}",
-                        n: Decimal.to_string(Decimal.abs(diff), :normal)
+                        n: fmt_qty(Decimal.abs(diff))
                       )}
                     </span>
                   <% true -> %>
                     <span class="badge badge-info badge-sm">
-                      {dgettext("default", "over %{n}", n: Decimal.to_string(diff, :normal))}
+                      {dgettext("default", "over %{n}", n: fmt_qty(diff))}
                     </span>
                 <% end %>
               </td>
@@ -1434,7 +1434,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
   end
 
   defp fmt_qty(nil), do: "0"
-  defp fmt_qty(%Decimal{} = d), do: Decimal.to_string(d, :normal)
+  defp fmt_qty(%Decimal{} = d), do: StockLedger.format_quantity(d)
   defp fmt_qty(v), do: to_string(v)
 
   # `list_warehouses/0` returns nil when the warehouse LocationType isn't
