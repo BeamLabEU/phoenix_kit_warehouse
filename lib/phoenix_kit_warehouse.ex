@@ -690,6 +690,7 @@ defmodule PhoenixKitWarehouse do
     [
       dgettext_noop("default", "Warehouse"),
       dgettext_noop("default", "Warehouse stock, stocktakes, and document management"),
+      dgettext_noop("default", "In stock"),
       dgettext_noop("default", "Stocktakes"),
       dgettext_noop("default", "Internal Orders"),
       dgettext_noop("default", "Supplier Orders"),

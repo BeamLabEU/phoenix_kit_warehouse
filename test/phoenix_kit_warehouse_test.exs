@@ -25,9 +25,9 @@ defmodule PhoenixKitWarehouseTest do
              ]
     end
 
-    test "admin_tabs/0 returns 38 tabs, all under module_key() permission" do
+    test "admin_tabs/0 returns 39 tabs, all under module_key() permission" do
       tabs = PhoenixKitWarehouse.admin_tabs()
-      assert length(tabs) == 38
+      assert length(tabs) == 39
       assert Enum.all?(tabs, &(&1.permission == "warehouse"))
     end
 
@@ -65,7 +65,10 @@ defmodule PhoenixKitWarehouseTest do
 
     test "admin_tabs/0's root tab hosts StockLive directly (no redirect stub)" do
       root = Enum.find(PhoenixKitWarehouse.admin_tabs(), &(&1.id == :warehouse))
-      assert root.match == :exact
+      # `:prefix`, not `:exact`: the root is the section header, so it has to stay
+      # highlighted while any warehouse subtab is open. The bare `/admin/warehouse`
+      # page is claimed by the `:warehouse_stock` subtab's own regex match.
+      assert root.match == :prefix
       assert root.live_view == {PhoenixKitWarehouse.Web.StockLive, :index}
       assert root.path == "warehouse"
     end
