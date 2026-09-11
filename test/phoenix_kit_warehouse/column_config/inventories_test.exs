@@ -27,7 +27,16 @@ defmodule PhoenixKitWarehouse.ColumnConfig.InventoriesTest do
   end
 
   test "all_column_ids/0 covers every column" do
-    assert C.all_column_ids() == ["number", "date", "status", "note", "posted_at", "lines_count"]
+    assert C.all_column_ids() == [
+             "number",
+             "date",
+             "status",
+             "note",
+             "posted_at",
+             "lines_count",
+             "created_by",
+             "performed_by"
+           ]
   end
 
   test "validate_columns/1 drops unknown ids, keeps order" do
