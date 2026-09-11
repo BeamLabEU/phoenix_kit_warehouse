@@ -2,6 +2,44 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.1 - 2026-09-11
+
+### Fixed
+
+- **Test router now gates admin routes like production** (#27). The test
+  router's `live_session :warehouse_test` wired the public
+  `:phoenix_kit_mount_current_scope` on_mount instead of the
+  `:phoenix_kit_ensure_admin` every real deployment uses for plugin admin
+  tabs, so a non-admin user reached admin-only LiveViews in tests only.
+  Fixing the gate surfaced a latent fixture-ordering bug (the first user
+  registered in a sandboxed transaction becomes Owner, so a "regular" user
+  fixture created before the admin fixture was silently promoted) — both
+  fixed together, with one test rewritten to assert the real redirect
+  behavior instead of a successful read-only render.
+- **Module identity tests caught up with the warehouse UI pass** (#28):
+  `admin_tabs/0`'s count (38 → 39), the root tab's `match` (`:exact` →
+  `:prefix`), and `ColumnConfig.Inventories.all_column_ids/0` (missing the
+  `created_by`/`performed_by` columns). Also registers `"In stock"` in
+  `translatable_labels/0` — the new root subtab's label, otherwise
+  invisible to `mix gettext.extract` and silently rendered in raw English.
+- **Restored the item-selector's cart-count tray**, lost silently when
+  `phoenix_kit_catalogue` flipped `ItemSelectorModal`'s `show_tray` default
+  to `false`. All three embeds (inventory, internal order, and transfer
+  forms) now pass `show_tray={true}` explicitly.
+- **`mix test`'s catalogue tables were missing `phoenix_kit_catalogue`
+  0.19+'s own migration chain** (the per-language `slug` column), because
+  `test/test_helper.exs` only replayed core's versioned migrations.
+  144 of 813 tests were failing on every catalogue item insert. Added
+  `test/support/catalogue_migration.ex` to run catalogue's chain through
+  `Ecto.Migrator`, mirroring `phoenix_kit_crm`'s test-boot pattern.
+- **`mix precommit` was actually red** (`credo --strict` exit 8): six
+  `ColumnConfig.*.columns/0` functions exceeded the cyclomatic-complexity
+  ceiling after the `created_by`/`performed_by` columns landed. Nobody
+  caught it because checking with `mix precommit | tail` reports `tail`'s
+  exit code, not `mix`'s. Fixed by extracting each column literal into its
+  own named function across all six `column_config/*.ex` modules — no
+  behavior change.
+
 ## 0.4.0 - 2026-08-22
 
 ### Added

@@ -1051,6 +1051,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           </div>
         </div>
 
+        <%!-- `show_tray: true`: catalogue 0.19+ defaults the cart-count button
+        off; explicit here to keep the review-list affordance this form's
+        tests (and UX) rely on. --%>
         <.live_component
           :if={@show_item_selector}
           module={ItemSelectorModal}
@@ -1060,6 +1063,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           selected={selected_items(@lines)}
           locale={@locale}
           qty_precision={6}
+          show_tray={true}
         />
       <% end %>
 

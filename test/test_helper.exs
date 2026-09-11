@@ -1,6 +1,6 @@
 support_dir = Path.expand("support", __DIR__)
 
-["test_repo.ex", "data_case.ex", "live_database_guard.ex"]
+["test_repo.ex", "data_case.ex", "live_database_guard.ex", "catalogue_migration.ex"]
 |> Enum.each(&Code.require_file(&1, support_dir))
 
 db_name =
@@ -47,6 +47,30 @@ repo_available =
     try do
       {:ok, _} = PhoenixKitWarehouse.Test.Repo.start_link()
       PhoenixKit.Migration.ensure_current(PhoenixKitWarehouse.Test.Repo, log: false)
+
+      # `phoenix_kit_catalogue` (>= 0.19, this module's floor is 0.28.5) owns a
+      # decentralized migration chain of its own (`PhoenixKitCatalogue.Migrations`,
+      # discovered by `mix phoenix_kit.update` via `migration_module/0`) — core's
+      # `ensure_current/2` above only re-applies CORE's versioned chain, which no
+      # longer carries catalogue's V2 (the per-language `slug` column + trigger
+      # projections). Without this, every `phoenix_kit_cat_items` insert in this
+      # suite fails with `column "slug" ... does not exist`. Run through
+      # `Ecto.Migrator` (see `PhoenixKitWarehouse.Test.CatalogueMigration`)
+      # rather than called bare: `Migrations.up/1`'s `execute/1` is
+      # `Ecto.Migration.execute/1`, which requires a live migration runner
+      # process. `all: true` re-applies on every chain-version bump; every
+      # statement is idempotent (`IF NOT EXISTS` / guarded) so re-running a
+      # version already at that mark is harmless.
+      Ecto.Migrator.run(
+        PhoenixKitWarehouse.Test.Repo,
+        [
+          {PhoenixKitWarehouse.Test.CatalogueMigration.migrator_version(),
+           PhoenixKitWarehouse.Test.CatalogueMigration}
+        ],
+        :up,
+        all: true,
+        log: false
+      )
 
       # A real deployment configures a default warehouse Location; the suite
       # never did. `phoenix_kit_warehouse_stock.location_uuid` is NOT NULL and
