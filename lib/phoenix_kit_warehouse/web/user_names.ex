@@ -15,12 +15,15 @@ defmodule PhoenixKitWarehouse.Web.UserNames do
   """
 
   alias PhoenixKit.Users.Auth
+  alias PhoenixKit.Users.Auth.User
 
   @doc """
   Builds a `%{uuid => display name}` map for a list of documents.
 
   `fields` names the uuid-carrying fields to collect; the default covers the
-  creator/responsible pair every warehouse document schema declares.
+  creator/responsible pair every warehouse document schema declares. Names
+  come from core's `User.display_name/1`, so a user reads the same here as
+  in every other PhoenixKit admin list.
   """
   def resolve(docs, fields \\ [:created_by_uuid, :performed_by_uuid]) do
     docs
@@ -28,7 +31,7 @@ defmodule PhoenixKitWarehouse.Web.UserNames do
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
     |> Auth.get_users_by_uuids()
-    |> Map.new(fn user -> {user.uuid, display_name(user)} end)
+    |> Map.new(fn user -> {user.uuid, User.display_name(user)} end)
   end
 
   @doc """
@@ -41,22 +44,6 @@ defmodule PhoenixKitWarehouse.Web.UserNames do
     Map.get(names, uuid) || stub(uuid)
   end
 
-  defp display_name(user) do
-    full = [user.first_name, user.last_name] |> Enum.reject(&blank?/1) |> Enum.join(" ")
-
-    cond do
-      full != "" -> full
-      not blank?(user.username) -> user.username
-      not blank?(user.email) -> user.email
-      true -> stub(user.uuid)
-    end
-  end
-
   defp stub(uuid) when is_binary(uuid), do: String.slice(uuid, 0, 8) <> "…"
   defp stub(_), do: "—"
-
-  defp blank?(nil), do: true
-  defp blank?(""), do: true
-  defp blank?(value) when is_binary(value), do: String.trim(value) == ""
-  defp blank?(_), do: false
 end

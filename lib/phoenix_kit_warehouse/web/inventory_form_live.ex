@@ -35,6 +35,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.ItemSelectorScope
 
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Utils.Routes
@@ -63,7 +64,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:warehouses, StockLedger.list_warehouses())
       |> assign(:stock_map, %{})
       |> assign(:show_item_selector, false)
-      |> assign(:selector_catalogue_uuids, [])
+      |> assign(:selector_scope, nil)
       |> assign(:show_location_confirm, false)
       |> assign(:pending_location_uuid, nil)
       |> assign(:pending_location_name, nil)
@@ -249,31 +250,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     |> assign(:names, build_names_map(doc.lines, locale))
   end
 
-  # ItemSelectorModal only builds a category tree for a scope that names its
-  # catalogues: `do_build_category_tree/3` matches on `:catalogue_uuids` (one
-  # entry = that catalogue's own root, several = the catalogue-first drill) and
-  # every other shape falls through to the empty tree. A scope of just
-  # `%{statuses: ["active"]}` therefore opened the picker with no group
-  # navigation at all — a flat search box over every item in the system. Naming
-  # the catalogues restores the same hierarchical browse the sub-orders picker
-  # has, without narrowing what a stocktake may count: the list is every
-  # catalogue there is, resolved fresh each time the picker opens so a
-  # newly-added catalogue does not need a reload to show up.
-  defp offered_catalogue_uuids do
-    Catalogue.list_catalogues() |> Enum.map(& &1.uuid)
-  end
-
   # Users referenced by the doc (responsible + creator), fetched for display.
   defp referenced_users(doc) do
     [doc.performed_by_uuid, doc.created_by_uuid]
-    |> Enum.filter(& &1)
+    |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
-    |> Enum.flat_map(fn user_uuid ->
-      case Auth.get_user(user_uuid) do
-        nil -> []
-        user -> [user]
-      end
-    end)
+    |> Auth.get_users_by_uuids()
   end
 
   # Returns the display name for a location uuid, or a fallback string.
@@ -334,7 +316,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     if editable? do
       {:noreply,
        socket
-       |> assign(:selector_catalogue_uuids, offered_catalogue_uuids())
+       |> assign(:selector_scope, ItemSelectorScope.build())
        |> assign(:show_item_selector, true)}
     else
       {:noreply, socket}
@@ -1059,7 +1041,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           module={ItemSelectorModal}
           id="inventory-item-selector"
           current_user={@current_user}
-          scope={%{catalogue_uuids: @selector_catalogue_uuids, statuses: ["active"]}}
+          scope={@selector_scope}
           selected={selected_items(@lines)}
           locale={@locale}
           qty_precision={6}

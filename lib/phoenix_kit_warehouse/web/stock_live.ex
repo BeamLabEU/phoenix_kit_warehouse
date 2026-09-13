@@ -52,7 +52,10 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     column_config: PhoenixKitWarehouse.ColumnConfig.Stock,
     scope: "warehouse_stock"
 
+  require Logger
+
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
+  import PhoenixKitWarehouse.Web.Components.SortHeader, only: [sort_header: 1]
 
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitCatalogue.Schemas.Item
@@ -73,7 +76,6 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
 
   alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKit.Utils.Routes
-  alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.Web.ColumnManagement
 
   # Opt out of PhoenixKit's auto admin-chrome layout so this view self-wraps
@@ -194,6 +196,13 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       _ ->
         {:noreply, socket}
     end
+  rescue
+    # A malformed uuid raises a cast error inside the catalogue query; the
+    # click came from our own rendered row, so simply leave the card closed
+    # rather than crash the whole stock page.
+    error ->
+      Logger.debug("show_product_card failed: #{inspect(error)}")
+      {:noreply, socket}
   end
 
   def handle_event("show_product_card", _params, socket), do: {:noreply, socket}
@@ -840,41 +849,6 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         />
       </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
-    """
-  end
-
-  attr(:by, :string, required: true)
-  attr(:label, :string, required: true)
-  attr(:sort_by, :string, required: true)
-  attr(:sort_dir, :atom, required: true)
-  attr(:align, :atom, default: :left)
-
-  defp sort_header(assigns) do
-    assigns = assign(assigns, :active?, assigns.sort_by == assigns.by)
-
-    ~H"""
-    <button
-      type="button"
-      phx-click="toggle_sort"
-      phx-value-by={@by}
-      class={[
-        "inline-flex items-center gap-1 cursor-pointer select-none",
-        @align == :right && "justify-end w-full"
-      ]}
-    >
-      <span>{@label}</span>
-      <%!--
-        The chevron is always in the layout and only its VISIBILITY flips.
-        Rendering it with `:if` made the header cell 14px narrower/shorter on
-        every column but the sorted one, so picking a sort visibly resized the
-        header row — and with it the whole table's first row. `invisible` keeps
-        the box, so sorting changes what the header says, never how big it is.
-      --%>
-      <.icon
-        name={if @sort_dir == :asc, do: "hero-chevron-up-mini", else: "hero-chevron-down-mini"}
-        class={"w-3.5 h-3.5 shrink-0" <> if(@active?, do: "", else: " invisible")}
-      />
-    </button>
     """
   end
 

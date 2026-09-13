@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.2 - 2026-09-13
+
+### Fixed
+
+- **Internal order and transfer forms now open the item picker with the
+  catalogue tree.** Both passed the catalogue's `ItemSelectorModal` a scope
+  of just `%{statuses: ["active"]}`, which the modal renders as a flat
+  search box with no group navigation (its category tree is only built for
+  a scope that names its catalogues). The stocktake form had already been
+  fixed to pass every catalogue; the same scope now comes from one shared
+  `PhoenixKitWarehouse.Web.ItemSelectorScope.build/0` in all three forms,
+  and the two forms also pass `current_user`, so the picker's per-user view
+  preferences persist there too.
+- **`StockLive`'s product-card click is guarded** like every other context
+  read in the LiveViews: a catalogue lookup that raises leaves the card
+  closed and logs at `:debug` instead of crashing the stock page.
+
+### Changed
+
+- **The six document column registries share their column definitions.**
+  `number`, `status`, `date`, `posted_at`, `lines_count`, `note`,
+  `created_by`, `performed_by`, `supplier`, `internal_order` and
+  `location` were byte-identical copies across `column_config/*.ex`; they
+  are now constructors in `PhoenixKitWarehouse.ColumnConfig` (imported by
+  `use`), and each registry only spells out its own columns and their
+  order. Column ids, defaults, sort keys and filters are unchanged.
+- **One `sort_header` component** (`Web.Components.SortHeader`) replaces
+  the identical private copy each of the seven list LiveViews carried.
+- **`Web.UserNames` uses core's `User.display_name/1`** instead of its own
+  name-resolution rules, so a user reads the same in a warehouse list as
+  in every other PhoenixKit admin list. A uuid with no matching user still
+  renders as a short stub. The stocktake form's referenced-user lookup now
+  fetches both users in one query.
+- Regenerated the gettext catalogue: eleven msgids left over from the
+  warehouse-local item picker removed in 0.4.0 are gone. No live string
+  changed.
+
 ## 0.4.1 - 2026-09-11
 
 ### Fixed

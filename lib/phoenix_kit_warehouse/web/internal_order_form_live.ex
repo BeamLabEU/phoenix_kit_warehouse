@@ -37,6 +37,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.ItemSelectorScope
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -58,6 +59,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       |> assign(:current_user, current_user)
       |> assign(:admin?, admin?)
       |> assign(:show_item_selector, false)
+      |> assign(:selector_scope, nil)
       |> assign(:order, nil)
       |> assign(:lines, [])
       |> assign(:note, "")
@@ -228,7 +230,10 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
     if posted? do
       {:noreply, socket}
     else
-      {:noreply, assign(socket, :show_item_selector, true)}
+      {:noreply,
+       socket
+       |> assign(:selector_scope, ItemSelectorScope.build())
+       |> assign(:show_item_selector, true)}
     end
   end
 
@@ -1065,7 +1070,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
           :if={@show_item_selector}
           module={ItemSelectorModal}
           id="internal-order-item-selector"
-          scope={%{statuses: ["active"]}}
+          current_user={@current_user}
+          scope={@selector_scope}
           selected={selected_items(@lines)}
           locale={@locale}
           qty_precision={6}

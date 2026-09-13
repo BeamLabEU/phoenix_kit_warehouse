@@ -58,6 +58,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   alias PhoenixKitWarehouse.Transfer
   alias PhoenixKitWarehouse.Transfers
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.ItemSelectorScope
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -79,6 +80,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
       |> assign(:current_user, current_user)
       |> assign(:admin?, admin?)
       |> assign(:show_item_selector, false)
+      |> assign(:selector_scope, nil)
       |> assign(:transfer, nil)
       |> assign(:lines, [])
       |> assign(:note, "")
@@ -229,7 +231,10 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     editable? = socket.assigns.transfer && socket.assigns.transfer.status == "draft"
 
     if editable? do
-      {:noreply, assign(socket, :show_item_selector, true)}
+      {:noreply,
+       socket
+       |> assign(:selector_scope, ItemSelectorScope.build())
+       |> assign(:show_item_selector, true)}
     else
       {:noreply, socket}
     end
@@ -1011,7 +1016,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
           :if={@show_item_selector}
           module={ItemSelectorModal}
           id="transfer-item-selector"
-          scope={%{statuses: ["active"]}}
+          current_user={@current_user}
+          scope={@selector_scope}
           selected={selected_items(@lines)}
           locale={@locale}
           qty_precision={6}
