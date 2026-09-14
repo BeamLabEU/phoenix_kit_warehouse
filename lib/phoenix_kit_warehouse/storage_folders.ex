@@ -9,9 +9,19 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   `internal_order_storage_folders.ex`) into one module with 5 `ensure_for_*/2`
   functions.
 
-  Layout: a single, non-hierarchical folder at storage root, named
-  `<prefix>-<number>` (falling back to `<prefix>-<uuid>` when the document
-  has no number yet).
+  Layout: `<prefix>-<number>` (falling back to `<prefix>-<uuid>` when the
+  document has no number yet), created under the parent folder returned by
+  the optional host hook
+
+      config :phoenix_kit_warehouse, :storage_parent_folder, {MyApp.Media, :for_warehouse}
+
+  called as `for_warehouse(resource, actor_uuid)` with `resource` one of
+  `:goods_issue | :goods_receipt | :inventory | :supplier_order |
+  :internal_order | :transfer`, returning `{:ok, parent_folder_uuid}` or
+  `nil` (= storage root, the default when the hook is absent). Lookup by
+  name checks the parent first, then the root; a root hit is adopted (moved
+  under the parent) so folders created before the hook existed keep their
+  files.
 
   Four of the five original resources (goods issue, goods receipt, inventory,
   supplier order) cache the resolved folder's uuid on a `storage_folder_uuid`
@@ -47,11 +57,23 @@ defmodule PhoenixKitWarehouse.StorageFolders do
 
   def ensure_for_goods_issue(%GoodsIssue{storage_folder_uuid: uuid} = issue, admin_user_uuid)
       when not is_nil(uuid) do
-    ensure_cached(issue, admin_user_uuid, "goods-issue", &GoodsIssues.set_storage_folder/2)
+    ensure_cached(
+      issue,
+      admin_user_uuid,
+      :goods_issue,
+      "goods-issue",
+      &GoodsIssues.set_storage_folder/2
+    )
   end
 
   def ensure_for_goods_issue(%GoodsIssue{} = issue, admin_user_uuid) do
-    create_and_cache(issue, admin_user_uuid, "goods-issue", &GoodsIssues.set_storage_folder/2)
+    create_and_cache(
+      issue,
+      admin_user_uuid,
+      :goods_issue,
+      "goods-issue",
+      &GoodsIssues.set_storage_folder/2
+    )
   end
 
   @doc """
@@ -66,13 +88,20 @@ defmodule PhoenixKitWarehouse.StorageFolders do
         admin_user_uuid
       )
       when not is_nil(uuid) do
-    ensure_cached(receipt, admin_user_uuid, "goods-receipt", &GoodsReceipts.set_storage_folder/2)
+    ensure_cached(
+      receipt,
+      admin_user_uuid,
+      :goods_receipt,
+      "goods-receipt",
+      &GoodsReceipts.set_storage_folder/2
+    )
   end
 
   def ensure_for_goods_receipt(%GoodsReceipt{} = receipt, admin_user_uuid) do
     create_and_cache(
       receipt,
       admin_user_uuid,
+      :goods_receipt,
       "goods-receipt",
       &GoodsReceipts.set_storage_folder/2
     )
@@ -87,11 +116,23 @@ defmodule PhoenixKitWarehouse.StorageFolders do
 
   def ensure_for_inventory(%InventoryDocument{storage_folder_uuid: uuid} = doc, admin_user_uuid)
       when not is_nil(uuid) do
-    ensure_cached(doc, admin_user_uuid, "inventory", &Inventories.set_storage_folder/2)
+    ensure_cached(
+      doc,
+      admin_user_uuid,
+      :inventory,
+      "inventory",
+      &Inventories.set_storage_folder/2
+    )
   end
 
   def ensure_for_inventory(%InventoryDocument{} = doc, admin_user_uuid) do
-    create_and_cache(doc, admin_user_uuid, "inventory", &Inventories.set_storage_folder/2)
+    create_and_cache(
+      doc,
+      admin_user_uuid,
+      :inventory,
+      "inventory",
+      &Inventories.set_storage_folder/2
+    )
   end
 
   @doc """
@@ -106,13 +147,20 @@ defmodule PhoenixKitWarehouse.StorageFolders do
         admin_user_uuid
       )
       when not is_nil(uuid) do
-    ensure_cached(order, admin_user_uuid, "supplier-order", &SupplierOrders.set_storage_folder/2)
+    ensure_cached(
+      order,
+      admin_user_uuid,
+      :supplier_order,
+      "supplier-order",
+      &SupplierOrders.set_storage_folder/2
+    )
   end
 
   def ensure_for_supplier_order(%SupplierOrder{} = order, admin_user_uuid) do
     create_and_cache(
       order,
       admin_user_uuid,
+      :supplier_order,
       "supplier-order",
       &SupplierOrders.set_storage_folder/2
     )
@@ -128,7 +176,7 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   """
   def ensure_for_internal_order(%InternalOrder{} = order, admin_user_uuid) do
     name = folder_name("internal-order", order.number, order.uuid)
-    find_or_create(name, admin_user_uuid)
+    find_or_create(name, parent_uuid_for(:internal_order, admin_user_uuid), admin_user_uuid)
   end
 
   @doc """
@@ -140,18 +188,36 @@ defmodule PhoenixKitWarehouse.StorageFolders do
 
   def ensure_for_transfer(%Transfer{storage_folder_uuid: uuid} = transfer, admin_user_uuid)
       when not is_nil(uuid) do
-    ensure_cached(transfer, admin_user_uuid, "transfer", &Transfers.set_storage_folder/2)
+    ensure_cached(
+      transfer,
+      admin_user_uuid,
+      :transfer,
+      "transfer",
+      &Transfers.set_storage_folder/2
+    )
   end
 
   def ensure_for_transfer(%Transfer{} = transfer, admin_user_uuid) do
-    create_and_cache(transfer, admin_user_uuid, "transfer", &Transfers.set_storage_folder/2)
+    create_and_cache(
+      transfer,
+      admin_user_uuid,
+      :transfer,
+      "transfer",
+      &Transfers.set_storage_folder/2
+    )
   end
 
   # ---------------------------------------------------------------------------
   # Shared fast-path / create-and-cache helpers (the 5 full-pattern resources)
   # ---------------------------------------------------------------------------
 
-  defp ensure_cached(%{storage_folder_uuid: uuid} = doc, admin_user_uuid, prefix, set_folder_fn) do
+  defp ensure_cached(
+         %{storage_folder_uuid: uuid} = doc,
+         admin_user_uuid,
+         resource,
+         prefix,
+         set_folder_fn
+       ) do
     case Storage.get_folder(uuid) do
       nil ->
         # Folder was deleted from /admin/media — clear the dangling link and re-create
@@ -160,6 +226,7 @@ defmodule PhoenixKitWarehouse.StorageFolders do
         create_and_cache(
           %{doc | storage_folder_uuid: nil},
           admin_user_uuid,
+          resource,
           prefix,
           set_folder_fn
         )
@@ -169,29 +236,45 @@ defmodule PhoenixKitWarehouse.StorageFolders do
     end
   end
 
-  defp create_and_cache(doc, admin_user_uuid, prefix, set_folder_fn) do
+  defp create_and_cache(doc, admin_user_uuid, resource, prefix, set_folder_fn) do
     name = folder_name(prefix, doc.number, doc.uuid)
+    parent_uuid = parent_uuid_for(resource, admin_user_uuid)
 
-    with {:ok, folder} <- find_or_create(name, admin_user_uuid),
+    with {:ok, folder} <- find_or_create(name, parent_uuid, admin_user_uuid),
          {:ok, _} <- set_folder_fn.(doc, folder.uuid) do
       {:ok, folder}
     end
   end
 
-  defp find_or_create(name, user_uuid) do
-    case find_by_name(name) do
+  @doc false
+  # Host-configured parent folder for a resource kind; nil = storage root.
+  def parent_uuid_for(resource, actor_uuid) do
+    case Application.get_env(:phoenix_kit_warehouse, :storage_parent_folder) do
+      {mod, fun} when is_atom(mod) and is_atom(fun) ->
+        case apply(mod, fun, [resource, actor_uuid]) do
+          {:ok, uuid} when is_binary(uuid) -> uuid
+          _ -> nil
+        end
+
+      _ ->
+        nil
+    end
+  end
+
+  defp find_or_create(name, parent_uuid, user_uuid) do
+    case find_by_name(name, parent_uuid) || adopt_from_root(name, parent_uuid) do
       %StorageFolder{} = folder ->
         {:ok, folder}
 
       nil ->
-        case Storage.create_folder(%{name: name, parent_uuid: nil, user_uuid: user_uuid}) do
+        case Storage.create_folder(%{name: name, parent_uuid: parent_uuid, user_uuid: user_uuid}) do
           {:ok, folder} ->
             {:ok, folder}
 
           {:error, %Ecto.Changeset{errors: errors}} ->
             # Unique constraint race — another process created it between our lookup and insert.
             if Keyword.has_key?(errors, :name) do
-              {:ok, find_by_name(name)}
+              {:ok, find_by_name(name, parent_uuid)}
             else
               {:error, :create_folder_failed}
             end
@@ -199,14 +282,30 @@ defmodule PhoenixKitWarehouse.StorageFolders do
     end
   end
 
-  # Document folders are always created at the storage root, so the lookup is
-  # root-scoped too — there is no caller that passes a parent.
-  defp find_by_name(name) do
+  defp adopt_from_root(_name, nil), do: nil
+
+  defp adopt_from_root(name, parent_uuid) do
+    case find_by_name(name, nil) do
+      %StorageFolder{} = legacy ->
+        case Storage.update_folder(legacy, %{parent_uuid: parent_uuid}) do
+          {:ok, moved} -> moved
+          {:error, _} -> nil
+        end
+
+      nil ->
+        nil
+    end
+  end
+
+  defp find_by_name(name, parent_uuid) do
     StorageFolder
     |> where([f], f.name == ^name)
-    |> where([f], is_nil(f.parent_uuid))
+    |> where_parent(parent_uuid)
     |> repo().one()
   end
+
+  defp where_parent(query, nil), do: where(query, [f], is_nil(f.parent_uuid))
+  defp where_parent(query, uuid), do: where(query, [f], f.parent_uuid == ^uuid)
 
   defp folder_name(prefix, number, uuid) do
     case number do
