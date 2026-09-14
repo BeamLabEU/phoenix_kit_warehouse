@@ -18,10 +18,12 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   called as `for_warehouse(resource, actor_uuid)` with `resource` one of
   `:goods_issue | :goods_receipt | :inventory | :supplier_order |
   :internal_order | :transfer`, returning `{:ok, parent_folder_uuid}` or
-  `nil` (= storage root, the default when the hook is absent). Lookup by
-  name checks the parent first, then the root; a root hit is adopted (moved
-  under the parent) so folders created before the hook existed keep their
-  files.
+  `nil` (= storage root, the default when the hook is absent). A hook that
+  raises or returns something other than a UUID is logged and treated as
+  `nil`. Lookup by name ignores trashed folders and checks the parent
+  first, then the root; a root hit — or a cached folder still sitting at the
+  root — is adopted (moved under the parent) so folders created before the
+  hook existed keep their files. A failed move leaves the folder at the root.
 
   Four of the five original resources (goods issue, goods receipt, inventory,
   supplier order) cache the resolved folder's uuid on a `storage_folder_uuid`
@@ -36,6 +38,8 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   """
 
   import Ecto.Query
+
+  require Logger
 
   alias PhoenixKit.Modules.Storage
   alias PhoenixKit.Modules.Storage.Folder, as: StorageFolder
@@ -231,6 +235,10 @@ defmodule PhoenixKitWarehouse.StorageFolders do
           set_folder_fn
         )
 
+      %StorageFolder{parent_uuid: nil} = folder ->
+        # Cached before the host configured a parent — move it under the parent now.
+        {:ok, adopt(folder, parent_uuid_for(resource, admin_user_uuid))}
+
       folder ->
         {:ok, folder}
     end
@@ -251,33 +259,64 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   def parent_uuid_for(resource, actor_uuid) do
     case Application.get_env(:phoenix_kit_warehouse, :storage_parent_folder) do
       {mod, fun} when is_atom(mod) and is_atom(fun) ->
-        case apply(mod, fun, [resource, actor_uuid]) do
-          {:ok, uuid} when is_binary(uuid) -> uuid
-          _ -> nil
-        end
+        call_parent_hook(mod, fun, resource, actor_uuid)
 
       _ ->
         nil
     end
   end
 
+  # Host code: a raising hook or a non-UUID return must not crash the folder
+  # task (the form would spin forever) — fall back to the root, which a later
+  # call adopts once the hook is fixed.
+  defp call_parent_hook(mod, fun, resource, actor_uuid) do
+    case apply(mod, fun, [resource, actor_uuid]) do
+      result when result in [nil, {:ok, nil}] ->
+        nil
+
+      {:ok, uuid} = result when is_binary(uuid) ->
+        case Ecto.UUID.cast(uuid) do
+          {:ok, uuid} -> uuid
+          :error -> hook_failed(mod, fun, "returned #{inspect(result)}")
+        end
+
+      other ->
+        hook_failed(mod, fun, "returned #{inspect(other)}")
+    end
+  rescue
+    e -> hook_failed(mod, fun, "raised #{Exception.message(e)}")
+  catch
+    :exit, reason -> hook_failed(mod, fun, "exited #{inspect(reason)}")
+  end
+
+  defp hook_failed(mod, fun, what) do
+    Logger.warning(
+      "[PhoenixKitWarehouse] storage_parent_folder hook #{inspect(mod)}.#{fun}/2 #{what}; " <>
+        "using storage root"
+    )
+
+    nil
+  end
+
   defp find_or_create(name, parent_uuid, user_uuid) do
     case find_by_name(name, parent_uuid) || adopt_from_root(name, parent_uuid) do
-      %StorageFolder{} = folder ->
+      %StorageFolder{} = folder -> {:ok, folder}
+      nil -> create_folder(name, parent_uuid, user_uuid)
+    end
+  end
+
+  defp create_folder(name, parent_uuid, user_uuid) do
+    case Storage.create_folder(%{name: name, parent_uuid: parent_uuid, user_uuid: user_uuid}) do
+      {:ok, folder} ->
         {:ok, folder}
 
-      nil ->
-        case Storage.create_folder(%{name: name, parent_uuid: parent_uuid, user_uuid: user_uuid}) do
-          {:ok, folder} ->
-            {:ok, folder}
-
-          {:error, %Ecto.Changeset{errors: errors}} ->
-            # Unique constraint race — another process created it between our lookup and insert.
-            if Keyword.has_key?(errors, :name) do
-              {:ok, find_by_name(name, parent_uuid)}
-            else
-              {:error, :create_folder_failed}
-            end
+      {:error, %Ecto.Changeset{errors: errors}} ->
+        # Unique constraint race — another process created it between our lookup and insert.
+        with true <- Keyword.has_key?(errors, :name),
+             %StorageFolder{} = folder <- find_by_name(name, parent_uuid) do
+          {:ok, folder}
+        else
+          _ -> {:error, :create_folder_failed}
         end
     end
   end
@@ -286,20 +325,25 @@ defmodule PhoenixKitWarehouse.StorageFolders do
 
   defp adopt_from_root(name, parent_uuid) do
     case find_by_name(name, nil) do
-      %StorageFolder{} = legacy ->
-        case Storage.update_folder(legacy, %{parent_uuid: parent_uuid}) do
-          {:ok, moved} -> moved
-          {:error, _} -> nil
-        end
-
-      nil ->
-        nil
+      %StorageFolder{} = legacy -> adopt(legacy, parent_uuid)
+      nil -> nil
     end
   end
 
+  defp adopt(folder, nil), do: folder
+
+  defp adopt(folder, parent_uuid) do
+    case Storage.update_folder(folder, %{parent_uuid: parent_uuid}) do
+      {:ok, moved} -> moved
+      {:error, _} -> folder
+    end
+  end
+
+  # Trashed folders are outside the (name, parent) unique index, so a live and
+  # a trashed folder can share a name — match live ones only, or `one/1` raises.
   defp find_by_name(name, parent_uuid) do
     StorageFolder
-    |> where([f], f.name == ^name)
+    |> where([f], f.name == ^name and is_nil(f.trashed_at))
     |> where_parent(parent_uuid)
     |> repo().one()
   end

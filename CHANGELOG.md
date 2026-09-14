@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.4.3 - 2026-09-14
+
+### Added
+
+- **Document folders can live under a host-configured parent folder.**
+  `config :phoenix_kit_warehouse, :storage_parent_folder, {MyApp.Media, :for_warehouse}`
+  is called as `for_warehouse(resource, actor_uuid)` (`resource` one of
+  `:goods_issue | :goods_receipt | :inventory | :supplier_order |
+  :internal_order | :transfer`) and returns `{:ok, parent_folder_uuid}` or
+  `nil` for the storage root. Without the config folders stay at the root.
+  Existing root-level document folders — including ones already linked to
+  a document — are moved under the parent the next time the document's
+  Files panel opens, so they keep their files. A hook that raises or
+  returns a non-UUID is logged and treated as the root instead of hanging
+  the Files panel.
+
+### Fixed
+
+- **Folder name lookup ignores trashed folders.** A trashed folder sharing
+  a live folder's name (allowed by core's unique index) made the lookup
+  raise `Ecto.MultipleResultsError`, leaving the Files panel spinning.
+
 ## 0.4.2 - 2026-09-13
 
 ### Fixed
