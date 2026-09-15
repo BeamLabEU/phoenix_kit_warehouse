@@ -48,6 +48,20 @@ repo_available =
       {:ok, _} = PhoenixKitWarehouse.Test.Repo.start_link()
       PhoenixKit.Migration.ensure_current(PhoenixKitWarehouse.Test.Repo, log: false)
 
+      # This module's OWN decentralized migration chain
+      # (`PhoenixKitWarehouse.Migrations`, discovered by `mix phoenix_kit.update`
+      # via `migration_module/0`) now owns the future shape of all 8
+      # `phoenix_kit_warehouse_*` tables — core's `ensure_current/2` above only
+      # re-applies core's V140/V144 baseline. V1 is a pure adoption (every
+      # statement `IF NOT EXISTS`/guarded, so re-running it against the
+      # already-migrated core shape is a no-op except for stamping the
+      # `pkw_schema:1` marker), so the statements are executed directly as
+      # data via `up_statements/2` rather than through `up/1`: `up/1` needs a
+      # live `Ecto.Migration` runner (its `execute/1` is
+      # `Ecto.Migration.execute/1`), which this bare setup step doesn't have.
+      PhoenixKitWarehouse.Migrations.up_statements()
+      |> Enum.each(&Ecto.Adapters.SQL.query!(PhoenixKitWarehouse.Test.Repo, &1, []))
+
       # `phoenix_kit_catalogue` (>= 0.19, this module's floor is 0.28.5) owns a
       # decentralized migration chain of its own (`PhoenixKitCatalogue.Migrations`,
       # discovered by `mix phoenix_kit.update` via `migration_module/0`) — core's

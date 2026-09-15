@@ -117,6 +117,12 @@ defmodule PhoenixKitWarehouse do
   @impl PhoenixKit.Module
   def version, do: @version
 
+  # phoenix_kit_warehouse's future shape now belongs to this chain — see
+  # PhoenixKitWarehouse.Migrations. Core's V140/V144 still create the
+  # V1-adopted shape on every install; nothing else changes.
+  @impl PhoenixKit.Module
+  def migration_module, do: PhoenixKitWarehouse.Migrations
+
   @impl PhoenixKit.Module
   def required_modules, do: ["catalogue", "locations"]
 
