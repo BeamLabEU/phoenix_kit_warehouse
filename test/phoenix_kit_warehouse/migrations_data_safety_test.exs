@@ -119,6 +119,18 @@ defmodule PhoenixKitWarehouse.MigrationsDataSafetyTest do
     end
   end
 
+  test "README's manual removal SQL leaves no phoenix_kit_warehouse_* table or sequence" do
+    # The number sequences are not OWNED BY their columns, so DROP TABLE alone
+    # orphans them. Guard against the list being empty before the drop, or
+    # the "nothing survives" assertion would pass vacuously.
+    assert length(warehouse_relations()) == 14
+
+    Enum.each(readme_removal_statements(), &Repo.query!/1)
+
+    assert warehouse_relations() == [],
+           "README's removal SQL left relations behind"
+  end
+
   # ── helpers ──────────────────────────────────────────────────────────
 
   # Runs the migration IN THIS PROCESS, through Ecto's own migration runner,
@@ -142,6 +154,41 @@ defmodule PhoenixKitWarehouse.MigrationsDataSafetyTest do
       log: false,
       log_migrations_sql: false
     )
+  end
+
+  defp warehouse_relations do
+    %{rows: rows} =
+      Repo.query!("""
+      SELECT c.relname
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = 'public'
+        AND c.relkind IN ('r', 'S')
+        AND c.relname LIKE 'phoenix\\_kit\\_warehouse\\_%'
+      ORDER BY c.relname
+      """)
+
+    List.flatten(rows)
+  end
+
+  # The first ```sql block under README's "Removing this module" heading, one
+  # statement per `;`, comment lines stripped.
+  defp readme_removal_statements do
+    [_, section] =
+      "../../README.md"
+      |> Path.expand(__DIR__)
+      |> File.read!()
+      |> String.split("### Removing this module", parts: 2)
+
+    [_, sql | _] = String.split(section, ["```sql", "```"])
+
+    sql
+    |> String.split("\n")
+    |> Enum.reject(&String.starts_with?(&1, "--"))
+    |> Enum.join("\n")
+    |> String.split(";")
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
   end
 
   defp count do

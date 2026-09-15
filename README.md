@@ -56,6 +56,14 @@ DROP TABLE phoenix_kit_warehouse_inventory_documents;
 DROP TABLE phoenix_kit_warehouse_stock;
 DROP TABLE phoenix_kit_warehouse_transfers;
 DROP TABLE phoenix_kit_warehouse_min_stock;
+-- The document-number sequences are not OWNED BY their columns, so
+-- dropping the tables leaves them behind.
+DROP SEQUENCE phoenix_kit_warehouse_goods_issues_number_seq;
+DROP SEQUENCE phoenix_kit_warehouse_goods_receipts_number_seq;
+DROP SEQUENCE phoenix_kit_warehouse_supplier_orders_number_seq;
+DROP SEQUENCE phoenix_kit_warehouse_internal_orders_number_seq;
+DROP SEQUENCE phoenix_kit_warehouse_inventory_documents_number_seq;
+DROP SEQUENCE phoenix_kit_warehouse_transfers_number_seq;
 ```
 
 If you want to keep the tables (e.g. you plan to reinstall the module

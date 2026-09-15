@@ -554,7 +554,7 @@ defmodule PhoenixKitWarehouse.Migrations do
       end)
 
     fks = [
-      # Conflict B: singular "document" — Postgres's default FK-naming
+      # Reconciled discrepancy 2 (moduledoc): singular "document" — Postgres's default FK-naming
       # truncated this identifier past 63 bytes; hard-coded literally, not
       # derived from the (plural) table name.
       fk_guard(

@@ -48,6 +48,19 @@ repo_available =
       {:ok, _} = PhoenixKitWarehouse.Test.Repo.start_link()
       PhoenixKit.Migration.ensure_current(PhoenixKitWarehouse.Test.Repo, log: false)
 
+      # `phoenix_kit_locations` (>= 0.5) owns a decentralized chain of its own
+      # (`PhoenixKitLocations.Migrations`, same `migration_module/0`
+      # discovery), and core's `ensure_current/2` above no longer carries it.
+      # 0.5.0 added `owner_uuid` (+ the owner columns around it) to
+      # `phoenix_kit_locations`, which `PhoenixKitLocations.Location` selects
+      # on every read — so without this every LiveView test that loads a
+      # warehouse location died with `column p0.owner_uuid does not exist`.
+      # Executed as data like the warehouse block below: its `up/1` only
+      # pipes `up_statements/2` into `execute/1`, and every statement is
+      # idempotent, so a bare replay needs no migration runner.
+      PhoenixKitLocations.Migrations.up_statements()
+      |> Enum.each(&Ecto.Adapters.SQL.query!(PhoenixKitWarehouse.Test.Repo, &1, []))
+
       # This module's OWN decentralized migration chain
       # (`PhoenixKitWarehouse.Migrations`, discovered by `mix phoenix_kit.update`
       # via `migration_module/0`) now owns the future shape of all 8

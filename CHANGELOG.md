@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
+## 0.5.0 - 2026-09-15
 
 ### Changed
 
@@ -26,8 +26,8 @@ All notable changes to this project will be documented in this file.
       `_internal_orders`, `_supplier_orders`, `_inventory_documents`,
       `_transfers`, and `_min_stock` on every install, and V1 re-asserts
       that exact shape idempotently (under core's exact object names —
-      sequences, columns, primary keys, unique constraints, indexes, foreign
-      keys) and stamps the marker. Because no shape changes, core's
+      sequences, columns, primary keys, check constraints, unique and plain
+      indexes, foreign keys) and stamps the marker. Because no shape changes, core's
       `ExpectedSchema` stays accurate — **no core release is required and
       there is no release-ordering hazard**.
     * **Phase 1 (a future V2+)** — the first real shape change to any of the
@@ -51,10 +51,22 @@ All notable changes to this project will be documented in this file.
   `warehouse_update_v00_to_v01.exs` migration that stamps `pkw_schema:1` and
   nothing else changes. New hosts and hosts without this module: unchanged.
 
-  This is the second of a planned series of similar module-owned-migration
-  adoptions across `phoenix_kit_*` packages that today rely entirely on
-  core's versioned chain for their own tables (the first was
-  `phoenix_kit_dashboards`).
+  Same adoption pattern as `phoenix_kit_billing` (V4, ten adopted tables)
+  and `phoenix_kit_dashboards` (one adopted table).
+
+### Fixed
+
+- README "Removing this module" SQL now also drops the six document-number
+  sequences — they are not `OWNED BY` their columns, so `DROP TABLE` alone
+  left them behind. A test runs the README's SQL block and asserts no
+  `phoenix_kit_warehouse_*` relation survives.
+- Test suite applies `phoenix_kit_locations`' own migration chain.
+  `phoenix_kit_locations` 0.5.0 added `owner_uuid` to `phoenix_kit_locations`
+  through `PhoenixKitLocations.Migrations`, which core's `ensure_current/2`
+  does not carry — so after the 0.5.1 bump every LiveView test that loaded a
+  warehouse location failed with `column p0.owner_uuid does not exist`
+  (181 errors). Runtime code was unaffected; a host runs
+  `mix phoenix_kit.update`, which applies that chain.
 
 ## 0.4.3 - 2026-09-14
 
