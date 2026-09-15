@@ -15,7 +15,11 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
 
   defmodule Hook do
     @moduledoc false
-    def parent(resource, _actor), do: {:ok, Process.get({:target, resource})}
+
+    def parent(resource, _actor) do
+      Process.put({:calls, resource}, (Process.get({:calls, resource}) || 0) + 1)
+      {:ok, Process.get({:target, resource})}
+    end
   end
 
   setup do
@@ -156,6 +160,28 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
         assert action.counts == {0, 0}
       end
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Hook batching — the host hook is record-independent (kind, actor_uuid),
+  # so it must be resolved once per kind, not once per record.
+  # ---------------------------------------------------------------------------
+
+  test "storage_parent_folder hook is called once per kind, not once per record" do
+    issue_a = create_goods_issue!()
+    issue_b = create_goods_issue!()
+    issue_c = create_goods_issue!()
+    {:ok, target} = Storage.create_folder(%{name: "Goods issues"})
+
+    for issue <- [issue_a, issue_b, issue_c] do
+      {:ok, _} = Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+    end
+
+    put_hook(:goods_issue, target.uuid)
+
+    MediaReorganizer.plan(nil, [])
+
+    assert Process.get({:calls, :goods_issue}) == 1
   end
 
   # ---------------------------------------------------------------------------
