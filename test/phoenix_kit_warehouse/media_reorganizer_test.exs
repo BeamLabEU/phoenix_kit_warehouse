@@ -791,4 +791,103 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
       assert action.on_conflict == :suffix
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Stray legacy twin next to the resolved folder (5335ebf)
+  # ---------------------------------------------------------------------------
+
+  describe "stray legacy twin next to the resolved folder (5335ebf)" do
+    test "pointer already correct AND a live legacy-named twin exists elsewhere -> the twin is reported :relocated" do
+      issue = create_goods_issue!()
+      {:ok, real_folder} = Storage.create_folder(%{name: "Somewhere real"})
+      {:ok, twin} = Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+      {:ok, _} = GoodsIssues.set_storage_folder(issue, real_folder.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      # The document's actual (pointer) folder is untouched...
+      refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+      # ...but the stray legacy-named twin is neither silently dropped nor
+      # mistaken for an orphan (the document is alive).
+      refute Enum.any?(actions, &(&1.kind == :orphan and &1.folder.uuid == twin.uuid))
+      relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == twin.uuid))
+      refute is_nil(relocated)
+    end
+
+    test "host-resolved current folder at root AND a live legacy twin under another parent -> the twin is reported :relocated" do
+      issue = create_goods_issue!()
+      {:ok, elsewhere} = Storage.create_folder(%{name: "Some other container"})
+      {:ok, root_folder} = Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+
+      {:ok, twin} =
+        Storage.create_folder(%{
+          name: "goods-issue-#{issue.number}",
+          parent_uuid: elsewhere.uuid
+        })
+
+      # Hook configured, resolves to root (nil) — the current folder is
+      # found by name at root, same as the record's own deterministic
+      # name, so only a pointer back-fill is planned for it.
+      Application.put_env(:phoenix_kit_warehouse, :storage_parent_folder, {Hook, :parent})
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      action = Enum.find(actions, &(&1.kind == :goods_issue))
+      refute is_nil(action)
+      assert action.folder.uuid == root_folder.uuid
+      assert is_function(action.after_move, 0)
+
+      refute Enum.any?(actions, &(&1.kind == :orphan and &1.folder.uuid == twin.uuid))
+      relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == twin.uuid))
+      refute is_nil(relocated)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # E1: reports still appear without a configured hook
+  # ---------------------------------------------------------------------------
+
+  describe "E1: reports still appear without a configured hook" do
+    test "no hook configured, legacy folder live under some parent (not root) -> reported :relocated" do
+      issue = create_goods_issue!()
+      {:ok, elsewhere} = Storage.create_folder(%{name: "Some other container"})
+
+      {:ok, legacy} =
+        Storage.create_folder(%{
+          name: "goods-issue-#{issue.number}",
+          parent_uuid: elsewhere.uuid
+        })
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      # No hook -> no move and no back-fill are ever planned for it...
+      refute Enum.any?(actions, &(&1.kind == :goods_issue))
+      # ...but the relocated report itself is not suppressed.
+      relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == legacy.uuid))
+      refute is_nil(relocated)
+    end
+
+    test "no hook configured, two documents whose pointers name the same folder -> reported :duplicate" do
+      issue1 = create_goods_issue!()
+      issue2 = create_goods_issue!()
+      {:ok, shared} = Storage.create_folder(%{name: "shared-folder"})
+      {:ok, _} = GoodsIssues.set_storage_folder(issue1, shared.uuid)
+      {:ok, _} = GoodsIssues.set_storage_folder(issue2, shared.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+      dup = Enum.find(actions, &(&1.kind == :duplicate and &1.label == shared.name))
+      refute is_nil(dup)
+    end
+
+    test "no hook configured, orphan folders are still reported" do
+      {:ok, _folder} =
+        Storage.create_folder(%{name: "goods-issue-#{System.unique_integer([:positive])}"})
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      assert Enum.any?(actions, &(&1.kind == :orphan))
+    end
+  end
 end
