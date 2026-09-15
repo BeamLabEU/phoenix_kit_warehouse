@@ -10,6 +10,12 @@ defmodule PhoenixKitWarehouse.Transfer do
 
   @statuses ~w(draft in_transit done cancelled)
 
+  # Single shape authority for `PhoenixKitWarehouse.Migrations` — this width
+  # coincides with core's V144 baseline shape, which `ExpectedSchema` audits;
+  # changing it is a chain version (V2+), never a second hard-coded number in
+  # the migration DDL.
+  @column_widths %{status: 20}
+
   schema "phoenix_kit_warehouse_transfers" do
     field(:number, :integer, read_after_writes: true)
     field(:status, :string, default: "draft")
@@ -29,6 +35,15 @@ defmodule PhoenixKitWarehouse.Transfer do
 
     timestamps(type: :utc_datetime)
   end
+
+  @doc """
+  The `character varying(N)` widths `PhoenixKitWarehouse.Migrations` builds its
+  `CREATE TABLE` DDL from — the single source of truth so the migration
+  chain, this schema, and core's `ExpectedSchema` manifest can never
+  independently disagree on a number.
+  """
+  @spec column_widths() :: %{atom() => pos_integer()}
+  def column_widths, do: @column_widths
 
   @doc """
   Changeset for creating/editing a draft transfer. Both locations may be

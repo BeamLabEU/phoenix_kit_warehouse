@@ -2,6 +2,60 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- **`phoenix_kit_warehouse`'s future shape now belongs to a module-owned
+  migration chain**, `PhoenixKitWarehouse.Migrations`, marker
+  `pkw_schema:<N>` (anchored on `phoenix_kit_warehouse_stock`, core's
+  first-created, FK-free table — none of the other 7 tables carry a marker
+  of their own), following the canonical dual-reader protocol documented by
+  `phoenix_kit_hello_world` (`migrated_version/1` for migration context,
+  `migrated_version_runtime/1` for `mix phoenix_kit.update`; `up/1` re-reads
+  the version before changing anything). Varchar widths (`status`, on the
+  six document-shaped tables) are sourced from each schema's own
+  `column_widths/0` — the single shape authority — never restated as a
+  second number.
+
+  Ownership unfolds in three phases:
+
+    * **Phase 0 (this release)** — V1 is an **adoption of all 8 tables, not
+      a create**: core's V140/V144 baseline still creates
+      `phoenix_kit_warehouse_stock`, `_goods_receipts`, `_goods_issues`,
+      `_internal_orders`, `_supplier_orders`, `_inventory_documents`,
+      `_transfers`, and `_min_stock` on every install, and V1 re-asserts
+      that exact shape idempotently (under core's exact object names —
+      sequences, columns, primary keys, unique constraints, indexes, foreign
+      keys) and stamps the marker. Because no shape changes, core's
+      `ExpectedSchema` stays accurate — **no core release is required and
+      there is no release-ordering hazard**.
+    * **Phase 1 (a future V2+)** — the first real shape change to any of the
+      8 tables requires first adding the altered objects to core's manifest
+      generator's `@excluded_exact` and regenerating `ExpectedSchema`, then
+      raising this package's core floor to that release.
+    * **Phase 2 (a future core baseline squash)** — once core stops creating
+      these tables for fresh installs, V1's `CREATE TABLE` statements become
+      the only thing that ever creates them from scratch, which is why
+      `up/1` already ensures `uuid_generate_v7()` (and its `pgcrypto`
+      extension) exist rather than assuming core's chain provided them.
+
+  **`down/1` can never drop a table or a row, for any target including 0.**
+  It unstamps (or re-stamps) the marker on the anchor table and nothing
+  else — the rows are live stock balances and document history. Test-pinned
+  — no statement in either direction may match `DROP`/`TRUNCATE`/`DELETE`.
+  There is deliberately no automated uninstall path; README.md's new
+  "Removing this module" section gives the operator manual SQL instead.
+
+  Existing hosts: upgrade, then `mix phoenix_kit.update`; it generates a
+  `warehouse_update_v00_to_v01.exs` migration that stamps `pkw_schema:1` and
+  nothing else changes. New hosts and hosts without this module: unchanged.
+
+  This is the second of a planned series of similar module-owned-migration
+  adoptions across `phoenix_kit_*` packages that today rely entirely on
+  core's versioned chain for their own tables (the first was
+  `phoenix_kit_dashboards`).
+
 ## 0.4.3 - 2026-09-14
 
 ### Added

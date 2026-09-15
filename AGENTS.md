@@ -76,8 +76,9 @@ before. Implemented via `pk_dep/3` in `mix.exs` — never hand-edit a
    compile time from each tab's `live_view:` field.
 4. Enable state is the `warehouse_enabled` boolean setting
    (`PhoenixKit.Settings`); permissions come from `permission_metadata/0`.
-5. Tables are created by PhoenixKit core (V144); this module ships no
-   migrations of its own.
+5. Tables are created by PhoenixKit core (V140/V144); this module's own
+   migration chain (`PhoenixKitWarehouse.Migrations`, via `migration_module/0`)
+   now owns their future shape — see "Database & migrations" below.
 
 ### Key conventions
 
@@ -105,8 +106,7 @@ modules — cf. `phoenix_kit_manufacturing`, `phoenix_kit_legal`):
 
 ### Database & migrations
 
-This module ships **no production migrations** — all 8 runtime tables are
-created by the parent
+All 8 runtime tables were originally created by the parent
 [phoenix_kit](https://github.com/BeamLabEU/phoenix_kit) core migrations:
 
 - **V140** creates 6 tables: `phoenix_kit_warehouse_stock`,
@@ -117,18 +117,60 @@ created by the parent
 - **V144** creates 2 additional tables:
   `phoenix_kit_warehouse_transfers` and `phoenix_kit_warehouse_min_stock`.
 
-This module only defines Ecto schemas that map to those tables. The
-published `0.1.0` shipped no migrations at all (no `migrations/` directory),
-so there is no upgrade path to account for — V140 and V144 are both
-fresh-install-only DDL for this module's tables. For the full column/index
-list see the respective migration moduledocs in core
+Their FUTURE shape is now owned by this module's own migration chain,
+`PhoenixKitWarehouse.Migrations` (`migration_module/0`), following the
+canonical dual-reader protocol `phoenix_kit_hello_world` documents —
+`migrated_version/1` (migration context, via `Ecto.Migration`'s `repo()`, no
+rescue) and `migrated_version_runtime/1` (the one `mix phoenix_kit.update`
+calls, via `PhoenixKit.RepoHelper.repo()`, rescues to `0` except an invalid
+prefix, which re-raises); `up/1` re-reads the version through
+`migrated_version/1` before changing anything. The chain anchors its
+version marker on a single table, `phoenix_kit_warehouse_stock` (core's
+first-created, FK-free table), as a `pkw_schema:<N>` `COMMENT ON TABLE` —
+none of the other 7 tables carry a marker of their own. A marker-less
+anchor table, or one carrying a foreign (non-`pkw_schema:`) comment, reads
+as version 0. Varchar widths are sourced from each of the six document
+schemas' own `column_widths/0` (`GoodsReceipt`, `GoodsIssue`,
+`InternalOrder`, `SupplierOrder`, `InventoryDocument`, `Transfer` —
+`Stock`/`MinStock` have no varchar column) — never a second hard-coded
+number in the migration DDL.
+
+Ownership unfolds in three phases: **Phase 0** (the current `V1`) is a pure
+**adoption** — it reproduces core's V140/V144 shape under core's exact
+object names (idempotent `CREATE TABLE IF NOT EXISTS` / guarded `DO $$ ...
+$$` constraint blocks), so on every existing install it changes nothing
+except stamping the marker; because it changes no shape, core's
+`ExpectedSchema` manifest stays accurate and no core release was required
+to ship it. **Phase 1** is the first real shape change (a future V2+) — it
+requires first adding the altered objects to core's manifest generator's
+`@excluded_exact` and regenerating `ExpectedSchema`, then raising this
+package's core floor. **Phase 2** is a future core baseline squash that
+drops these tables from core's own chain entirely — V1's `CREATE TABLE`
+statements are therefore already fully self-sufficient definitions (calling
+`Helpers.ensure_extension!/1` + `Helpers.ensure_uuid_v7_function/1` rather
+than assuming core's chain provided them), not merely shape-matching no-ops
+for already-existing tables.
+
+**A table-shape change to any of the 8 tables is a new version in this
+chain from now on — never a new core migration.** `down/1` NEVER drops a
+table or its data, for any target including `0`; rolling this chain back
+only unstamps (or re-stamps) the marker on the anchor table. There is
+deliberately no automated uninstall path — see README.md's "Removing this
+module" for the manual operator SQL. A host picks up a pending version the
+next time it runs `mix phoenix_kit.update`, which generates its own
+migration file in the host app.
+
+For the full column/index list of the shape being adopted, see the
+respective migration moduledocs in core
 (`lib/phoenix_kit/migrations/postgres/v140.ex` and `v144.ex`).
 
-The test suite builds its schema by running core's versioned migrations
-directly via `PhoenixKit.Migration.ensure_current/2` in
-`test/test_helper.exs` — no module-owned DDL. V144 ships in phoenix_kit
-≥ 1.7.190 on Hex (1.7.189 tops out at V142), so the plain pin is
-sufficient:
+The test suite bootstraps its schema by running core's versioned migrations
+via `PhoenixKit.Migration.ensure_current/2`, then running this module's own
+`PhoenixKitWarehouse.Migrations.up_statements/2` directly against the test
+repo (see `test/test_helper.exs`) — both are needed since core alone no
+longer carries the full picture of what this module's tables look like once
+a V2+ ships. V144 ships in phoenix_kit ≥ 1.7.190 on Hex (1.7.189 tops out at
+V142), so the plain pin is sufficient:
 
 ```bash
 mix test
@@ -150,9 +192,9 @@ pattern):
   run — no DB needed.
 - **Integration** tests are tagged `:integration` (via `DataCase` /
   `LiveCase`) and auto-excluded when PostgreSQL is unavailable. The helper
-  applies core migrations via `PhoenixKit.Migration.ensure_current/2` (the
-  module ships no migrations of its own — see "Database & migrations"
-  above), then uses `Ecto.Adapters.SQL.Sandbox`.
+  applies core migrations via `PhoenixKit.Migration.ensure_current/2`, then
+  this module's own migration chain via `PhoenixKitWarehouse.Migrations`
+  (see "Database & migrations" above), then uses `Ecto.Adapters.SQL.Sandbox`.
 
 ## Versioning & Releases
 

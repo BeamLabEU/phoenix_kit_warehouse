@@ -10,6 +10,12 @@ defmodule PhoenixKitWarehouse.SupplierOrder do
 
   @statuses ~w(draft posted)
 
+  # Single shape authority for `PhoenixKitWarehouse.Migrations` — this width
+  # coincides with core's V140 baseline shape, which `ExpectedSchema` audits;
+  # changing it is a chain version (V2+), never a second hard-coded number in
+  # the migration DDL.
+  @column_widths %{status: 20}
+
   schema "phoenix_kit_warehouse_supplier_orders" do
     field(:number, :integer, read_after_writes: true)
     field(:status, :string, default: "draft")
@@ -28,6 +34,15 @@ defmodule PhoenixKitWarehouse.SupplierOrder do
 
     timestamps(type: :utc_datetime)
   end
+
+  @doc """
+  The `character varying(N)` widths `PhoenixKitWarehouse.Migrations` builds its
+  `CREATE TABLE` DDL from — the single source of truth so the migration
+  chain, this schema, and core's `ExpectedSchema` manifest can never
+  independently disagree on a number.
+  """
+  @spec column_widths() :: %{atom() => pos_integer()}
+  def column_widths, do: @column_widths
 
   @doc "Changeset for creating/editing draft supplier orders."
   def changeset(order, attrs) do
