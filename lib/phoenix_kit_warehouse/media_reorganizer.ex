@@ -17,9 +17,11 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
 
   Contract (design §9/§10 of `2026-09-15-media-reorganizer-design.md`):
 
-    * **No configured `:storage_parent_folder` hook → `:report`-only.**
-      Orphan reports (root scope only) are still produced; no `:move`, no
-      pointer back-fill happen — the hook is never even called.
+    * **No configured `:storage_parent_folder` hook → `:report`-only (E1).**
+      The hook itself is never called (the desired parent defaults to root,
+      D1/§4) — but candidate resolution still runs: orphan, duplicate and
+      relocated reports are still produced; only `:move` and any pointer
+      back-fill it would carry are suppressed.
     * **Claims are hook-independent (R1).** Every live document's valid,
       live pointer folder is "claimed" regardless of whether the hook is
       configured or working — a folder any live document's pointer names is
@@ -55,6 +57,12 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       resolved parent + name) are also reported `kind: :duplicate` instead
       of planning both moves (the second would collide with the first at
       apply time).
+    * A document whose current folder is resolved (via pointer or a
+      name/parent match) can still leave a SEPARATE legacy-named folder
+      live somewhere else entirely (e.g. an old third-party container) —
+      that stray twin is neither the document's current folder nor an
+      orphan (the document is alive); it gets its own `kind: :relocated`
+      report alongside whatever action the document itself gets (5335ebf).
     * `on_conflict: :suffix` for every kind that writes a pointer back;
       `internal_order` has no pointer column, so its `on_conflict: :report`
       (D3 — a renamed folder with nobody pointing at it would be orphaned).
@@ -138,17 +146,14 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     # not, working or not.
     pointer_claims = live_pointer_claims(prelim)
 
+    # E1: candidate resolution (pointer/legacy-name lookup, duplicate and
+    # relocated detection) needs no hook at all — it runs unconditionally,
+    # with the desired parent defaulting to root when no hook is
+    # configured (D1/§4). Only `:move`/back-fill actions and hook-error
+    # reports depend on a configured hook; `build_resource_plan/4` drops
+    # those itself when `hook_on?` is false.
     {resource_actions, resolved_parents, resolved_claims} =
-      if hook_configured?() do
-        build_resource_plan(actor_uuid, prelim, legacy_candidates)
-      else
-        # Same call `build_resource_plan/3` ends with — keeps dialyzer's
-        # inferred type for `resolved_claims` identical across both
-        # branches of this `if` (a bare `MapSet.new()` here triggers a
-        # `call_without_opaque` false positive at the `MapSet.union/2`
-        # below).
-        {[], [], claimed_folder_uuids([], [], [], [])}
-      end
+      build_resource_plan(actor_uuid, prelim, legacy_candidates, hook_configured?())
 
     claimed_uuids = MapSet.union(pointer_claims, resolved_claims)
 
@@ -229,7 +234,7 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # folder — X13). Only kinds with at least one candidate go on to have the
   # host's parent hook resolved — once per kind, never once per record
   # (X12), and never for a kind with nothing to move.
-  defp build_resource_plan(actor_uuid, prelim, legacy_candidates) do
+  defp build_resource_plan(actor_uuid, prelim, legacy_candidates, hook_on?) do
     by_pointer = preload_by_uuid(Enum.map(prelim, & &1.pointer))
     by_name = group_by_name(legacy_candidates)
 
@@ -246,7 +251,15 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
 
     candidate_kinds = MapSet.union(kinds_with_pointer, kinds_with_prefix_folder)
 
-    {ok_parents, hook_error_kinds} = resolve_parents(candidate_kinds, actor_uuid)
+    # E1: without a configured hook the desired parent is root for every
+    # kind (D1/§4) — never call the hook (there is none), never a
+    # hook-error candidate.
+    {ok_parents, hook_error_kinds} =
+      if hook_on? do
+        resolve_parents(candidate_kinds, actor_uuid)
+      else
+        {Map.new(candidate_kinds, &{&1, nil}), MapSet.new()}
+      end
 
     candidates = Enum.filter(prelim, &MapSet.member?(candidate_kinds, &1.kind))
 
@@ -263,26 +276,47 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     {relocated, resolved} = Enum.split_with(entries, & &1.relocated)
     relocated_actions = Enum.map(relocated, &build_relocated_action/1)
 
+    # A resolved entry's current folder can still leave a SEPARATE
+    # legacy-named twin live somewhere else entirely (an old third-party
+    # container) — that stray twin is neither this document's current
+    # folder nor an orphan (the document is alive), so it gets its own
+    # `:relocated` report alongside whatever action the document itself
+    # gets (5335ebf).
+    stray_actions =
+      resolved
+      |> Enum.filter(& &1.stray_legacy)
+      |> Enum.map(&build_relocated_action(%{&1 | relocated: &1.stray_legacy}))
+
     {unique, ambiguous_dup, shared_dup} = classify_entries(resolved)
 
     # R7/E3: two documents with different current folders whose desired
     # targets coincide — the second move would collide at apply time.
     {converging, solo} = split_converging(unique)
 
-    move_actions = solo |> Enum.map(&build_move_action/1) |> Enum.reject(&is_nil/1)
+    # E1: `:move` (and any pointer back-fill it carries) is only ever
+    # planned when a hook is configured — a host without one is untouched,
+    # even though the duplicate/relocated reports above still stand.
+    move_actions =
+      if hook_on?, do: solo |> Enum.map(&build_move_action/1) |> Enum.reject(&is_nil/1), else: []
+
     dup_actions = Enum.map(ambiguous_dup, &build_ambiguous_duplicate_action/1)
     shared_actions = Enum.map(shared_dup, &build_shared_duplicate_action/1)
     converging_actions = Enum.map(converging, &build_converging_duplicate_action/1)
-    hook_error_actions = hook_error_action(length(failed_candidates))
+    hook_error_actions = if hook_on?, do: hook_error_action(length(failed_candidates)), else: []
 
     all_actions =
       finalize_counts(
         move_actions ++
           dup_actions ++
-          shared_actions ++ converging_actions ++ relocated_actions ++ hook_error_actions
+          shared_actions ++
+          converging_actions ++ relocated_actions ++ stray_actions ++ hook_error_actions
       )
 
-    resolved_parents = ok_parents |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.uniq()
+    resolved_parents =
+      if hook_on?,
+        do: ok_parents |> Map.values() |> Enum.reject(&is_nil/1) |> Enum.uniq(),
+        else: []
+
     claimed = claimed_folder_uuids(solo, ambiguous_dup, shared_dup, converging)
 
     {all_actions, resolved_parents, claimed}
@@ -343,22 +377,43 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     pointer_folder = d.pointer && Map.get(by_pointer, d.pointer)
 
     if pointer_folder do
-      resolve_pointer_entry(d, pointer_folder)
+      resolve_pointer_entry(d, pointer_folder, by_name)
     else
       resolve_name_entry(d, by_name)
     end
   end
 
-  defp resolve_pointer_entry(d, folder) do
+  defp resolve_pointer_entry(d, folder, by_name) do
     name = if folder.name == d.legacy_name, do: d.legacy_name
+    stray_legacy = stray_legacy_twin(d.legacy_name, by_name, folder.uuid)
 
-    Map.merge(d, %{folder: folder, via: :pointer, name: name, ambiguous: nil, relocated: nil})
+    Map.merge(d, %{
+      folder: folder,
+      via: :pointer,
+      name: name,
+      ambiguous: nil,
+      relocated: nil,
+      stray_legacy: stray_legacy
+    })
+  end
+
+  # A legacy-named folder live somewhere else while the pointer (or a
+  # host-resolved match) already names the document's real current folder
+  # — not this document's current folder, and not an orphan either (the
+  # document is alive) — reported so it never goes permanently unseen
+  # (5335ebf).
+  defp stray_legacy_twin(legacy_name, by_name, current_folder_uuid) do
+    by_name
+    |> Map.get(legacy_name, [])
+    |> Enum.find(&(&1.uuid != current_folder_uuid))
   end
 
   defp resolve_name_entry(d, by_name) do
     matches = Map.get(by_name, d.legacy_name, [])
     under_parent = d.parent_uuid && Enum.find(matches, &(&1.parent_uuid == d.parent_uuid))
     at_root = Enum.find(matches, &is_nil(&1.parent_uuid))
+    picked = under_parent || at_root
+    stray_legacy = picked && Enum.find(matches, &(&1 != picked))
 
     cond do
       under_parent && at_root ->
@@ -367,7 +422,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
           via: nil,
           name: nil,
           ambiguous: {under_parent, at_root},
-          relocated: nil
+          relocated: nil,
+          stray_legacy: nil
         })
 
       under_parent ->
@@ -376,7 +432,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
           via: :name,
           name: d.legacy_name,
           ambiguous: nil,
-          relocated: nil
+          relocated: nil,
+          stray_legacy: stray_legacy
         })
 
       at_root ->
@@ -385,15 +442,31 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
           via: :name,
           name: d.legacy_name,
           ambiguous: nil,
-          relocated: nil
+          relocated: nil,
+          stray_legacy: stray_legacy
         })
 
       matches != [] ->
         [first | _] = matches
-        Map.merge(d, %{folder: nil, via: nil, name: nil, ambiguous: nil, relocated: first})
+
+        Map.merge(d, %{
+          folder: nil,
+          via: nil,
+          name: nil,
+          ambiguous: nil,
+          relocated: first,
+          stray_legacy: nil
+        })
 
       true ->
-        Map.merge(d, %{folder: nil, via: nil, name: nil, ambiguous: nil, relocated: nil})
+        Map.merge(d, %{
+          folder: nil,
+          via: nil,
+          name: nil,
+          ambiguous: nil,
+          relocated: nil,
+          stray_legacy: nil
+        })
     end
   end
 
