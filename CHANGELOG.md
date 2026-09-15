@@ -2,22 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-## Unreleased
-
-### Added
-
-- **`PhoenixKitWarehouse.MediaReorganizer`, a plan source for the future
-  core media-reorganizer engine.** `plan/2` scans all six document kinds
-  (goods issues, goods receipts, inventory documents, supplier orders,
-  internal orders, transfers) and returns a move plan for any legacy
-  document folder that does not already sit where the `:storage_parent_folder`
-  hook now puts new ones, plus a pointer back-fill for the five kinds that
-  cache a `storage_folder_uuid` and a report for legacy folders whose
-  document is missing or soft-deleted. Not wired to a core behaviour yet —
-  today's hex core (2.23.x) predates the engine; registered via
-  `PhoenixKitWarehouse.media_reorganizer/0` (no `@impl`) so the module
-  still compiles against it.
-
 ## 0.4.3 - 2026-09-14
 
 ### Added
