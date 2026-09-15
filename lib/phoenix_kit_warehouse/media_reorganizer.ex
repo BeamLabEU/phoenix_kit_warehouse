@@ -77,20 +77,29 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
 
   # ── Documents ────────────────────────────────────────────────────
 
+  # `StorageFolders.parent_uuid_for/2` is record-independent (kind,
+  # actor_uuid only) — resolved once per kind here rather than once per
+  # record, so a host hook that does I/O pays for six calls, not one per
+  # document.
   defp resolve_desired(actor_uuid) do
+    parents_by_kind =
+      Map.new(@resources, fn {kind, _prefix, _schema} ->
+        {kind, StorageFolders.parent_uuid_for(kind, actor_uuid)}
+      end)
+
     Enum.flat_map(@resources, fn {kind, prefix, schema} ->
       schema
       |> where([r], is_nil(r.deleted_at))
       |> repo().all()
-      |> Enum.map(&build_desired(&1, kind, prefix, actor_uuid))
+      |> Enum.map(&build_desired(&1, kind, prefix, Map.fetch!(parents_by_kind, kind)))
     end)
   end
 
-  defp build_desired(record, kind, prefix, actor_uuid) do
+  defp build_desired(record, kind, prefix, parent_uuid) do
     %{
       record: record,
       kind: kind,
-      parent_uuid: StorageFolders.parent_uuid_for(kind, actor_uuid),
+      parent_uuid: parent_uuid,
       name: legacy_name(prefix, record),
       pointer: pointer_uuid(kind, record)
     }
