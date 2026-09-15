@@ -762,6 +762,10 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     }
   end
 
+  # T5: the reason names the copy's ACTUAL place — a stray copy can itself
+  # be at root (e.g. the document's current folder was found via pointer,
+  # elsewhere), so "under a different parent" would be a false description
+  # for it.
   defp build_relocated_action(%{legacy_name: legacy_name, kind: kind, relocated: folder}) do
     %{
       source: @source,
@@ -771,9 +775,12 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       folder: folder,
       counts: nil,
       reason:
-        "legacy folder #{folder.uuid} (#{kind}) is live under a different parent — left alone, never adopted"
+        "legacy folder #{folder.uuid} (#{kind}) is live #{relocated_place(folder)} — left alone, never adopted"
     }
   end
+
+  defp relocated_place(%Folder{parent_uuid: nil}), do: "at the storage root"
+  defp relocated_place(%Folder{}), do: "under a different parent"
 
   # One query for every distinct pointer uuid in the batch — live folders
   # only (X2, the unique index on (name, parent) is partial, so a trashed

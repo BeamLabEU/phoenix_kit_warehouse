@@ -814,10 +814,10 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
   end
 
   # ---------------------------------------------------------------------------
-  # Stray legacy twin next to the resolved folder (5335ebf)
+  # Stray legacy twin next to the resolved folder
   # ---------------------------------------------------------------------------
 
-  describe "stray legacy twin next to the resolved folder (5335ebf)" do
+  describe "stray legacy twin next to the resolved folder" do
     test "pointer already correct AND a live legacy-named twin exists elsewhere -> the twin is reported :relocated" do
       issue = create_goods_issue!()
       {:ok, real_folder} = Storage.create_folder(%{name: "Somewhere real"})
@@ -833,6 +833,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
       refute Enum.any?(actions, &(&1.kind == :orphan and &1.folder.uuid == twin.uuid))
       relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == twin.uuid))
       refute is_nil(relocated)
+      # T5: the twin is at root — the reason must name its actual place.
+      assert relocated.reason =~ "storage root"
     end
 
     test "host-resolved current folder at root AND a live legacy twin under another parent -> the twin is reported :relocated" do
@@ -861,6 +863,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
       refute Enum.any?(actions, &(&1.kind == :orphan and &1.folder.uuid == twin.uuid))
       relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == twin.uuid))
       refute is_nil(relocated)
+      # T5: the twin is under a real parent — the reason must say so.
+      assert relocated.reason =~ "different parent"
     end
   end
 
