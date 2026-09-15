@@ -351,7 +351,11 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   defp where_parent(query, nil), do: where(query, [f], is_nil(f.parent_uuid))
   defp where_parent(query, uuid), do: where(query, [f], f.parent_uuid == ^uuid)
 
-  defp folder_name(prefix, number, uuid) do
+  @doc false
+  # Exposed (not just private) so `PhoenixKitWarehouse.MediaReorganizer` can
+  # compute the same deterministic legacy name instead of duplicating this
+  # formatting rule.
+  def folder_name(prefix, number, uuid) do
     case number do
       n when (is_binary(n) and n != "") or is_integer(n) -> "#{prefix}-#{n}"
       _ -> "#{prefix}-#{uuid}"
