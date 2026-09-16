@@ -129,11 +129,10 @@ defmodule PhoenixKitWarehouse do
   @impl PhoenixKit.Module
   def css_sources, do: [:phoenix_kit_warehouse]
 
-  # PhoenixKit.Module.media_reorganizer/0 (core ≥ the release that ships
-  # Storage.Reorganizer). No `@impl` yet — today's hex core pin (2.23.x)
-  # predates the callback; `ModuleRegistry.all_media_reorganizers/0` looks
-  # this function up by name, not by behaviour, so it is collected either
-  # way once core ships it.
+  # PhoenixKit.Module.media_reorganizer/0, an optional callback since core
+  # 2.24.0. No `@impl`: the pin floor (`~> 2.0`) predates the callback, where
+  # `@impl` would warn. `ModuleRegistry.all_media_reorganizers/0` looks the
+  # function up by name, so it is collected on any core that ships the engine.
   def media_reorganizer, do: PhoenixKitWarehouse.MediaReorganizer
 
   @impl PhoenixKit.Module

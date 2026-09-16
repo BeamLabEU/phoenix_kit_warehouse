@@ -2,6 +2,30 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.1 - 2026-09-16
+
+### Added
+
+- **Media reorganizer plan source** (#31) — `PhoenixKitWarehouse.MediaReorganizer`,
+  registered via `media_reorganizer/0` and picked up by core's
+  `mix phoenix_kit.media.reorganize` (phoenix_kit ≥ 2.24.0). For all six
+  document kinds it plans moving each live document's folder under the
+  `:storage_parent_folder` hook's parent, back-filling `storage_folder_uuid`
+  where needed, and reports duplicates, relocated stray copies, hook
+  failures, hook-answered-root folders and orphaned legacy folders instead
+  of guessing. No hook configured → reports only, nothing moves.
+  `StorageFolders.folder_name/3` is now shared (`@doc false`).
+
+### Fixed
+
+- **Reorganizer pointer back-fill no longer overwrites a pointer changed
+  since plan time** — `after_move` returns `{:error, :pointer_changed}`
+  (the engine rolls the action back) when a document's `storage_folder_uuid`
+  was re-set between plan and apply, e.g. by a form caching a fresh folder,
+  so uploads into that folder are never stranded.
+- **`:relocated` reports name the third-party parent folder** (name and
+  uuid, one batched lookup) instead of a bare "under a different parent".
+
 ## 0.5.0 - 2026-09-15
 
 ### Changed

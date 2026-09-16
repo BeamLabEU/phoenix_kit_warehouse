@@ -877,6 +877,55 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
 
       assert {:error, :record_deleted} = action.after_move.()
     end
+
+    test "pointer changed between plan and apply -> after_move returns {:error, :pointer_changed}, pointer kept" do
+      receipt = create_goods_receipt!()
+      {:ok, target} = Storage.create_folder(%{name: "Receipts"})
+      {:ok, _folder} = Storage.create_folder(%{name: "goods-receipt-#{receipt.number}"})
+      put_hook(:goods_receipt, target.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+      action = Enum.find(actions, &(&1.kind == :goods_receipt))
+      refute is_nil(action)
+
+      # e.g. `StorageFolders.ensure_for_goods_receipt/2` cached a fresh
+      # folder in between — the back-fill must not strand it.
+      {:ok, fresh} = Storage.create_folder(%{name: "Fresh", parent_uuid: target.uuid})
+      {:ok, _} = GoodsReceipts.set_storage_folder(receipt, fresh.uuid)
+
+      assert {:error, :pointer_changed} = action.after_move.()
+      assert GoodsReceipts.get_goods_receipt!(receipt.uuid).storage_folder_uuid == fresh.uuid
+    end
+
+    test "pointer already set to the moved folder between plan and apply -> after_move is :ok" do
+      receipt = create_goods_receipt!()
+      {:ok, target} = Storage.create_folder(%{name: "Receipts"})
+      {:ok, folder} = Storage.create_folder(%{name: "goods-receipt-#{receipt.number}"})
+      put_hook(:goods_receipt, target.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+      action = Enum.find(actions, &(&1.kind == :goods_receipt))
+      refute is_nil(action)
+
+      {:ok, _} = GoodsReceipts.set_storage_folder(receipt, folder.uuid)
+
+      assert :ok = action.after_move.()
+      assert GoodsReceipts.get_goods_receipt!(receipt.uuid).storage_folder_uuid == folder.uuid
+    end
+
+    test "pointer unchanged since plan -> after_move writes it" do
+      receipt = create_goods_receipt!()
+      {:ok, target} = Storage.create_folder(%{name: "Receipts"})
+      {:ok, folder} = Storage.create_folder(%{name: "goods-receipt-#{receipt.number}"})
+      put_hook(:goods_receipt, target.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+      action = Enum.find(actions, &(&1.kind == :goods_receipt))
+      refute is_nil(action)
+
+      assert :ok = action.after_move.()
+      assert GoodsReceipts.get_goods_receipt!(receipt.uuid).storage_folder_uuid == folder.uuid
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -961,8 +1010,11 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
       refute Enum.any?(actions, &(&1.kind == :orphan and &1.folder.uuid == twin.uuid))
       relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == twin.uuid))
       refute is_nil(relocated)
-      # T5: the twin is under a real parent — the reason must say so.
+      # T5: the twin is under a real parent — the reason must say so, and
+      # name that parent (Source contract).
       assert relocated.reason =~ "different parent"
+      assert relocated.reason =~ ~s("Some other container")
+      assert relocated.reason =~ elsewhere.uuid
     end
 
     test "stray twin already under the resolved target parent -> reason names the collision, not a blanket 'different parent'" do

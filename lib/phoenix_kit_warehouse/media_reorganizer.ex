@@ -2,18 +2,18 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   @moduledoc """
   Warehouse's media-reorganizer plan source.
 
-  Not compiled against a core `PhoenixKit.Modules.Storage.Reorganizer.Source`
-  behaviour — today's hex core (2.23.x) does not ship the engine yet. This
-  module declares no `@behaviour` and returns plain maps; see
-  `PhoenixKitWarehouse.media_reorganizer/0` for the registration comment.
-  Once core ships the engine, `plan/2`'s contract (`plan(actor_uuid, opts)
-  :: [map()]`) already matches `Source.plan/2` — the only follow-up is
-  adding `@behaviour`/`@impl`.
+  Implements the contract of core's `PhoenixKit.Modules.Storage.Reorganizer.Source`
+  (core ≥ 2.24.0) without declaring `@behaviour`: the `phoenix_kit` pin
+  floor (`~> 2.0`) predates that module, where `@behaviour` would warn. The
+  engine only calls `plan/2` and validates the plain maps it returns, so
+  nothing else is needed; see `PhoenixKitWarehouse.media_reorganizer/0` for
+  the registration side. Once the floor reaches 2.24.0 the only follow-up
+  is adding `@behaviour`/`@impl`.
 
   Covers all six warehouse documents — `GoodsIssue`, `GoodsReceipt`,
   `InventoryDocument`, `SupplierOrder`, `InternalOrder`, `Transfer` — plus
   orphaned legacy document folders whose record is gone or soft-deleted
-  (reported, never moved/trashed — see "Orphaned legacy folders" below).
+  (reported, never moved/trashed — see `orphan_actions/3`).
 
   Contract (design §9-§12 of `2026-09-15-media-reorganizer-design.md`):
 
@@ -405,10 +405,9 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     # the pair the `:duplicate` report already names must still surface
     # here, not be dropped.
     stray_actions =
-      Enum.flat_map(
-        with_folder ++ without_folder ++ ambiguous,
-        &stray_relocated_actions(&1, all_claimed)
-      )
+      (with_folder ++ without_folder ++ ambiguous)
+      |> Enum.flat_map(&stray_pairs(&1, all_claimed))
+      |> stray_relocated_actions()
 
     all_actions =
       finalize_counts(
@@ -690,18 +689,52 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # just the first. A copy that is itself claimed by another document (its
   # own resolved current folder, or another duplicate/converging group) is
   # excluded — a claimed folder is never also reported `:relocated`.
-  defp stray_relocated_actions(entry, claimed) do
+  defp stray_pairs(entry, claimed) do
     entry.stray_legacy
     |> Enum.reject(&MapSet.member?(claimed, &1.uuid))
-    |> Enum.map(
-      &build_relocated_action(%{
+    |> Enum.map(&{entry, &1})
+  end
+
+  defp stray_relocated_actions(pairs) do
+    parent_names = load_stray_parent_names(pairs)
+
+    Enum.map(pairs, fn {entry, folder} ->
+      build_relocated_action(%{
         legacy_name: entry.legacy_name,
         kind: entry.kind,
-        relocated: &1,
-        target_parent_uuid: entry.parent_uuid
+        relocated: folder,
+        target_parent_uuid: entry.parent_uuid,
+        parent_names: parent_names
       })
-    )
+    end)
   end
+
+  # One query for the whole batch — only parents that are neither root nor
+  # the document's own target need a name; those two cases have their own
+  # wording in `relocated_reason/4`.
+  defp load_stray_parent_names(pairs) do
+    uuids =
+      pairs
+      |> Enum.map(fn {entry, folder} -> other_parent_uuid(folder, entry.parent_uuid) end)
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    case uuids do
+      [] ->
+        %{}
+
+      uuids ->
+        Folder
+        |> where([f], f.uuid in ^uuids)
+        |> select([f], {f.uuid, f.name})
+        |> repo().all()
+        |> Map.new()
+    end
+  end
+
+  defp other_parent_uuid(%Folder{parent_uuid: nil}, _target_parent_uuid), do: nil
+  defp other_parent_uuid(%Folder{parent_uuid: parent_uuid}, parent_uuid), do: nil
+  defp other_parent_uuid(%Folder{parent_uuid: parent_uuid}, _target_parent_uuid), do: parent_uuid
 
   # Order-preserving (R10/T6) grouping — `Map.values/1` after `group_by`
   # does not preserve insertion order (a `Map`'s iteration order is
@@ -846,13 +879,14 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # T5/F5: the reason names the copy's ACTUAL place — at the storage root,
   # already under the very parent the document is headed to (where an
   # eventual move will land next to it as a `"name (N)"` suffixed twin), or
-  # by name under a genuine third-party parent — instead of a blanket
+  # under a genuine third-party parent, named (Source contract) — instead of a blanket
   # "under a different parent" that reads wrong for all three cases.
   defp build_relocated_action(%{
          legacy_name: legacy_name,
          kind: kind,
          relocated: folder,
-         target_parent_uuid: target_parent_uuid
+         target_parent_uuid: target_parent_uuid,
+         parent_names: parent_names
        }) do
     %{
       source: @source,
@@ -861,22 +895,25 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       label: legacy_name,
       folder: folder,
       counts: nil,
-      reason: relocated_reason(folder, kind, target_parent_uuid)
+      reason: relocated_reason(folder, kind, target_parent_uuid, parent_names)
     }
   end
 
-  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: nil}, kind, _target_parent_uuid) do
+  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: nil}, kind, _target_parent_uuid, _names) do
     "legacy folder #{uuid} (#{kind}) is live at the storage root — left alone, never adopted"
   end
 
-  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: parent_uuid}, kind, parent_uuid)
+  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: parent_uuid}, kind, parent_uuid, _names)
        when not is_nil(parent_uuid) do
     "legacy folder #{uuid} (#{kind}) is already live as a twin under the target parent " <>
       "— left alone; an eventual move there will collide, landing as \"name (N)\""
   end
 
-  defp relocated_reason(%Folder{uuid: uuid}, kind, _target_parent_uuid) do
-    "legacy folder #{uuid} (#{kind}) is live under a different parent — left alone, never adopted"
+  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: parent_uuid}, kind, _target, names) do
+    parent_label = names |> Map.get(parent_uuid, parent_uuid) |> inspect()
+
+    "legacy folder #{uuid} (#{kind}) is live under a different parent, #{parent_label} " <>
+      "(#{parent_uuid}) — left alone, never adopted"
   end
 
   # One query for every distinct pointer uuid in the batch — live folders
@@ -918,11 +955,16 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # Re-checks the document under `FOR UPDATE` at apply time: gone or
   # soft-deleted since the plan was built aborts the back-fill instead of
   # pointing a live-looking document at a folder nobody will ever see
-  # again, and picks up a pointer `ensure_for_*` may have set concurrently
-  # between plan and apply. `set_storage_folder/2` is a narrow
+  # again. A pointer that changed since plan time (e.g. `ensure_for_*`
+  # created and cached a fresh folder in between) aborts too — overwriting
+  # it would strand whatever was uploaded into that new folder; the next
+  # plan run sees the new state. Already pointing at the folder is `:ok`.
+  # `set_storage_folder/2` is a narrow
   # single-column changeset + plain `repo().update()` — no Activity log, no
   # PubSub, no full-record validation (D7).
   defp write_pointer(kind, record, folder_uuid) do
+    planned_pointer = record.storage_folder_uuid
+
     case locked_record(kind, record.uuid) do
       nil ->
         {:error, :not_found}
@@ -930,11 +972,17 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       %{deleted_at: deleted_at} when not is_nil(deleted_at) ->
         {:error, :record_deleted}
 
-      current ->
+      %{storage_folder_uuid: ^folder_uuid} ->
+        :ok
+
+      %{storage_folder_uuid: ^planned_pointer} = current ->
         case setter_for(kind).(current, folder_uuid) do
           {:ok, _updated} -> :ok
           {:error, reason} -> {:error, reason}
         end
+
+      _changed ->
+        {:error, :pointer_changed}
     end
   end
 
