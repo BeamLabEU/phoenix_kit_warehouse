@@ -866,6 +866,74 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
       # T5: the twin is under a real parent — the reason must say so.
       assert relocated.reason =~ "different parent"
     end
+
+    test "stray twin already under the resolved target parent -> reason names the collision, not a blanket 'different parent'" do
+      issue = create_goods_issue!()
+      {:ok, target} = Storage.create_folder(%{name: "Goods issues"})
+
+      {:ok, real_folder} =
+        Storage.create_folder(%{name: "Somewhere real", parent_uuid: target.uuid})
+
+      {:ok, twin} =
+        Storage.create_folder(%{
+          name: "goods-issue-#{issue.number}",
+          parent_uuid: target.uuid
+        })
+
+      {:ok, _} = GoodsIssues.set_storage_folder(issue, real_folder.uuid)
+      put_hook(:goods_issue, target.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      refute Enum.any?(actions, &(&1.kind == :orphan and &1.folder.uuid == twin.uuid))
+      relocated = Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == twin.uuid))
+      refute is_nil(relocated)
+      assert relocated.reason =~ "target parent"
+      assert relocated.reason =~ "will collide"
+      refute relocated.reason =~ "different parent"
+    end
+
+    test "two simultaneous stray twins for the same document (root and under the target parent) -> both reported :relocated with distinct reasons" do
+      issue = create_goods_issue!()
+      {:ok, target} = Storage.create_folder(%{name: "Goods issues"})
+
+      {:ok, real_folder} =
+        Storage.create_folder(%{name: "Somewhere real", parent_uuid: target.uuid})
+
+      {:ok, root_twin} =
+        Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+
+      {:ok, target_twin} =
+        Storage.create_folder(%{
+          name: "goods-issue-#{issue.number}",
+          parent_uuid: target.uuid
+        })
+
+      {:ok, _} = GoodsIssues.set_storage_folder(issue, real_folder.uuid)
+      put_hook(:goods_issue, target.uuid)
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      # The document's actual (pointer) folder is untouched...
+      refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+
+      relocated_uuids =
+        actions
+        |> Enum.filter(&(&1.kind == :relocated))
+        |> Enum.map(& &1.folder.uuid)
+
+      assert root_twin.uuid in relocated_uuids
+      assert target_twin.uuid in relocated_uuids
+
+      root_relocated =
+        Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == root_twin.uuid))
+
+      target_relocated =
+        Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == target_twin.uuid))
+
+      assert root_relocated.reason =~ "storage root"
+      assert target_relocated.reason =~ "will collide"
+    end
   end
 
   # ---------------------------------------------------------------------------

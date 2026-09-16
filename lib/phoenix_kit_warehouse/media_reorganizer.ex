@@ -618,7 +618,12 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     entry.stray_legacy
     |> Enum.reject(&MapSet.member?(claimed, &1.uuid))
     |> Enum.map(
-      &build_relocated_action(%{legacy_name: entry.legacy_name, kind: entry.kind, relocated: &1})
+      &build_relocated_action(%{
+        legacy_name: entry.legacy_name,
+        kind: entry.kind,
+        relocated: &1,
+        target_parent_uuid: entry.parent_uuid
+      })
     )
   end
 
@@ -677,8 +682,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   end
 
   # A `:move` whose folder already sits at `parent_uuid` under `name` and
-  # needs no pointer back-fill is a no-op — filtered here since this Source
-  # has no core `Action.noop?/1` to lean on. A folder resolved via name
+  # needs no pointer back-fill is a no-op — filtered out here before it
+  # ever reaches the core engine. A folder resolved via name
   # (`entry.name == entry.legacy_name`, matched exactly by `by_name`) or via
   # a kept pointer name always already carries the desired name when found,
   # so only the parent can differ — there is no suffixed-variant case to
@@ -762,11 +767,17 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     }
   end
 
-  # T5: the reason names the copy's ACTUAL place — a stray copy can itself
-  # be at root (e.g. the document's current folder was found via pointer,
-  # elsewhere), so "under a different parent" would be a false description
-  # for it.
-  defp build_relocated_action(%{legacy_name: legacy_name, kind: kind, relocated: folder}) do
+  # T5/F5: the reason names the copy's ACTUAL place — at the storage root,
+  # already under the very parent the document is headed to (where an
+  # eventual move will land next to it as a `"name (N)"` suffixed twin), or
+  # by name under a genuine third-party parent — instead of a blanket
+  # "under a different parent" that reads wrong for all three cases.
+  defp build_relocated_action(%{
+         legacy_name: legacy_name,
+         kind: kind,
+         relocated: folder,
+         target_parent_uuid: target_parent_uuid
+       }) do
     %{
       source: @source,
       kind: :relocated,
@@ -774,13 +785,23 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       label: legacy_name,
       folder: folder,
       counts: nil,
-      reason:
-        "legacy folder #{folder.uuid} (#{kind}) is live #{relocated_place(folder)} — left alone, never adopted"
+      reason: relocated_reason(folder, kind, target_parent_uuid)
     }
   end
 
-  defp relocated_place(%Folder{parent_uuid: nil}), do: "at the storage root"
-  defp relocated_place(%Folder{}), do: "under a different parent"
+  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: nil}, kind, _target_parent_uuid) do
+    "legacy folder #{uuid} (#{kind}) is live at the storage root — left alone, never adopted"
+  end
+
+  defp relocated_reason(%Folder{uuid: uuid, parent_uuid: parent_uuid}, kind, parent_uuid)
+       when not is_nil(parent_uuid) do
+    "legacy folder #{uuid} (#{kind}) is already live as a twin under the target parent " <>
+      "— left alone; an eventual move there will collide, landing as \"name (N)\""
+  end
+
+  defp relocated_reason(%Folder{uuid: uuid}, kind, _target_parent_uuid) do
+    "legacy folder #{uuid} (#{kind}) is live under a different parent — left alone, never adopted"
+  end
 
   # One query for every distinct pointer uuid in the batch — live folders
   # only (X2, the unique index on (name, parent) is partial, so a trashed
