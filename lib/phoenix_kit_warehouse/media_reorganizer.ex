@@ -15,7 +15,7 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   orphaned legacy document folders whose record is gone or soft-deleted
   (reported, never moved/trashed — see "Orphaned legacy folders" below).
 
-  Contract (design §9/§10 of `2026-09-15-media-reorganizer-design.md`):
+  Contract (design §9-§12 of `2026-09-15-media-reorganizer-design.md`):
 
     * **No configured `:storage_parent_folder` hook → `:report`-only (E1).**
       The hook itself is never called (the desired parent defaults to root,
@@ -157,17 +157,16 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   Builds the warehouse's reorganizer plan: one `:move` action per live
   document whose current folder does not already match `StorageFolders`'s
   own parent hook and deterministic name, `:report` actions
-  (`kind: :duplicate | :relocated | :hook_error`) for anything that cannot
-  be safely moved, plus a `:report` (`kind: :orphan`) per legacy-named
-  folder whose document is gone or soft-deleted.
+  (`kind: :duplicate | :relocated | :hook_error | :hook_nil`) for anything
+  that cannot be safely moved, plus a `:report` (`kind: :orphan`) per
+  legacy-named folder whose document is gone or soft-deleted.
 
   `opts` is accepted for signature parity with the engine's `Source.plan/2`
   contract; this module has nothing to key off `opts[:pending_days]` — it
   stages no pending folders.
   """
   @spec plan(String.t() | nil, keyword()) :: [map()]
-  def plan(actor_uuid, opts \\ []) do
-    _ = opts
+  def plan(actor_uuid, _opts \\ []) do
     prelim = live_prelim_records()
     legacy_candidates = legacy_folder_candidates()
 
@@ -190,11 +189,11 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
         :ok ->
           build_resource_plan(actor_uuid, prelim, legacy_candidates, pointer_claims, true)
 
-        {:not_callable, mod, fun} ->
+        {:invalid, reason} ->
           {actions, parents, claims} =
             build_resource_plan(actor_uuid, prelim, legacy_candidates, pointer_claims, false)
 
-          {[not_callable_hook_action(mod, fun) | actions], parents, claims}
+          {[invalid_hook_action(reason) | actions], parents, claims}
 
         :none ->
           build_resource_plan(actor_uuid, prelim, legacy_candidates, pointer_claims, false)
@@ -210,34 +209,47 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # T3: a configured `{mod, fun}` that is not actually callable (a typo, a
   # removed function) is a distinct failure from "no hook configured at
   # all" — it must not silently degrade to report-only (E1) without telling
-  # the owner why nothing moved.
+  # the owner why nothing moved. U7/V3: anything configured that is not
+  # even a `{mod, fun}` shape (garbage config) is the SAME failure — never
+  # silently treated as "no hook configured" either.
   defp hook_status do
     case Application.get_env(:phoenix_kit_warehouse, :storage_parent_folder) do
-      {mod, fun} when is_atom(mod) and is_atom(fun) ->
-        if callable?(mod, fun), do: :ok, else: {:not_callable, mod, fun}
-
-      _ ->
+      nil ->
         :none
+
+      {mod, fun} when is_atom(mod) and is_atom(fun) ->
+        if callable?(mod, fun), do: :ok, else: {:invalid, {:not_callable, mod, fun}}
+
+      other ->
+        {:invalid, {:bad_config, other}}
     end
   end
 
   defp callable?(mod, fun), do: Code.ensure_loaded?(mod) and function_exported?(mod, fun, 2)
 
-  defp not_callable_hook_action(mod, fun) do
+  defp invalid_hook_action(reason) do
     %{
       source: @source,
       kind: :hook_error,
       op: :report,
       label: "storage_parent_folder hook",
       counts: nil,
-      reason: "configured parent hook {#{inspect(mod)}, #{inspect(fun)}} is not callable"
+      reason: invalid_hook_reason(reason)
     }
   end
+
+  defp invalid_hook_reason({:not_callable, mod, fun}),
+    do: "configured parent hook {#{inspect(mod)}, #{inspect(fun)}} is not callable"
+
+  defp invalid_hook_reason({:bad_config, other}),
+    do:
+      "configured parent hook #{inspect(other)} is not a {module, function} tuple — " <>
+        "invalid config, not callable"
 
   # R9: only the columns a plan needs — never a full row (four of the six
   # schemas carry a `lines` jsonb column that can be large).
   defp light_fields(kind) when kind in @pointer_kinds,
-    do: [:uuid, :number, :status, :storage_folder_uuid, :inserted_at]
+    do: [:uuid, :number, :storage_folder_uuid, :inserted_at]
 
   defp light_fields(:internal_order), do: [:uuid, :number, :status, :inserted_at]
 
@@ -389,8 +401,14 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     # current folder gets its own `:relocated` report — all of them, not
     # only the first — except a copy that is itself another document's
     # claimed (adopted) folder, which is never also reported `:relocated`.
+    # U9: includes `ambiguous` too — a THIRD (or further) live copy beyond
+    # the pair the `:duplicate` report already names must still surface
+    # here, not be dropped.
     stray_actions =
-      Enum.flat_map(with_folder ++ without_folder, &stray_relocated_actions(&1, all_claimed))
+      Enum.flat_map(
+        with_folder ++ without_folder ++ ambiguous,
+        &stray_relocated_actions(&1, all_claimed)
+      )
 
     all_actions =
       finalize_counts(
@@ -640,12 +658,15 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
 
     cond do
       under_parent && at_root ->
+        # U9: a THIRD (or further) live copy beyond the ambiguous pair is
+        # still a stray twin — kept for `:relocated`, never dropped just
+        # because the pair itself is unresolvable.
         Map.merge(d, %{
           folder: nil,
           via: nil,
           name: nil,
           ambiguous: {under_parent, at_root},
-          stray_legacy: []
+          stray_legacy: Enum.reject(matches, &(&1 in [under_parent, at_root]))
         })
 
       picked ->

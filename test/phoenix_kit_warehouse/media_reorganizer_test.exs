@@ -438,6 +438,42 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
   end
 
   # ---------------------------------------------------------------------------
+  # Orphan scope includes parents a non-move candidate's hook call resolved
+  # (U4) — `ok_parents` is populated purely by a successful hook call for
+  # the kind, independent of what any individual candidate's outcome ends
+  # up being (`:duplicate`, `:relocated`, `:hook_nil` all still count).
+  # ---------------------------------------------------------------------------
+
+  test "orphan under a parent only a :duplicate (non-move) candidate resolved is still reported (U4)" do
+    receipt = create_goods_receipt!()
+    legacy_name = "goods-receipt-#{receipt.number}"
+    {:ok, target} = Storage.create_folder(%{name: "Goods receipts"})
+
+    # Ambiguous: the same legacy name live at both root and under the
+    # resolved parent -> `:duplicate` report, no move planned for it.
+    {:ok, _at_root} = Storage.create_folder(%{name: legacy_name})
+    {:ok, _under_target} = Storage.create_folder(%{name: legacy_name, parent_uuid: target.uuid})
+
+    # A genuinely orphaned folder living under that very same resolved
+    # parent, for a document that no longer exists.
+    {:ok, orphan_folder} =
+      Storage.create_folder(%{
+        name: "goods-receipt-#{Ecto.UUID.generate()}",
+        parent_uuid: target.uuid
+      })
+
+    put_hook(:goods_receipt, target.uuid)
+
+    actions = MediaReorganizer.plan(nil, [])
+
+    assert Enum.any?(actions, &(&1.kind == :duplicate))
+    refute Enum.any?(actions, &(&1.kind == :goods_receipt and &1.op == :move))
+
+    orphan = Enum.find(actions, &(&1.kind == :orphan and &1.folder.uuid == orphan_folder.uuid))
+    refute is_nil(orphan)
+  end
+
+  # ---------------------------------------------------------------------------
   # Hook batching / gating — X12, X13
   # ---------------------------------------------------------------------------
 
@@ -526,6 +562,32 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
     assert dup.reason =~ at_root.uuid
     assert dup.reason =~ under_parent.uuid
     refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+  end
+
+  # U9: a THIRD (or further) live copy of the exact same legacy name beyond
+  # the ambiguous pair (root + resolved parent) must still be surfaced —
+  # not silently dropped just because the pair itself is unresolvable.
+  test "a third live copy of the same legacy name beyond the ambiguous pair is still reported :relocated (U9)" do
+    issue = create_goods_issue!()
+    name = "goods-issue-#{issue.number}"
+    {:ok, target} = Storage.create_folder(%{name: "Goods issues"})
+    {:ok, elsewhere} = Storage.create_folder(%{name: "Somewhere else"})
+
+    {:ok, _at_root} = Storage.create_folder(%{name: name})
+    {:ok, _under_parent} = Storage.create_folder(%{name: name, parent_uuid: target.uuid})
+    {:ok, third_copy} = Storage.create_folder(%{name: name, parent_uuid: elsewhere.uuid})
+
+    put_hook(:goods_issue, target.uuid)
+
+    actions = MediaReorganizer.plan(nil, [])
+
+    assert Enum.any?(actions, &(&1.kind == :duplicate))
+    refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+
+    relocated =
+      Enum.find(actions, &(&1.kind == :relocated and &1.folder.uuid == third_copy.uuid))
+
+    refute is_nil(relocated)
   end
 
   # ---------------------------------------------------------------------------
@@ -1351,6 +1413,50 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
 
       error = Enum.find(actions, &(&1.kind == :hook_error and &1.reason =~ "not callable"))
       refute is_nil(error)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Configured hook is garbage (not a {mod, fun} tuple at all) — U7/V3
+  # ---------------------------------------------------------------------------
+
+  describe "configured hook is not a {mod, fun} tuple at all (U7/V3)" do
+    test "a bare string config -> hook_error, never silently treated as no hook configured" do
+      issue = create_goods_issue!()
+      {:ok, _folder} = Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+
+      Application.put_env(:phoenix_kit_warehouse, :storage_parent_folder, "garbage")
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+      error = Enum.find(actions, &(&1.kind == :hook_error))
+      refute is_nil(error)
+      assert error.reason =~ inspect("garbage")
+    end
+
+    test "a 1-tuple config -> hook_error, never silently treated as no hook configured" do
+      issue = create_goods_issue!()
+      {:ok, _folder} = Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+
+      Application.put_env(:phoenix_kit_warehouse, :storage_parent_folder, {SomeModule})
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+      assert Enum.any?(actions, &(&1.kind == :hook_error))
+    end
+
+    test "a map config -> hook_error, never silently treated as no hook configured" do
+      issue = create_goods_issue!()
+      {:ok, _folder} = Storage.create_folder(%{name: "goods-issue-#{issue.number}"})
+
+      Application.put_env(:phoenix_kit_warehouse, :storage_parent_folder, %{mod: SomeModule})
+
+      actions = MediaReorganizer.plan(nil, [])
+
+      refute Enum.any?(actions, &(&1.kind == :goods_issue and &1.op == :move))
+      assert Enum.any?(actions, &(&1.kind == :hook_error))
     end
   end
 
