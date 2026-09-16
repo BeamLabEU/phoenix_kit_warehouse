@@ -1106,15 +1106,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                     phx-submit="set_issued_qty"
                   >
                     <input type="hidden" name="index" value={index} />
-                    <input
-                      type="number"
+                    <.decimal_input
                       id={"gi-iss-#{index}"}
                       name="issued_quantity"
-                      min="0"
-                      step="any"
                       value={fmt_qty(line["issued_quantity"])}
                       placeholder="0"
-                      class="input input-sm w-24 text-right tabular-nums"
+                      class="input-sm w-24 text-right tabular-nums"
                       phx-debounce="blur"
                       phx-hook="InvEnterBlur"
                     />

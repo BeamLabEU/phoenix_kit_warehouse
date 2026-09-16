@@ -248,6 +248,78 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTest do
       assert html =~ "20"
     end
 
+    test "set_counted accepts a comma value unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "5", unit_value: nil)
+
+      conn = log_in_admin(conn, admin)
+      {:ok, lv, _html} = follow_to_items(conn)
+
+      lv
+      |> element("form[phx-change='set_counted']")
+      |> render_change(%{"index" => "0", "counted_quantity" => "2,5"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["counted_quantity"], Decimal.new("2.5"))
+    end
+
+    test "set_counted accepts a dot value unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "5", unit_value: nil)
+
+      conn = log_in_admin(conn, admin)
+      {:ok, lv, _html} = follow_to_items(conn)
+
+      lv
+      |> element("form[phx-change='set_counted']")
+      |> render_change(%{"index" => "0", "counted_quantity" => "0.25"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["counted_quantity"], Decimal.new("0.25"))
+    end
+
+    test "set_counted rejects garbage like before (falls back to 0)", %{conn: conn} do
+      admin = create_admin_user()
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "5", unit_value: nil)
+
+      conn = log_in_admin(conn, admin)
+      {:ok, lv, _html} = follow_to_items(conn)
+
+      lv
+      |> element("form[phx-change='set_counted']")
+      |> render_change(%{"index" => "0", "counted_quantity" => "abc"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["counted_quantity"], Decimal.new("0"))
+    end
+
+    test "set_price accepts a comma value unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "5", unit_value: Decimal.new("10.00"))
+
+      conn = log_in_admin(conn, admin)
+      {lv, _html} = follow_to_items_with_value(conn)
+
+      lv
+      |> element("form[phx-change='set_price']")
+      |> render_change(%{"index" => "0", "unit_value" => "2,5"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["unit_value"], Decimal.new("2.5"))
+    end
+
     test "post transitions document to posted and updates stock", %{conn: conn} do
       admin = create_admin_user()
       cat = create_catalogue!()

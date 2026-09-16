@@ -133,6 +133,24 @@ defmodule PhoenixKitWarehouse.CostProposalsTest do
       assert Decimal.equal?(proposal.receipt_price, Decimal.new(20))
     end
 
+    test "comma unit_value lands unrounded" do
+      item_uuid = "item-abc"
+      resolver = static_resolver(item_uuid, info(Decimal.new("10.00")))
+      lines = [line(item_uuid, "12,5")]
+
+      [proposal] = CostProposals.derive(lines, "sup-1", resolver)
+      assert Decimal.equal?(proposal.receipt_price, Decimal.new("12.5"))
+    end
+
+    test "dot unit_value lands unrounded" do
+      item_uuid = "item-abc"
+      resolver = static_resolver(item_uuid, info(Decimal.new("10.00")))
+      lines = [line(item_uuid, "0.25")]
+
+      [proposal] = CostProposals.derive(lines, "sup-1", resolver)
+      assert Decimal.equal?(proposal.receipt_price, Decimal.new("0.25"))
+    end
+
     test "only generates proposals for lines with divergent price" do
       item_a = "item-a"
       item_b = "item-b"

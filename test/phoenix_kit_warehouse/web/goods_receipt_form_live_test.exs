@@ -313,6 +313,50 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
       assert html =~ ~r/5/
     end
 
+    test "comma value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      {receipt, _} = create_draft_with_lines()
+
+      {:ok, lv, _html} = live(conn, lines_path(receipt.uuid))
+
+      lv
+      |> element("#gr-rcv-form-0")
+      |> render_change(%{"index" => "0", "received_quantity" => "2,5"})
+
+      assert render(lv) =~ "2.5"
+    end
+
+    test "dot value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      {receipt, _} = create_draft_with_lines()
+
+      {:ok, lv, _html} = live(conn, lines_path(receipt.uuid))
+
+      lv
+      |> element("#gr-rcv-form-0")
+      |> render_change(%{"index" => "0", "received_quantity" => "0.25"})
+
+      assert render(lv) =~ "0.25"
+    end
+
+    test "garbage text is rejected like before (falls back to 0)", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      {receipt, _} = create_draft_with_lines()
+
+      {:ok, lv, _html} = live(conn, lines_path(receipt.uuid))
+
+      lv
+      |> element("#gr-rcv-form-0")
+      |> render_change(%{"index" => "0", "received_quantity" => "abc"})
+
+      html = render(lv)
+      assert html =~ ~s(id="gr-rcv-0")
+      refute html =~ "abc"
+    end
+
     test "ordered_quantity is shown as read-only on draft", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)

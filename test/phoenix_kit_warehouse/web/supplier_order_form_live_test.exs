@@ -247,6 +247,82 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLiveTest do
       html = render(lv)
       assert html =~ ~r/5/
     end
+
+    test "comma value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+
+      lines = [
+        %{
+          "item_uuid" => Ecto.UUID.generate(),
+          "name" => "Widget",
+          "sku" => "WGT-001",
+          "unit" => "pcs",
+          "catalogue_uuid" => Ecto.UUID.generate(),
+          "required_quantity" => Decimal.new("10"),
+          "on_hand_quantity" => Decimal.new("3"),
+          "shortfall_quantity" => Decimal.new("7"),
+          "ordered_quantity" => Decimal.new("7"),
+          "base_price" => Decimal.new("12.50")
+        }
+      ]
+
+      supplier = create_supplier!()
+
+      {:ok, order} =
+        SupplierOrders.create_supplier_order(%{
+          supplier_uuid: supplier.uuid,
+          location_uuid: @default_location_uuid,
+          lines: lines
+        })
+
+      {:ok, lv, _html} = live(conn, lines_path(order.uuid))
+
+      lv
+      |> element("#so-qty-form-0")
+      |> render_change(%{"index" => "0", "ordered_quantity" => "2,5"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["ordered_quantity"], Decimal.new("2.5"))
+    end
+
+    test "dot value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+
+      lines = [
+        %{
+          "item_uuid" => Ecto.UUID.generate(),
+          "name" => "Widget",
+          "sku" => "WGT-001",
+          "unit" => "pcs",
+          "catalogue_uuid" => Ecto.UUID.generate(),
+          "required_quantity" => Decimal.new("10"),
+          "on_hand_quantity" => Decimal.new("3"),
+          "shortfall_quantity" => Decimal.new("7"),
+          "ordered_quantity" => Decimal.new("7"),
+          "base_price" => Decimal.new("12.50")
+        }
+      ]
+
+      supplier = create_supplier!()
+
+      {:ok, order} =
+        SupplierOrders.create_supplier_order(%{
+          supplier_uuid: supplier.uuid,
+          location_uuid: @default_location_uuid,
+          lines: lines
+        })
+
+      {:ok, lv, _html} = live(conn, lines_path(order.uuid))
+
+      lv
+      |> element("#so-qty-form-0")
+      |> render_change(%{"index" => "0", "ordered_quantity" => "0.25"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["ordered_quantity"], Decimal.new("0.25"))
+    end
   end
 
   # ---------------------------------------------------------------------------

@@ -22,6 +22,8 @@ defmodule PhoenixKitWarehouse.CostProposals do
   No crash, no error — the feature silently degrades to a no-op.
   """
 
+  alias PhoenixKit.Utils.Number
+
   @doc """
   Derives price proposals from receipt lines.
 
@@ -160,10 +162,9 @@ defmodule PhoenixKitWarehouse.CostProposals do
   defp parse_decimal(%Decimal{} = d), do: d
 
   defp parse_decimal(v) when is_binary(v) do
-    # Tolerate comma decimal separators (ru/et locale input in line maps).
-    case v |> String.trim() |> String.replace(",", ".") |> Decimal.parse() do
-      {d, ""} -> d
-      _ -> nil
+    case Number.parse_decimal(v) do
+      {:ok, d} -> d
+      {:error, _reason} -> nil
     end
   end
 

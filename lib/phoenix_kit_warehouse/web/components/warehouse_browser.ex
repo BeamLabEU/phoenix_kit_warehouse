@@ -23,9 +23,11 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   use Phoenix.Component
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitWarehouse.StockLedger
 
   import PhoenixKitBilling.Web.Components.CurrencyDisplay, only: [currency_compact: 1]
+  import PhoenixKitWeb.Components.Core.DecimalInput, only: [decimal_input: 1]
   import PhoenixKitWeb.Components.Core.Icon, only: [icon: 1]
   import PhoenixKitWeb.Components.Core.Modal, only: [modal: 1]
 
@@ -188,7 +190,7 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   - Name / SKU
   - Unit
   - Current stock (read-only, from `stock_map`)
-  - Counted (number input, event `set_counted`)
+  - Counted (decimal input, event `set_counted`)
   - Unit price (event `set_price`) — only when `track_value`
   - Sum (event `set_sum`) — only when `track_value`
   - Remove button (event `remove_line`)
@@ -321,15 +323,12 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                 <%= if @editable do %>
                                   <form phx-change="set_counted" phx-submit="set_counted">
                                     <input type="hidden" name="index" value={index} />
-                                    <input
-                                      type="number"
+                                    <.decimal_input
                                       id={"counted-input-#{index}"}
                                       name="counted_quantity"
-                                      min="0"
-                                      step="any"
                                       value={format_input_decimal(counted)}
                                       placeholder="0"
-                                      class="input input-sm w-24 text-center"
+                                      class="input-sm w-24 text-center"
                                       phx-debounce="blur"
                                       phx-hook="InvEnterBlur"
                                     />
@@ -343,13 +342,12 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                   <%= if @editable do %>
                                     <form phx-change="set_price" phx-submit="set_price">
                                       <input type="hidden" name="index" value={index} />
-                                      <input
-                                        type="text"
+                                      <.decimal_input
                                         id={"price-input-#{index}"}
                                         name="unit_value"
                                         value={format_input_decimal(unit_value)}
                                         placeholder="—"
-                                        class="input input-sm w-24 text-right"
+                                        class="input-sm w-24 text-right"
                                         phx-debounce="blur"
                                         phx-hook="InvEnterBlur"
                                       />
@@ -364,13 +362,12 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                   <%= if @editable do %>
                                     <form phx-change="set_sum" phx-submit="set_sum">
                                       <input type="hidden" name="index" value={index} />
-                                      <input
-                                        type="text"
+                                      <.decimal_input
                                         id={"sum-input-#{index}"}
                                         name="sum"
                                         value={format_input_decimal(line_sum(counted, unit_value))}
                                         placeholder="—"
-                                        class="input input-sm w-24 text-right"
+                                        class="input-sm w-24 text-right"
                                         phx-debounce="blur"
                                         phx-hook="InvEnterBlur"
                                       />
@@ -859,9 +856,9 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   defp trim_scale(n, _fallback) when is_float(n), do: StockLedger.format_quantity(n)
 
   defp trim_scale(s, _fallback) when is_binary(s) do
-    case s |> String.replace(",", ".") |> Decimal.parse() do
-      {_d, ""} -> StockLedger.format_quantity(s)
-      _ -> s
+    case Number.parse_decimal(s) do
+      {:ok, _d} -> StockLedger.format_quantity(s)
+      {:error, _reason} -> s
     end
   end
 

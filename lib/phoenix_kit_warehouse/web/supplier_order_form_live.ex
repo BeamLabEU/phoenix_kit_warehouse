@@ -1211,15 +1211,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                     phx-submit="set_ordered_qty"
                   >
                     <input type="hidden" name="index" value={index} />
-                    <input
-                      type="number"
+                    <.decimal_input
                       id={"so-qty-#{index}"}
                       name="ordered_quantity"
-                      min="0"
-                      step="any"
                       value={fmt_qty(line["ordered_quantity"])}
                       placeholder="0"
-                      class="input input-sm w-24 text-right tabular-nums"
+                      class="input-sm w-24 text-right tabular-nums"
                       phx-debounce="blur"
                       phx-hook="InvEnterBlur"
                     />

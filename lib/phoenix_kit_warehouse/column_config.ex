@@ -28,6 +28,8 @@ defmodule PhoenixKitWarehouse.ColumnConfig do
 
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  alias PhoenixKit.Utils.Number
+
   defmacro __using__(opts) do
     scope = Keyword.fetch!(opts, :scope)
 
@@ -347,9 +349,9 @@ defmodule PhoenixKitWarehouse.ColumnConfig do
   defp parse_number(n) when is_number(n), do: n / 1
 
   defp parse_number(s) when is_binary(s) do
-    case Float.parse(String.replace(s, ",", ".")) do
-      {n, _} -> n
-      :error -> nil
+    case Number.parse_decimal(s) do
+      {:ok, d} -> Decimal.to_float(d)
+      {:error, _reason} -> nil
     end
   end
 
