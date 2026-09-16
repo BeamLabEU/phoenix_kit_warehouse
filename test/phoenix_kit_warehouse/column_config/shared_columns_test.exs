@@ -36,6 +36,21 @@ defmodule PhoenixKitWarehouse.ColumnConfig.SharedColumnsTest do
     end
   end
 
+  test "number_column/0's numeric_range filter accepts comma and dot decimals" do
+    col = ColumnConfig.number_column()
+    entries = [%{number: 1}, %{number: 2}, %{number: 3}]
+
+    assert col.filter_apply.(entries, %{"min" => "1,5"}) == [%{number: 2}, %{number: 3}]
+    assert col.filter_apply.(entries, %{"max" => "1.5"}) == [%{number: 1}]
+  end
+
+  test "number_column/0's numeric_range filter ignores unparseable text" do
+    col = ColumnConfig.number_column()
+    entries = [%{number: 1}, %{number: 2}]
+
+    assert col.filter_apply.(entries, %{"min" => "not-a-number"}) == entries
+  end
+
   test "timestamp_column/4 sorts on the named field and filters by date range" do
     col = ColumnConfig.timestamp_column("shipped_at", :shipped_at, fn -> "Shipped" end)
 

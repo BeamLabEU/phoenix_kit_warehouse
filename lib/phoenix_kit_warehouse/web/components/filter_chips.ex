@@ -17,6 +17,7 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
   use Phoenix.Component
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  import PhoenixKitWeb.Components.Core.DecimalInput, only: [decimal_input: 1]
   import PhoenixKitWeb.Components.Core.Icon, only: [icon: 1]
 
   attr(:meta, :map, required: true, doc: "Column metadata from ColumnConfig")
@@ -92,23 +93,19 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
     assigns = assigns |> assign(:min, min) |> assign(:max, max)
 
     ~H"""
-    <input
-      type="number"
-      step="any"
+    <.decimal_input
       name="value[min]"
       value={@min}
       placeholder={dgettext("default", "Min")}
-      class="input input-xs w-20"
+      class="input-xs w-20"
       phx-debounce="300"
     />
     <span class="text-xs text-base-content/40">–</span>
-    <input
-      type="number"
-      step="any"
+    <.decimal_input
       name="value[max]"
       value={@max}
       placeholder={dgettext("default", "Max")}
-      class="input input-xs w-20"
+      class="input-xs w-20"
       phx-debounce="300"
     />
     """

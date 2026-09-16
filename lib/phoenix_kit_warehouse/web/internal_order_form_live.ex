@@ -1151,15 +1151,12 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
                     phx-submit="set_required_qty"
                   >
                     <input type="hidden" name="index" value={index} />
-                    <input
-                      type="number"
+                    <.decimal_input
                       id={"io-qty-#{index}"}
                       name="required_quantity"
-                      min="0"
-                      step="any"
                       value={line["required_quantity"] || ""}
                       placeholder="0"
-                      class="input input-sm w-24 text-center"
+                      class="input-sm w-24 text-center"
                       phx-debounce="blur"
                       phx-hook="InvEnterBlur"
                     />

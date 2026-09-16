@@ -374,6 +374,14 @@ defmodule PhoenixKitWarehouse.StockLedgerTest do
     test "binary string conversion" do
       assert Decimal.equal?(Warehouse.to_decimal("3.14"), Decimal.new("3.14"))
     end
+
+    test "garbage text returns 0" do
+      assert Decimal.equal?(Warehouse.to_decimal("abc"), Decimal.new("0"))
+    end
+
+    test "scientific notation is rejected and returns 0" do
+      assert Decimal.equal?(Warehouse.to_decimal("1e9"), Decimal.new("0"))
+    end
   end
 
   describe "to_decimal_or_nil/1" do
@@ -405,6 +413,10 @@ defmodule PhoenixKitWarehouse.StockLedgerTest do
     test "binary string conversion" do
       assert Decimal.equal?(Warehouse.to_decimal_or_nil("9.99"), Decimal.new("9.99"))
     end
+
+    test "garbage text returns nil" do
+      assert is_nil(Warehouse.to_decimal_or_nil("abc"))
+    end
   end
 
   describe "to_decimal/1 — comma decimal separator (et/ru locales)" do
@@ -418,6 +430,14 @@ defmodule PhoenixKitWarehouse.StockLedgerTest do
 
     test "plain dot notation still works" do
       assert Decimal.equal?(Warehouse.to_decimal("3.14"), Decimal.new("3.14"))
+    end
+
+    test "comma value lands unrounded" do
+      assert Decimal.equal?(Warehouse.to_decimal("2,5"), Decimal.new("2.5"))
+    end
+
+    test "dot value lands unrounded" do
+      assert Decimal.equal?(Warehouse.to_decimal("0.25"), Decimal.new("0.25"))
     end
   end
 

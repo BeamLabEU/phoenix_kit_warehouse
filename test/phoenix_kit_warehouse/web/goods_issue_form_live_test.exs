@@ -256,6 +256,36 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLiveTest do
       assert html =~ ~r/3/
     end
 
+    test "comma value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      {issue, _item_uuid} = create_draft_with_lines()
+
+      {:ok, lv, _html} = live(conn, lines_path(issue.uuid))
+
+      lv
+      |> element("#gi-iss-form-0")
+      |> render_change(%{"index" => "0", "issued_quantity" => "2,5"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["issued_quantity"], Decimal.new("2.5"))
+    end
+
+    test "dot value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      {issue, _item_uuid} = create_draft_with_lines()
+
+      {:ok, lv, _html} = live(conn, lines_path(issue.uuid))
+
+      lv
+      |> element("#gi-iss-form-0")
+      |> render_change(%{"index" => "0", "issued_quantity" => "0.25"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert Decimal.equal?(line["issued_quantity"], Decimal.new("0.25"))
+    end
+
     test "on-hand quantity is shown (read-only) next to each line", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)

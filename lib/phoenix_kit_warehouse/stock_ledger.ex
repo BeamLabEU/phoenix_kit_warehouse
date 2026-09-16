@@ -9,6 +9,7 @@ defmodule PhoenixKitWarehouse.StockLedger do
 
   import Ecto.Query
 
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitLocations.Locations
   alias PhoenixKitWarehouse.Stock
 
@@ -338,11 +339,9 @@ defmodule PhoenixKitWarehouse.StockLedger do
   def to_decimal(v) when is_float(v), do: Decimal.from_float(v)
 
   def to_decimal(v) when is_binary(v) do
-    # Normalise the et/ru decimal comma ("1,5") to a dot before parsing —
-    # Decimal.parse/1 otherwise stops at the comma and silently truncates.
-    case v |> String.replace(",", ".") |> Decimal.parse() do
-      {d, _} -> d
-      :error -> Decimal.new("0")
+    case Number.parse_decimal(v) do
+      {:ok, d} -> d
+      {:error, _reason} -> Decimal.new("0")
     end
   end
 
@@ -375,16 +374,9 @@ defmodule PhoenixKitWarehouse.StockLedger do
   def to_decimal_or_nil(""), do: nil
 
   def to_decimal_or_nil(s) when is_binary(s) do
-    # Normalise the et/ru decimal comma ("1,5") to a dot before parsing.
-    case s |> String.trim() |> String.replace(",", ".") do
-      "" ->
-        nil
-
-      trimmed ->
-        case Decimal.parse(trimmed) do
-          {d, _} -> d
-          :error -> nil
-        end
+    case Number.parse_decimal(s) do
+      {:ok, d} -> d
+      {:error, _reason} -> nil
     end
   end
 

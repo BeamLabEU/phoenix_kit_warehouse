@@ -910,14 +910,11 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
       phx-submit="set_min_quantity"
     >
       <input type="hidden" name="item_uuid" value={@entry.item.uuid} />
-      <input
-        type="number"
+      <.decimal_input
         id={"stock-min-#{@entry.item.uuid}"}
         name="min_quantity"
-        min="0"
-        step="any"
         value={fmt_qty(@entry.min_quantity)}
-        class="input input-sm w-20 text-right tabular-nums"
+        class="input-sm w-20 text-right tabular-nums"
         phx-debounce="blur"
         phx-hook="InvEnterBlur"
       />

@@ -319,6 +319,40 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLiveTest do
       assert html =~ ~r/7/
     end
 
+    test "comma value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      [loc_a, loc_b] = setup_warehouses!(["TR Site C", "TR Site D"])
+      item_uuid = Ecto.UUID.generate()
+      transfer = create_draft_with_lines(loc_a, loc_b, item_uuid, "2")
+
+      {:ok, lv, _html} = live(conn, items_path(transfer.uuid))
+
+      lv
+      |> element("#tr-qty-form-0")
+      |> render_change(%{"index" => "0", "transfer_quantity" => "2,5"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert line["transfer_quantity"] == "2.5"
+    end
+
+    test "dot value lands unrounded", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      [loc_a, loc_b] = setup_warehouses!(["TR Site E", "TR Site F"])
+      item_uuid = Ecto.UUID.generate()
+      transfer = create_draft_with_lines(loc_a, loc_b, item_uuid, "2")
+
+      {:ok, lv, _html} = live(conn, items_path(transfer.uuid))
+
+      lv
+      |> element("#tr-qty-form-0")
+      |> render_change(%{"index" => "0", "transfer_quantity" => "0.25"})
+
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert line["transfer_quantity"] == "0.25"
+    end
+
     test "transfer_quantity is read-only once in_transit", %{conn: conn} do
       # Order matters — see the I170 comment on the "both warehouses show as
       # read-only text once shipped" test above.

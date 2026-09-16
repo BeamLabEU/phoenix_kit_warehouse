@@ -273,6 +273,40 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
       assert html =~ ~s(value="6")
     end
 
+    test "inline-editing Min. quantity accepts a comma value unrounded", %{conn: conn} do
+      a = admin()
+      cat = create_catalogue!()
+      item = create_item!(cat, "Deficit Widget")
+      {:ok, _} = StockLedger.upsert_quantity(item.uuid, "10")
+
+      {:ok, lv, _html} = live(login(conn, a), path())
+      render_click(element(lv, ~s([phx-click="set_stock_view"][phx-value-view="flat"])))
+      add_flat_column(lv, "min_quantity", "item,catalogue,quantity,total_value,min_quantity")
+
+      lv
+      |> element("#stock-min-form-#{item.uuid}")
+      |> render_change(%{"item_uuid" => item.uuid, "min_quantity" => "1,5"})
+
+      assert Decimal.equal?(MinStockSettings.get_min_quantity(item.uuid), Decimal.new("1.5"))
+    end
+
+    test "inline-editing Min. quantity accepts a dot value unrounded", %{conn: conn} do
+      a = admin()
+      cat = create_catalogue!()
+      item = create_item!(cat, "Deficit Widget")
+      {:ok, _} = StockLedger.upsert_quantity(item.uuid, "10")
+
+      {:ok, lv, _html} = live(login(conn, a), path())
+      render_click(element(lv, ~s([phx-click="set_stock_view"][phx-value-view="flat"])))
+      add_flat_column(lv, "min_quantity", "item,catalogue,quantity,total_value,min_quantity")
+
+      lv
+      |> element("#stock-min-form-#{item.uuid}")
+      |> render_change(%{"item_uuid" => item.uuid, "min_quantity" => "0.25"})
+
+      assert Decimal.equal?(MinStockSettings.get_min_quantity(item.uuid), Decimal.new("0.25"))
+    end
+
     test "an item below its configured minimum is badge-flagged and shown by the Deficit filter",
          %{conn: conn} do
       a = admin()
@@ -314,6 +348,31 @@ defmodule PhoenixKitWarehouse.Web.StockLiveTest do
 
       assert filtered =~ "Low Widget"
       refute filtered =~ "OK Widget"
+    end
+
+    test "the quantity numeric_range filter accepts a comma min value", %{conn: conn} do
+      a = admin()
+      cat = create_catalogue!()
+      low_item = create_item!(cat, "Low Qty Widget")
+      high_item = create_item!(cat, "High Qty Widget")
+      {:ok, _} = StockLedger.upsert_quantity(low_item.uuid, "1")
+      {:ok, _} = StockLedger.upsert_quantity(high_item.uuid, "5")
+
+      {:ok, lv, _html} = live(login(conn, a), path())
+      render_click(element(lv, ~s([phx-click="set_stock_view"][phx-value-view="flat"])))
+      render_click(lv, "toggle_filter", %{"column_id" => "quantity"})
+
+      render_click(lv, "update_table_columns", %{
+        "column_order" => "item,catalogue,quantity,total_value"
+      })
+
+      html =
+        lv
+        |> element("form[phx-change='set_filter_value']")
+        |> render_change(%{"column_id" => "quantity", "value" => %{"min" => "1,5"}})
+
+      refute html =~ "Low Qty Widget"
+      assert html =~ "High Qty Widget"
     end
 
     test "the Grouped view shows a warning icon next to items below their minimum", %{
