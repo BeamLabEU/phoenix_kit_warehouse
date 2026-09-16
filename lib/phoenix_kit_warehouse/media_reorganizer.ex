@@ -41,14 +41,24 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       for a document whose current folder already lives under a real
       parent (F1): the parent is kept as-is (only a pointer back-fill, if
       any, is still planned) and the document is counted into a separate
-      `kind: :hook_nil` report instead.
-    * A *candidate kind* is one with a live pointer among its documents, or
-      a live folder anywhere named after its legacy pattern
-      (`<prefix>-<number-or-uuid>`, resolved without calling any hook — one
-      SQL-`LIKE`-filtered query for the whole plan). The `:storage_parent_folder`
-      hook (2-arity, `resource`/`actor_uuid` — no record subject) is
-      resolved **once per candidate kind**, never once per record and never
-      for a kind with nothing to move.
+      `kind: :hook_nil` report instead. This applies on BOTH resolution
+      routes — a document found by its live pointer, and one with no valid
+      pointer whose legacy-named folder is found live under some other real
+      parent while the hook answers root (U1): that folder is adopted as
+      the document's current folder exactly the same way.
+    * **A *candidate* is a LIVE DOCUMENT with a folder (F4, strict)** — its
+      own valid live pointer, or a live folder anywhere named after its own
+      legacy pattern (`<prefix>-<number-or-uuid>`, resolved without calling
+      any hook — one SQL-`LIKE`-filtered query for the whole plan). A
+      residual legacy-named folder with no live document behind it does
+      NOT make its kind a candidate: the `:storage_parent_folder` hook
+      (2-arity, `resource`/`actor_uuid` — no record subject) is resolved
+      **once per candidate kind**, never once per record and never for a
+      kind with zero live documents — even one with a residual folder.
+      Cost: an orphan sitting under that kind's would-be resolved parent is
+      invisible to this scan (that parent is only ever known via a hook
+      call this module skips when the kind has nothing live) — it is only
+      found once the kind has at least one live document again.
     * A document's *current* folder is: its live pointer if it has one
       (kept as-is unless the folder still carries the exact legacy name,
       D6/E2 — the owner may have renamed it, this module never overwrites a
@@ -287,28 +297,28 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     |> MapSet.new()
   end
 
-  # Candidate detection needs no hook call: a live pointer (uuid lookup) or
-  # a live folder anywhere named after a document's legacy pattern (which
-  # also covers a kind with zero live documents but a residual/orphan
-  # folder — X13). Only kinds with at least one candidate go on to have the
-  # host's parent hook resolved — once per kind, never once per record
-  # (X12), and never for a kind with nothing to move.
+  # F4 (strict): a candidate is a LIVE DOCUMENT with a folder — its own
+  # valid live pointer, or a live folder anywhere named after its own
+  # legacy pattern. A residual legacy-named folder with no live document
+  # behind it does NOT make its kind a candidate: the parent hook is never
+  # called for that kind at all (see the moduledoc's "Orphaned legacy
+  # folders" section for the resulting cost — an orphan under such a
+  # container's would-be resolved parent is invisible to this scan, since
+  # that parent is only ever known via a hook call this module now skips
+  # for a kind with nothing live to move). Only kinds with at least one
+  # such candidate go on to have the host's parent hook resolved — once
+  # per kind, never once per record (X12).
   defp build_resource_plan(actor_uuid, prelim, legacy_candidates, pointer_claims, hook_on?) do
     by_pointer = preload_by_uuid(Enum.map(prelim, & &1.pointer))
     by_name = group_by_name(legacy_candidates)
 
-    kinds_with_pointer =
-      prelim
-      |> Enum.filter(fn p -> p.pointer && Map.has_key?(by_pointer, p.pointer) end)
-      |> Enum.map(& &1.kind)
-      |> MapSet.new()
+    candidates =
+      Enum.filter(prelim, fn p ->
+        (p.pointer && Map.has_key?(by_pointer, p.pointer)) ||
+          Map.has_key?(by_name, p.legacy_name)
+      end)
 
-    kinds_with_prefix_folder =
-      legacy_candidates
-      |> Enum.map(fn {_folder, {kind, _key}} -> kind end)
-      |> MapSet.new()
-
-    candidate_kinds = MapSet.union(kinds_with_pointer, kinds_with_prefix_folder)
+    candidate_kinds = candidates |> Enum.map(& &1.kind) |> MapSet.new()
 
     # E1: without a configured hook the desired parent is root for every
     # kind (D1/§4) — never call the hook (there is none), never a
@@ -319,18 +329,6 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       else
         {Map.new(candidate_kinds, &{&1, nil}), MapSet.new()}
       end
-
-    # T4: a document only actually needed the hook's answer if it, itself,
-    # has a live pointer or a live folder under its own legacy name — a
-    # document with neither (its kind is only a "candidate kind" because
-    # SOME OTHER document of that kind has a folder) is never counted into
-    # `:hook_error`'s "N document(s) skipped".
-    candidates =
-      Enum.filter(prelim, fn p ->
-        MapSet.member?(candidate_kinds, p.kind) and
-          ((p.pointer && Map.has_key?(by_pointer, p.pointer)) ||
-             Map.has_key?(by_name, p.legacy_name))
-      end)
 
     {ok_candidates, failed_candidates} =
       Enum.split_with(candidates, &(not MapSet.member?(hook_error_kinds, &1.kind)))
@@ -343,7 +341,7 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       |> Enum.map(&resolve_entry(&1, by_pointer, by_name))
       |> apply_nil_root_guard(hook_on?)
 
-    hook_nil_count = Enum.count(entries, & &1.hook_nil)
+    hook_nil_entries = Enum.filter(entries, & &1.hook_nil)
 
     # X11: a legacy name live at both root and under the resolved parent is
     # unresolvable — one `:duplicate` report, never a move for that
@@ -354,22 +352,22 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
 
     {shared, unique} = split_shared(with_folder)
 
-    # F6: converging-target detection only makes sense with a working hook
-    # (without one, every candidate's desired parent defaults to root
-    # regardless of its real current parent — a coincidental name match at
-    # that default would be a false positive, P6) and only when the group
-    # contains at least one document that would actually MOVE — a group
-    # where every member already sits at the shared target has nothing to
-    # collide with at apply time (also P6: without a hook, or with an
-    # explicit nil for the whole group, nobody moves at all).
-    {converging_groups, solo_candidates} =
-      if hook_on?, do: split_converging(unique), else: {[], unique}
+    # U2: convergence is computed AFTER the no-op filter, among real movers
+    # only — a document already sitting at its target (nothing to move,
+    # F6) is excluded before grouping, so it can never drag a genuine mover
+    # heading to the very same folder into a false `:duplicate` (that mover
+    # still gets its own `:move`; if it lands on an in-place noop's folder,
+    # `on_conflict: :suffix` resolves the physical collision at apply time,
+    # same as any other stray twin). Only makes sense with a working hook —
+    # without one, every candidate's desired parent defaults to root
+    # regardless of its real current parent, and a coincidental name match
+    # at that default would be a false positive (P6).
+    {movers, static} = Enum.split_with(unique, &real_move?/1)
 
-    {converging, non_colliding_groups} =
-      Enum.split_with(converging_groups, &Enum.any?(&1, fn entry -> real_move?(entry) end))
+    {converging, solo_movers} =
+      if hook_on?, do: split_converging(movers), else: {[], movers}
 
-    solo =
-      Enum.sort_by(solo_candidates ++ List.flatten(non_colliding_groups), & &1.order_index)
+    solo = Enum.sort_by(solo_movers ++ static, & &1.order_index)
 
     # E1: `:move` (and any pointer back-fill it carries) is only ever
     # planned when a hook is configured — a host without one is untouched,
@@ -381,10 +379,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     shared_actions = Enum.map(shared, &build_shared_duplicate_action/1)
     converging_actions = Enum.map(converging, &build_converging_duplicate_action/1)
 
-    hook_error_actions =
-      hook_error_action(length(failed_candidates), MapSet.size(hook_error_kinds))
-
-    hook_nil_actions = hook_nil_action(hook_nil_count)
+    hook_error_actions = hook_error_action(failed_candidates)
+    hook_nil_actions = hook_nil_action(hook_nil_entries)
 
     claimed = claimed_folder_uuids(solo, ambiguous, shared, converging)
     all_claimed = MapSet.union(claimed, pointer_claims)
@@ -432,12 +428,19 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # sent into a later `in ^uuids` query (which would raise a CastError and
   # take down the whole plan). F2/T4-adjacent: exceptions and non-local
   # exits are logged with the module and kind so a failure is diagnosable.
+  # U6: a bad-but-non-raising return (garbage UUID, unexpected shape) is
+  # logged too — not just silently counted — with the same `{mod, fun}` +
+  # kind identifying detail as the raise/exit paths below.
   defp guarded_hook_call(mod, fun, kind, actor_uuid) do
     case apply(mod, fun, [kind, actor_uuid]) do
       {:ok, uuid} when is_binary(uuid) ->
         case valid_uuid(uuid) do
-          nil -> :error
-          cast -> {:ok, cast}
+          nil ->
+            log_bad_hook_return(mod, fun, kind, {:ok, uuid})
+            :error
+
+          cast ->
+            {:ok, cast}
         end
 
       {:ok, nil} ->
@@ -446,30 +449,57 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       nil ->
         {:ok, nil}
 
-      _other ->
+      other ->
+        log_bad_hook_return(mod, fun, kind, other)
         :error
     end
   rescue
     error ->
       Logger.warning(
-        "storage_parent_folder hook #{inspect(mod)}.#{fun} raised for kind #{inspect(kind)}: " <>
-          Exception.format(:error, error, __STACKTRACE__)
+        "storage_parent_folder hook {#{inspect(mod)}, #{inspect(fun)}} raised for kind " <>
+          "#{inspect(kind)}: " <> Exception.format(:error, error, __STACKTRACE__)
       )
 
       :error
   catch
     catch_kind, reason ->
       Logger.warning(
-        "storage_parent_folder hook #{inspect(mod)}.#{fun} #{catch_kind} for kind " <>
-          "#{inspect(kind)}: #{inspect(reason)}"
+        "storage_parent_folder hook {#{inspect(mod)}, #{inspect(fun)}} #{catch_kind} for " <>
+          "kind #{inspect(kind)}: #{inspect(reason)}"
       )
 
       :error
   end
 
-  defp hook_error_action(0, 0), do: []
+  defp log_bad_hook_return(mod, fun, kind, value) do
+    Logger.warning(
+      "storage_parent_folder hook {#{inspect(mod)}, #{inspect(fun)}} for kind " <>
+        "#{inspect(kind)} returned an unexpected value (neither {:ok, uuid} nor nil): " <>
+        inspect(value)
+    )
+  end
 
-  defp hook_error_action(doc_count, kind_count) do
+  # U8: `:hook_error`/`:hook_nil` reports list up to this many record
+  # labels before collapsing the rest into a single "… and N more" tail —
+  # enough for an owner to know where to look without the report itself
+  # becoming an unbounded wall of text on a large failure.
+  @max_listed_labels 10
+
+  defp label_list(entries) do
+    labels = Enum.map(entries, & &1.legacy_name)
+    count = length(labels)
+
+    if count > @max_listed_labels do
+      shown = Enum.take(labels, @max_listed_labels) |> Enum.join(", ")
+      "#{shown}, … and #{count - @max_listed_labels} more"
+    else
+      Enum.join(labels, ", ")
+    end
+  end
+
+  defp hook_error_action([]), do: []
+
+  defp hook_error_action(failed_candidates) do
     [
       %{
         source: @source,
@@ -477,31 +507,27 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
         op: :report,
         label: "storage_parent_folder hook",
         counts: nil,
-        reason: hook_error_reason(doc_count, kind_count)
+        reason: hook_error_reason(failed_candidates)
       }
     ]
   end
 
-  # T4: reported even when the failure only affects a kind's orphan scan
-  # (a kind with a residual folder but zero live documents — X13) and
-  # `doc_count` would otherwise be 0.
-  defp hook_error_reason(0, kind_count) do
-    "#{kind_count} kind(s)' orphan scan skipped: the configured parent hook raised, " <>
-      "exited, or returned neither {:ok, uuid} nor nil"
+  # F4 removed the orphan-scan-only failure case this used to special-case
+  # (`doc_count == 0`): a kind only ever reaches `resolve_parents/2` when it
+  # has at least one live-document candidate, so a failed kind always has
+  # at least one failed candidate document too.
+  defp hook_error_reason(failed_candidates) do
+    "#{length(failed_candidates)} document(s) skipped: the configured parent hook raised, " <>
+      "exited, or returned neither {:ok, uuid} nor nil (#{label_list(failed_candidates)})"
   end
 
-  defp hook_error_reason(doc_count, _kind_count) do
-    "#{doc_count} document(s) skipped: the configured parent hook raised, exited, or " <>
-      "returned neither {:ok, uuid} nor nil"
-  end
-
-  # F1: an explicit `nil`/`{:ok, nil}` answer from the parent hook never
+  # F1/U1: an explicit `nil`/`{:ok, nil}` answer from the parent hook never
   # pulls a folder that currently lives under a real parent out to root —
   # only a pointer back-fill (if any) is kept, and the parent/name stay
   # exactly as they are (no rename either, since the desired name isn't
   # being applied). Named/pointer resolution above already guarantees
   # `entry.folder` is the document's actual current folder when set, so
-  # this is safe regardless of resolution route. Skipped entirely without a
+  # this covers the pointer-track case directly. Skipped entirely without a
   # working hook (`hook_on?` false) — `:move` is suppressed for every entry
   # in that case anyway (E1), and the default-to-root parent there is a
   # deliberate design default, not a hook answering "root".
@@ -516,11 +542,40 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
     |> Map.put(:hook_nil, true)
   end
 
+  # U1: the name-track equivalent, for a pointer-writing kind only (a
+  # pointer-less kind, `internal_order`, keeps reporting every live legacy
+  # twin as `:relocated` — it has no pointer to back-fill, so there is
+  # nothing for F1 to adopt). Nothing resolved via pointer or name match
+  # (`folder: nil`) because the hook answered root and no live copy sits at
+  # root either — but exactly ONE live copy sits under some other real
+  # parent (`stray_legacy`): that folder IS the document's current folder,
+  # adopted (kept name, kept parent), planning only the pointer back-fill
+  # and counting into `:hook_nil` — never a move to root. Two or more such
+  # copies stay unresolved (same as today's "nothing resolves" case) —
+  # adopting one over another arbitrarily would be a guess this module
+  # doesn't make.
+  defp apply_nil_root_guard(%{folder: nil, parent_uuid: nil, kind: kind} = entry)
+       when kind in @pointer_kinds do
+    case Enum.filter(entry.stray_legacy, &(not is_nil(&1.parent_uuid))) do
+      [folder] ->
+        entry
+        |> Map.put(:folder, folder)
+        |> Map.put(:via, :name)
+        |> Map.put(:name, nil)
+        |> Map.put(:parent_uuid, folder.parent_uuid)
+        |> Map.put(:hook_nil, true)
+        |> Map.put(:stray_legacy, Enum.reject(entry.stray_legacy, &(&1.uuid == folder.uuid)))
+
+      _other ->
+        Map.put(entry, :hook_nil, false)
+    end
+  end
+
   defp apply_nil_root_guard(entry), do: Map.put(entry, :hook_nil, false)
 
-  defp hook_nil_action(0), do: []
+  defp hook_nil_action([]), do: []
 
-  defp hook_nil_action(count) do
+  defp hook_nil_action(hook_nil_entries) do
     [
       %{
         source: @source,
@@ -529,8 +584,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
         label: "storage_parent_folder hook",
         counts: nil,
         reason:
-          "#{count} document(s): the parent hook answered root for a folder living under a " <>
-            "parent — left in place"
+          "#{length(hook_nil_entries)} document(s): the parent hook answered root for a " <>
+            "folder living under a parent — left in place (#{label_list(hook_nil_entries)})"
       }
     ]
   end
