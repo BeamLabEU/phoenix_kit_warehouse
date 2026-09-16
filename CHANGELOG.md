@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.2 - 2026-09-16
+
+### Changed
+
+- **Quantity, price and sum inputs use core's `<.decimal_input>`** (#32) —
+  both a comma and a dot work, and nothing is rounded or swallowed by the
+  browser's number control. The comma-tolerant parsers (`StockLedger`,
+  `CostProposals`, `ColumnConfig`, the inventory browser) now delegate to
+  `PhoenixKit.Utils.Number.parse_decimal/2`.
+- **Core floor raised to phoenix_kit 2.26.1**, the first release with the
+  decimal input and exponent-free `parse_decimal/2`.
+
+### Fixed
+
+- **Internal order quantities are stored normalised and clamped to zero** —
+  typed text (`"2,5"`, `"abc"`) is no longer stored as typed, and a
+  negative required quantity can no longer turn into a goods issue that adds
+  stock when posted.
+- **Decimal inputs keep their width** — widths moved to `wrapper_class`,
+  because the component's own `w-full` overrode `w-20`/`w-24` and stretched
+  the controls across their table cells.
+
 ## 0.5.1 - 2026-09-16
 
 ### Added

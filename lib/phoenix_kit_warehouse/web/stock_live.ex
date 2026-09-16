@@ -914,7 +914,8 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
         id={"stock-min-#{@entry.item.uuid}"}
         name="min_quantity"
         value={fmt_qty(@entry.min_quantity)}
-        class="input-sm w-20 text-right tabular-nums"
+        class="input-sm text-right tabular-nums"
+        wrapper_class="inline-block w-20"
         phx-debounce="blur"
         phx-hook="InvEnterBlur"
       />

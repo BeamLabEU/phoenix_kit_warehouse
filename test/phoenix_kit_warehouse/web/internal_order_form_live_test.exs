@@ -441,12 +441,30 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLiveTest do
       |> render_change(%{"index" => "0", "required_quantity" => "2,5"})
 
       [line] = :sys.get_state(lv.pid).socket.assigns.lines
-      assert line["required_quantity"] == "2,5"
+      assert line["required_quantity"] == "2.5"
+    end
 
-      assert Decimal.equal?(
-               PhoenixKitWarehouse.StockLedger.to_decimal(line["required_quantity"]),
-               Decimal.new("2.5")
-             )
+    test "set_required_qty clamps a negative and zeroes garbage", %{conn: conn} do
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      order = create_draft()
+      item = create_catalogue_item!()
+
+      {:ok, lv, _html} = live(conn, items_path(order.uuid))
+
+      pick = %{uuid: item.uuid, qty: Decimal.new("4"), unit: item.unit, name: item.name}
+      send(lv.pid, {:items_selected, %{id: "internal-order-item-selector", picks: [pick]}})
+      :sys.get_state(lv.pid)
+
+      form = element(lv, "#io-qty-form-0")
+
+      render_change(form, %{"index" => "0", "required_quantity" => "-3"})
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert line["required_quantity"] == "0"
+
+      render_change(form, %{"index" => "0", "required_quantity" => "abc"})
+      [line] = :sys.get_state(lv.pid).socket.assigns.lines
+      assert line["required_quantity"] == "0"
     end
 
     test "set_required_qty accepts a dot value unrounded", %{conn: conn} do

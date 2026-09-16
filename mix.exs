@@ -1,7 +1,7 @@
 defmodule PhoenixKitWarehouse.MixProject do
   use Mix.Project
 
-  @version "0.5.1"
+  @version "0.5.2"
   @source_url "https://github.com/BeamLabEU/phoenix_kit_warehouse"
 
   def project do
@@ -96,11 +96,16 @@ defmodule PhoenixKitWarehouse.MixProject do
       # `PhoenixKitWeb.Live.UrlState`, which 7 LiveView files in this
       # module `use`. Anything below it resolves a core with no such
       # module, and the failure surfaces in the consumer's build.
-      # Core 2.x only. Keep this a TWO-segment `~> 2.0`: a three-segment
+      # Core 2.x only. Keep this a TWO-segment `~> 2.N`: a three-segment
       # `~> 2.0.x` expands to `< 2.1.0` and would strand host resolution the
       # moment core ships 2.1 — the same failure the old `~> 1.7.231` pin had
       # against core 2.0.0, which is what PR #15 was opened to fix.
-      pk_dep(:phoenix_kit, "~> 2.0"),
+      # 2.26.1 is the floor: 2.26.0 shipped `<.decimal_input>` and
+      # `PhoenixKit.Utils.Number.parse_decimal/2`, which every quantity/price
+      # control and StockLedger's coercers now use (an older core is a
+      # compile error in the consumer), and 2.26.1 stops a whole number
+      # parsing to exponent form (`"10"` -> `1E+1`).
+      pk_dep(:phoenix_kit, "~> 2.26 and >= 2.26.1"),
       # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
       # builds from source when MDEX_NATIVE_BUILD=1 is set in the
       # environment; that path requires rustler itself, not just

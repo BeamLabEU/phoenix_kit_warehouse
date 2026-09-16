@@ -1290,7 +1290,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                       name="received_quantity"
                       value={fmt_qty(line["received_quantity"])}
                       placeholder="0"
-                      class="input-sm w-24 text-right tabular-nums"
+                      class="input-sm text-right tabular-nums"
+                      wrapper_class="inline-block w-24"
                       phx-debounce="blur"
                       phx-hook="InvEnterBlur"
                     />

@@ -97,7 +97,8 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
       name="value[min]"
       value={@min}
       placeholder={dgettext("default", "Min")}
-      class="input-xs w-20"
+      class="input-xs"
+      wrapper_class="w-20"
       phx-debounce="300"
     />
     <span class="text-xs text-base-content/40">–</span>
@@ -105,7 +106,8 @@ defmodule PhoenixKitWarehouse.Web.Components.FilterChips do
       name="value[max]"
       value={@max}
       placeholder={dgettext("default", "Max")}
-      class="input-xs w-20"
+      class="input-xs"
+      wrapper_class="w-20"
       phx-debounce="300"
     />
     """

@@ -450,10 +450,17 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
     index = String.to_integer(params["index"])
     raw = params["required_quantity"] || "0"
 
+    # Store the canonical text, never what was typed: a "2,5" or a stray
+    # "abc" would otherwise be persisted into the JSONB line verbatim, and a
+    # negative quantity flows into `GoodsIssues.create_from_internal_order/2`
+    # as `issued_quantity`, where posting it *adds* to stock. Same
+    # normalisation as TransferFormLive's `set_transfer_qty`.
+    qty = raw |> StockLedger.to_decimal() |> clamp_non_negative() |> StockLedger.format_quantity()
+
     lines =
       socket.assigns.lines
       |> List.update_at(index, fn line ->
-        Map.put(line, "required_quantity", raw)
+        Map.put(line, "required_quantity", qty)
       end)
 
     {:noreply, assign(socket, :lines, lines)}
@@ -1156,7 +1163,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
                       name="required_quantity"
                       value={line["required_quantity"] || ""}
                       placeholder="0"
-                      class="input-sm w-24 text-center"
+                      class="input-sm text-center"
+                      wrapper_class="inline-block w-24"
                       phx-debounce="blur"
                       phx-hook="InvEnterBlur"
                     />
@@ -1309,6 +1317,11 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   # and on a posted document nobody can edit the value to "fix" the display.
   # A blank stays an em dash: `format_quantity/1` would turn a missing value
   # into "0", a claim the document does not make.
+  defp clamp_non_negative(%Decimal{} = d) do
+    zero = Decimal.new("0")
+    if Decimal.compare(d, zero) == :lt, do: zero, else: d
+  end
+
   defp fmt_stored_qty(nil), do: "—"
   defp fmt_stored_qty(""), do: "—"
   defp fmt_stored_qty(value), do: StockLedger.format_quantity(value)

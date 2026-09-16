@@ -14,12 +14,16 @@ defmodule PhoenixKitWarehouse.CorePinConformanceTest do
 
   Core 1.7 is deliberately excluded: core 2.0.0 squashed the migration chain to
   a V135 floor and this module is verified only against that baseline.
+
+  A raised FLOOR within 2.x is fine — it is an API the module compiles against
+  (2.26.1: `<.decimal_input>` / `Number.parse_decimal/2`), not a ceiling. What
+  must never happen is a ceiling below 3.0.
   """
 
-  @must_admit ["2.0.0", "2.0.7", "2.1.0", "2.9.4"]
-  @must_reject ["1.7.189", "1.7.236", "1.9.4", "3.0.0"]
+  @must_admit ["2.26.1", "2.27.0", "2.30.4", "2.99.0"]
+  @must_reject ["1.7.189", "1.7.236", "1.9.4", "2.0.0", "2.26.0", "3.0.0"]
 
-  test "the :phoenix_kit requirement admits every core 2.x and nothing else" do
+  test "the :phoenix_kit requirement admits every core 2.x from the floor, nothing else" do
     requirement = core_requirement()
 
     assert match?({:ok, _parsed}, Version.parse_requirement(requirement)),
@@ -29,7 +33,8 @@ defmodule PhoenixKitWarehouse.CorePinConformanceTest do
       assert Version.match?(version, requirement),
              "`:phoenix_kit` requirement #{inspect(requirement)} rejects core #{version}. " <>
                "A pin that excludes a core minor breaks `mix deps.get` for every host " <>
-               "running this module alongside that core. Keep it a two-segment `~> 2.0`."
+               "running this module alongside that core. Keep a two-segment `~> 2.N` (plus a " <>
+               "`>= 2.N.P` floor if needed), never a three-segment `~> 2.N.P`."
     end
 
     for version <- @must_reject do

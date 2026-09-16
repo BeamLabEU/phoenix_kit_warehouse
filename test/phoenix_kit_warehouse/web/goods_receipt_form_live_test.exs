@@ -313,6 +313,23 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
       assert html =~ ~r/5/
     end
 
+    test "the quantity width sits on the wrapper, not under the control's w-full",
+         %{conn: conn} do
+      # `<.decimal_input>` always puts `w-full` on the control, and Tailwind
+      # emits `.w-full` after `.w-24` — a width passed through `class` loses.
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+      {receipt, _} = create_draft_with_lines()
+
+      {:ok, lv, _html} = live(conn, lines_path(receipt.uuid))
+
+      wrapper = lv |> element("#gr-rcv-form-0 > div") |> render()
+      assert wrapper =~ ~s(class="inline-block w-24")
+
+      control = lv |> element("#gr-rcv-0") |> render()
+      refute control =~ "w-24"
+    end
+
     test "comma value lands unrounded", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)

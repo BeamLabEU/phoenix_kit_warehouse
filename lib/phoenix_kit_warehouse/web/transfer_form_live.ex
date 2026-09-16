@@ -1146,7 +1146,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
                       name="transfer_quantity"
                       value={line["transfer_quantity"] || ""}
                       placeholder="0"
-                      class="input-sm w-24 text-center"
+                      class="input-sm text-center"
+                      wrapper_class="inline-block w-24"
                       phx-debounce="blur"
                       phx-hook="InvEnterBlur"
                     />

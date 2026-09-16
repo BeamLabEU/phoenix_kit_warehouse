@@ -328,7 +328,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                       name="counted_quantity"
                                       value={format_input_decimal(counted)}
                                       placeholder="0"
-                                      class="input-sm w-24 text-center"
+                                      class="input-sm text-center"
+                                      wrapper_class="inline-block w-24"
                                       phx-debounce="blur"
                                       phx-hook="InvEnterBlur"
                                     />
@@ -347,7 +348,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                         name="unit_value"
                                         value={format_input_decimal(unit_value)}
                                         placeholder="—"
-                                        class="input-sm w-24 text-right"
+                                        class="input-sm text-right"
+                                        wrapper_class="inline-block w-24"
                                         phx-debounce="blur"
                                         phx-hook="InvEnterBlur"
                                       />
@@ -367,7 +369,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
                                         name="sum"
                                         value={format_input_decimal(line_sum(counted, unit_value))}
                                         placeholder="—"
-                                        class="input-sm w-24 text-right"
+                                        class="input-sm text-right"
+                                        wrapper_class="inline-block w-24"
                                         phx-debounce="blur"
                                         phx-hook="InvEnterBlur"
                                       />
