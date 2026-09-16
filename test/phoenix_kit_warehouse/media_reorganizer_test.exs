@@ -1168,11 +1168,16 @@ defmodule PhoenixKitWarehouse.MediaReorganizerTest do
       assert error.reason =~ "12 document(s)"
       assert error.reason =~ "… and 2 more"
 
-      listed = Enum.take(issues, 10)
-      skipped = Enum.drop(issues, 10)
+      # Order among same-batch, same-timestamp records is not the point
+      # here (T6 covers ordering elsewhere) — only that exactly 10 of the
+      # 12 real labels are listed, each a real one, none repeated.
+      all_labels = Enum.map(issues, &"goods-issue-#{&1.number}")
+      [_, listed_part] = Regex.run(~r/nil \((.+), … and 2 more\)/, error.reason)
+      listed = String.split(listed_part, ", ")
 
-      Enum.each(listed, &assert(error.reason =~ "goods-issue-#{&1.number}"))
-      Enum.each(skipped, &refute(error.reason =~ "goods-issue-#{&1.number}"))
+      assert length(listed) == 10
+      assert Enum.uniq(listed) == listed
+      assert Enum.all?(listed, &(&1 in all_labels))
     end
   end
 

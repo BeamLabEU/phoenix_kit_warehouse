@@ -934,12 +934,13 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   # ── Legacy-named folders (shared by candidate detection and orphans) ──
 
   # One SQL-`LIKE`-filtered query (X6) for every live folder anywhere whose
-  # name starts with one of the six legacy prefixes — used both to decide
-  # which kinds have a candidate (X12/X13: a kind with a residual folder
-  # but zero live documents still gets its parent hook resolved, so an
-  # orphan under that parent is findable) and, filtered down to root/
-  # resolved-parent scope, as the orphan candidate set itself. Live only
-  # (X2).
+  # name starts with one of the six legacy prefixes — used both to resolve
+  # each candidate's current folder (X12) and, filtered down to root/
+  # resolved-parent scope, as the orphan candidate set itself. F4 (strict):
+  # a kind with a residual folder but zero live documents is NOT a
+  # candidate kind (see `build_resource_plan/5`) — its parent hook is never
+  # resolved, so an orphan under that kind's would-be parent is not found
+  # until the kind has a live document again. Live only (X2).
   # T6: deterministic order — the same `order_by` the rest of this module's
   # candidate queries use.
   defp legacy_folder_candidates do
