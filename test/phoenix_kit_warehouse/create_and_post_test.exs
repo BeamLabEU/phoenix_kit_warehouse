@@ -518,6 +518,22 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
       end
     end
 
+    test "clearing an existing draft's external_ref through update_draft stores nil" do
+      for {create, update, schema} <- [
+            {&GoodsIssues.create_goods_issue/1, &GoodsIssues.update_draft/2, GoodsIssue},
+            {&GoodsReceipts.create_goods_receipt/1, &GoodsReceipts.update_draft/2, GoodsReceipt},
+            {&Inventories.create_draft/1, &Inventories.update_draft/2, InventoryDocument}
+          ],
+          cleared <- ["", nil, "   "] do
+        {:ok, draft} = create.(%{location_uuid: @location, external_ref: "KEEP-1"})
+        assert draft.external_ref == "KEEP-1"
+
+        assert {:ok, updated} = update.(draft, %{external_ref: cleared})
+        assert updated.external_ref == nil
+        assert Repo.get!(schema, draft.uuid).external_ref == nil
+      end
+    end
+
     test "a soft-deleted posted document no longer answers :already_posted" do
       for {context, schema, line} <- [
             {GoodsIssues, GoodsIssue, &issue_line(&1, 1)},

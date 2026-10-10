@@ -74,7 +74,7 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
     ])
     |> validate_required([:location_uuid, :reason])
     |> validate_inclusion(:reason, @reasons)
-    |> update_change(:external_ref, &String.trim/1)
+    |> update_change(:external_ref, &PhoenixKitWarehouse.PostingSupport.trim_ref/1)
     |> validate_length(:external_ref, max: @v2_column_widths.external_ref, count: :codepoints)
   end
 

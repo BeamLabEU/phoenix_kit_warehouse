@@ -57,6 +57,13 @@ defmodule PhoenixKitWarehouse.PostingSupport do
   defp blank_to_nil(value), do: value
 
   @doc """
+  Trims an `external_ref` change. A blank value becomes `nil`, so clearing the
+  reference of a draft that already has one (a `nil` change) is allowed.
+  """
+  @spec trim_ref(String.t() | nil) :: String.t() | nil
+  def trim_ref(value), do: blank_to_nil(value)
+
+  @doc """
   The skeleton shared by the three `create_and_post/2` functions: normalise
   the attributes, validate the lines, build and validate the draft changeset,
   then insert and post in ONE transaction, answering a repeated
