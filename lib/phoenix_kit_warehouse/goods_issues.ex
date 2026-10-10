@@ -9,6 +9,8 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   limited to note and storage_folder only.
   """
 
+  use Gettext, backend: PhoenixKitWarehouse.Gettext
+
   import Ecto.Query
 
   alias PhoenixKitWarehouse.CommittedQuantities
@@ -19,6 +21,23 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   alias PhoenixKitWarehouse.StockLedger
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
+
+  # ---------------------------------------------------------------------------
+  # Reasons
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  `[{value, label}]` for every goods-issue reason, in display order, labels
+  translated in the current Gettext locale.
+  """
+  def reason_options, do: Enum.map(GoodsIssue.reasons(), &{&1, reason_label(&1)})
+
+  @doc "Translated label of a reason; an unknown value is returned as is."
+  def reason_label("production"), do: dgettext("default", "Production")
+  def reason_label("sale"), do: dgettext("default", "Sale")
+  def reason_label("damage"), do: dgettext("default", "Damage")
+  def reason_label("other"), do: dgettext("default", "Other")
+  def reason_label(other), do: other
 
   # ---------------------------------------------------------------------------
   # Queries

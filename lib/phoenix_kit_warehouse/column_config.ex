@@ -59,6 +59,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig do
           text_column: 4,
           note_column: 0,
           note_column: 1,
+          external_ref_column: 0,
           created_by_column: 0,
           performed_by_column: 0,
           supplier_column: 0,
@@ -211,6 +212,11 @@ defmodule PhoenixKitWarehouse.ColumnConfig do
 
   def note_column(opts \\ []),
     do: text_column("note", :note, fn -> dgettext("default", "Note") end, opts)
+
+  # The document's number in an outside system (shop, POS, ...). Off by
+  # default — most documents are created by hand and carry none.
+  def external_ref_column,
+    do: text_column("external_ref", :external_ref, fn -> dgettext("default", "External ref") end)
 
   # Who opened the document and who is answerable for it. Off by default —
   # the lists are already wide — but available in the column picker, since

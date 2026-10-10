@@ -18,7 +18,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
       sort_by: [
         default: "number",
         url_key: "sort",
-        in: ~w(number status supplier lines_count date posted_at note created_by performed_by)
+        in:
+          ~w(number status supplier lines_count date posted_at note external_ref created_by performed_by)
       ],
       sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
     ]
@@ -168,6 +169,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
         inserted_at: receipt.inserted_at,
         posted_at: receipt.posted_at,
         note: receipt.note,
+        external_ref: receipt.external_ref,
         lines_count: length(receipt.lines || [])
       }
     end)
@@ -526,6 +528,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
   defp render_cell("date", entry), do: fmt_date(entry.inserted_at)
   defp render_cell("posted_at", entry), do: fmt_date(entry.posted_at)
   defp render_cell("note", entry), do: emdash(entry.note)
+  defp render_cell("external_ref", entry), do: emdash(entry.external_ref)
   defp render_cell("created_by", entry), do: entry.created_by
   defp render_cell("performed_by", entry), do: entry.performed_by
   defp render_cell(_col, _entry), do: "—"
@@ -545,6 +548,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
   defp render_card_value("date", entry), do: fmt_date(entry.inserted_at)
   defp render_card_value("posted_at", entry), do: fmt_date(entry.posted_at)
   defp render_card_value("note", entry), do: emdash(entry.note)
+  defp render_card_value("external_ref", entry), do: emdash(entry.external_ref)
 
   defp render_card_value("status", entry) do
     assigns = %{entry: entry}

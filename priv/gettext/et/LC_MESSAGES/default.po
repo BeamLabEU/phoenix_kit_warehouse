@@ -1941,3 +1941,40 @@ msgstr "— vali —"
 #, elixir-autogen, elixir-format
 msgid "Created by"
 msgstr "Looja"
+
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:34
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:842
+#, elixir-autogen, elixir-format
+msgid "Reason"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:36
+#, elixir-autogen, elixir-format
+msgid "Production"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:37
+#, elixir-autogen, elixir-format
+msgid "Sale"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:38
+#, elixir-autogen, elixir-format
+msgid "Damage"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:39
+#, elixir-autogen, elixir-format
+msgid "Other"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/column_config.ex:219
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:860
+#, elixir-autogen, elixir-format
+msgid "External ref"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:322
+#, elixir-autogen, elixir-format
+msgid "Failed to change reason"
+msgstr ""

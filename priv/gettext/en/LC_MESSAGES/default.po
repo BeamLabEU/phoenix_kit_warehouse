@@ -1941,3 +1941,40 @@ msgstr "— select —"
 #, elixir-autogen, elixir-format
 msgid "Created by"
 msgstr "Created by"
+
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:34
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:842
+#, elixir-autogen, elixir-format
+msgid "Reason"
+msgstr "Reason"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:36
+#, elixir-autogen, elixir-format
+msgid "Production"
+msgstr "Production"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:37
+#, elixir-autogen, elixir-format
+msgid "Sale"
+msgstr "Sale"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:38
+#, elixir-autogen, elixir-format
+msgid "Damage"
+msgstr "Damage"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:39
+#, elixir-autogen, elixir-format
+msgid "Other"
+msgstr "Other"
+
+#: lib/phoenix_kit_warehouse/column_config.ex:219
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:860
+#, elixir-autogen, elixir-format
+msgid "External ref"
+msgstr "External ref"
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:322
+#, elixir-autogen, elixir-format
+msgid "Failed to change reason"
+msgstr "Failed to change reason"
