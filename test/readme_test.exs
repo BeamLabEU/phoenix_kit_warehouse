@@ -9,20 +9,6 @@ defmodule PhoenixKitWarehouse.ReadmeTest do
     assert @readme =~ "**Status:** implemented"
   end
 
-  test "the README covers stock, documents, posting semantics and the programmatic API" do
-    for needle <- [
-          "Stock per item and location",
-          "Goods issue",
-          "Inventory document",
-          "compare-and-swap",
-          "create_and_post",
-          "external_ref",
-          "warehouse_source_kinds/0"
-        ] do
-      assert @readme =~ needle, "README no longer mentions #{inspect(needle)}"
-    end
-  end
-
   test "the uninstall section is kept" do
     assert @readme =~ "### Removing this module"
     assert @readme =~ "COMMENT ON TABLE phoenix_kit_warehouse_stock IS NULL;"

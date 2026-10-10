@@ -238,7 +238,9 @@ defmodule PhoenixKitWarehouse.Inventories do
     the document's own warehouse (`FOR UPDATE`) and reads them for the audit
     `previous_*` fields — read and write happen under one lock, so a
     concurrent stock change can neither slip between them nor leave a wrong
-    prior quantity on the document.
+    prior quantity on the document. A row that does not exist yet cannot be
+    locked, so missing rows are first claimed (`INSERT ... ON CONFLICT DO
+    NOTHING` at quantity 0, overwritten by the count anyway).
   - For each line: coerces quantities/values to Decimal; captures pre-post
     stock as audit fields; upserts the stock row inside the same transaction.
   - Updates the document status to "posted" with `posted_at` and
@@ -260,8 +262,8 @@ defmodule PhoenixKitWarehouse.Inventories do
     multi =
       doc.uuid
       |> lock_status_step("draft", :not_draft)
-      |> Ecto.Multi.run(:document, fn repo, _changes ->
-        apply_counts_and_post(doc, performed_by_uuid, repo)
+      |> Ecto.Multi.run(:document, fn repo, %{lock_status: locked} ->
+        apply_counts_and_post(locked, performed_by_uuid, repo)
       end)
 
     case repo().transaction(multi) do
@@ -292,47 +294,20 @@ defmodule PhoenixKitWarehouse.Inventories do
   :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`.
   """
   def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
-    attrs = PostingSupport.normalize_attrs(attrs)
-
-    with {:ok, lines} <- PostingSupport.validate_lines(attrs.lines, "counted_quantity"),
-         {:ok, changeset} <- draft_changeset(%{attrs | lines: lines}, performed_by_uuid) do
-      changeset
-      |> create_and_post_multi(performed_by_uuid)
-      |> repo().transaction()
-      |> case do
-        {:ok, %{document: posted}} -> {:ok, posted}
-        {:error, :existing, {:already_posted, existing}, _} -> {:ok, :already_posted, existing}
-        {:error, _op, reason, _changes} -> {:error, reason}
-      end
-    end
-  end
-
-  defp draft_changeset(attrs, performed_by_uuid) do
-    created_by_uuid = Map.get(attrs, :created_by_uuid) || performed_by_uuid
-
-    changeset =
-      %InventoryDocument{}
-      |> InventoryDocument.draft_changeset(attrs)
-      |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
-      |> Ecto.Changeset.put_change(:performed_by_uuid, performed_by_uuid)
-
-    if changeset.valid?, do: {:ok, changeset}, else: {:error, changeset}
-  end
-
-  defp create_and_post_multi(changeset, performed_by_uuid) do
-    external_ref = Ecto.Changeset.get_field(changeset, :external_ref)
-
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:existing, fn repo, _changes ->
-      case PostingSupport.find_posted_by_external_ref(repo, InventoryDocument, external_ref) do
-        {:ok, nil} -> {:ok, nil}
-        {:ok, existing} -> {:error, {:already_posted, existing}}
-      end
-    end)
-    |> Ecto.Multi.insert(:draft, changeset)
-    |> Ecto.Multi.run(:document, fn repo, %{draft: draft} ->
-      apply_counts_and_post(draft, performed_by_uuid, repo)
-    end)
+    PostingSupport.create_and_post(attrs, performed_by_uuid,
+      schema: InventoryDocument,
+      quantity_key: "counted_quantity",
+      changeset: fn attrs, created_by_uuid ->
+        %InventoryDocument{}
+        |> InventoryDocument.draft_changeset(attrs)
+        # `create_draft/1` fills the location in after building its changeset,
+        # so the schema changeset cannot require it; here it is known by now.
+        |> Ecto.Changeset.validate_required([:location_uuid])
+        |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+        |> Ecto.Changeset.put_change(:performed_by_uuid, performed_by_uuid)
+      end,
+      post: &apply_counts_and_post(&2, performed_by_uuid, &1)
+    )
   end
 
   @doc """
@@ -416,10 +391,19 @@ defmodule PhoenixKitWarehouse.Inventories do
     end
   end
 
-  # Locks (FOR UPDATE, in item order so concurrent posts cannot deadlock) and
-  # reads the stock rows the document is about to overwrite.
+  # Reads, under row locks, the stock rows the document is about to overwrite.
+  #
+  # `FOR UPDATE` cannot lock a row that does not exist yet, and a concurrent
+  # transaction may insert it between this read and the write. So every
+  # missing row is first claimed with an `ON CONFLICT DO NOTHING` insert at
+  # quantity 0 (the count overwrites it anyway): after that, each row either
+  # existed or was inserted by this transaction, and the locking read sees it.
+  # Locks are taken in item order; other documents lock in their own line
+  # order, so this does not rule out every deadlock, only the order-vs-order
+  # one between two inventory counts.
   defp locked_prior_stock(lines, location_uuid, repo) do
     item_uuids = lines |> Enum.map(& &1["item_uuid"]) |> Enum.filter(& &1)
+    claim_missing_rows(item_uuids, location_uuid, repo)
 
     from(s in Stock,
       where: s.item_uuid in ^item_uuids and s.location_uuid == ^location_uuid,
@@ -428,6 +412,33 @@ defmodule PhoenixKitWarehouse.Inventories do
     )
     |> repo.all()
     |> Map.new(&{&1.item_uuid, %{quantity: &1.quantity, unit_value: &1.unit_value}})
+  end
+
+  defp claim_missing_rows([], _location_uuid, _repo), do: :ok
+
+  defp claim_missing_rows(item_uuids, location_uuid, repo) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    rows =
+      item_uuids
+      |> Enum.sort()
+      |> Enum.map(fn item_uuid ->
+        %{
+          uuid: UUIDv7.generate(),
+          item_uuid: item_uuid,
+          location_uuid: location_uuid,
+          quantity: Decimal.new("0"),
+          inserted_at: now,
+          updated_at: now
+        }
+      end)
+
+    repo.insert_all(Stock, rows,
+      on_conflict: :nothing,
+      conflict_target: [:item_uuid, :location_uuid]
+    )
+
+    :ok
   end
 
   defp audit_line(line, prior_stock) do

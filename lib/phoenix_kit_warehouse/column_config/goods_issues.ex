@@ -10,6 +10,8 @@ defmodule PhoenixKitWarehouse.ColumnConfig.GoodsIssues do
 
   use PhoenixKitWarehouse.ColumnConfig, scope: "warehouse_goods_issues"
 
+  alias PhoenixKitWarehouse.GoodsIssues
+
   defp columns do
     [
       number_column(),
@@ -39,7 +41,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig.GoodsIssues do
       default_dir: :asc,
       filterable?: true,
       filter_type: :enum,
-      filter_options: fn _entries -> PhoenixKitWarehouse.GoodsIssues.reason_options() end,
+      filter_options: fn _entries -> GoodsIssues.reason_options() end,
       filter_apply: enum_filter(&(&1.reason || ""))
     }
   end

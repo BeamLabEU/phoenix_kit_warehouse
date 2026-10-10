@@ -145,32 +145,35 @@ defmodule PhoenixKitWarehouse.MigrationsV2Test do
     test "the partial unique index rejects a second posted document with the same external_ref" do
       run_migration(UpToV2)
 
-      insert = fn status, ref, deleted_at ->
-        Repo.query(
-          "INSERT INTO #{@issues} (location_uuid, status, external_ref, deleted_at) " <>
-            "VALUES ($1, $2, $3, $4)",
-          [Ecto.UUID.dump!(Ecto.UUID.generate()), status, ref, deleted_at]
-        )
+      for table <- [@issues, @receipts, @inventories] do
+        insert = fn status, ref, deleted_at ->
+          Repo.query(
+            "INSERT INTO #{table} (location_uuid, status, external_ref, deleted_at) " <>
+              "VALUES ($1, $2, $3, $4)",
+            [Ecto.UUID.dump!(Ecto.UUID.generate()), status, ref, deleted_at]
+          )
+        end
+
+        assert {:ok, _} = insert.("posted", "EXT-1", nil)
+
+        # Savepoints: a failed statement would otherwise poison the sandbox transaction.
+        assert {:error, %Postgrex.Error{postgres: %{code: :unique_violation}}} =
+                 Repo.transaction(fn ->
+                   case insert.("posted", "EXT-1", nil) do
+                     {:error, e} -> Repo.rollback(e)
+                     ok -> ok
+                   end
+                 end),
+               "#{table} accepted a second posted document with the same external_ref"
+
+        # Drafts, soft-deleted documents, other refs and missing refs are outside the index.
+        assert {:ok, _} = insert.("draft", "EXT-1", nil)
+        assert {:ok, _} = insert.("draft", "EXT-1", nil)
+        assert {:ok, _} = insert.("posted", "EXT-1", DateTime.utc_now())
+        assert {:ok, _} = insert.("posted", "EXT-2", nil)
+        assert {:ok, _} = insert.("posted", nil, nil)
+        assert {:ok, _} = insert.("posted", nil, nil)
       end
-
-      assert {:ok, _} = insert.("posted", "EXT-1", nil)
-
-      # Savepoints: a failed statement would otherwise poison the sandbox transaction.
-      assert {:error, %Postgrex.Error{postgres: %{code: :unique_violation}}} =
-               Repo.transaction(fn ->
-                 case insert.("posted", "EXT-1", nil) do
-                   {:error, e} -> Repo.rollback(e)
-                   ok -> ok
-                 end
-               end)
-
-      # Drafts, soft-deleted documents, other refs and missing refs are outside the index.
-      assert {:ok, _} = insert.("draft", "EXT-1", nil)
-      assert {:ok, _} = insert.("draft", "EXT-1", nil)
-      assert {:ok, _} = insert.("posted", "EXT-1", DateTime.utc_now())
-      assert {:ok, _} = insert.("posted", "EXT-2", nil)
-      assert {:ok, _} = insert.("posted", nil, nil)
-      assert {:ok, _} = insert.("posted", nil, nil)
     end
   end
 

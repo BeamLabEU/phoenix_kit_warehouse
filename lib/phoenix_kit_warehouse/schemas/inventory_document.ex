@@ -68,7 +68,8 @@ defmodule PhoenixKitWarehouse.InventoryDocument do
       :external_ref
     ])
     |> validate_inclusion(:status, @statuses)
-    |> validate_length(:external_ref, max: @v2_column_widths.external_ref)
+    |> update_change(:external_ref, &String.trim/1)
+    |> validate_length(:external_ref, max: @v2_column_widths.external_ref, count: :codepoints)
   end
 
   @doc "Changeset for correcting a posted or draft document (content only — does not change :status)."

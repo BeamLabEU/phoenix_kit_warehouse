@@ -11,6 +11,7 @@ defmodule PhoenixKitWarehouse.PostingSupport do
 
   import Ecto.Query
 
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitWarehouse.StockLedger
 
   @attr_keys ~w(location_uuid lines note reason external_ref track_value created_by_uuid)a
@@ -24,7 +25,7 @@ defmodule PhoenixKitWarehouse.PostingSupport do
   def normalize_attrs(attrs) when is_map(attrs) do
     @attr_keys
     |> Map.new(&{&1, fetch(attrs, &1)})
-    |> Map.update!(:location_uuid, &(&1 || StockLedger.default_location_uuid()))
+    |> Map.update!(:location_uuid, &(blank_to_nil(&1) || StockLedger.default_location_uuid()))
     |> Map.update!(:lines, &normalize_lines/1)
     |> Map.update!(:external_ref, &blank_to_nil/1)
     |> Map.reject(fn {_key, value} -> is_nil(value) end)
@@ -56,6 +57,68 @@ defmodule PhoenixKitWarehouse.PostingSupport do
   defp blank_to_nil(value), do: value
 
   @doc """
+  The skeleton shared by the three `create_and_post/2` functions: normalise
+  the attributes, validate the lines, build and validate the draft changeset,
+  then insert and post in ONE transaction, answering a repeated
+  `external_ref` with the existing document.
+
+  Options:
+
+  - `:schema` - the document schema (looked up for the `external_ref` check);
+  - `:quantity_key` - the line field holding the quantity;
+  - `:changeset` - `fn attrs, created_by_uuid -> changeset end`, the draft
+    changeset for the normalised attributes;
+  - `:guard` - optional `fn repo, changeset -> {:ok, term} | {:error, reason} end`
+    run in the transaction before the INSERT (a failure there still burns no
+    document number);
+  - `:post` - `fn repo, draft -> {:ok, posted} | {:error, reason} end`.
+
+  Returns `{:ok, posted}`, `{:ok, :already_posted, existing}` or
+  `{:error, reason}`.
+  """
+  @spec create_and_post(map(), term(), keyword()) ::
+          {:ok, struct()} | {:ok, :already_posted, struct()} | {:error, term()}
+  def create_and_post(attrs, performed_by_uuid, opts) do
+    attrs = normalize_attrs(attrs)
+    created_by_uuid = Map.get(attrs, :created_by_uuid) || performed_by_uuid
+
+    with {:ok, lines} <- validate_lines(attrs.lines, Keyword.fetch!(opts, :quantity_key)),
+         {:ok, changeset} <- draft(opts, %{attrs | lines: lines}, created_by_uuid) do
+      changeset
+      |> create_and_post_multi(opts)
+      |> PhoenixKit.RepoHelper.repo().transaction()
+      |> case do
+        {:ok, %{post: posted}} -> {:ok, posted}
+        {:error, :existing, {:already_posted, existing}, _} -> {:ok, :already_posted, existing}
+        {:error, _op, reason, _changes} -> {:error, reason}
+      end
+    end
+  end
+
+  defp draft(opts, attrs, created_by_uuid) do
+    changeset = Keyword.fetch!(opts, :changeset).(attrs, created_by_uuid)
+    if changeset.valid?, do: {:ok, changeset}, else: {:error, changeset}
+  end
+
+  defp create_and_post_multi(changeset, opts) do
+    schema = Keyword.fetch!(opts, :schema)
+    external_ref = Ecto.Changeset.get_field(changeset, :external_ref)
+    guard = Keyword.get(opts, :guard, fn _repo, _changeset -> {:ok, nil} end)
+
+    Ecto.Multi.run(Ecto.Multi.new(), :existing, fn repo, _changes ->
+      case find_posted_by_external_ref(repo, schema, external_ref) do
+        {:ok, nil} -> {:ok, nil}
+        {:ok, existing} -> {:error, {:already_posted, existing}}
+      end
+    end)
+    |> Ecto.Multi.run(:guard, fn repo, _changes -> guard.(repo, changeset) end)
+    |> Ecto.Multi.insert(:draft, changeset)
+    |> Ecto.Multi.run(:post, fn repo, %{draft: draft} ->
+      Keyword.fetch!(opts, :post).(repo, draft)
+    end)
+  end
+
+  @doc """
   Validates the lines of a create-and-post call without touching the
   database. `quantity_key` is the line field holding the quantity
   (`"issued_quantity"`, `"received_quantity"`, `"counted_quantity"`).
@@ -70,7 +133,7 @@ defmodule PhoenixKitWarehouse.PostingSupport do
   def validate_lines(lines, quantity_key) when is_list(lines) do
     with {:ok, lines} <- canonical_item_uuids(lines),
          :ok <- no_duplicates(lines) do
-      no_negative_quantities(lines, quantity_key)
+      valid_quantities(lines, quantity_key)
     end
   end
 
@@ -107,17 +170,36 @@ defmodule PhoenixKitWarehouse.PostingSupport do
 
   defp first_seen_order(lines), do: lines |> Enum.map(& &1["item_uuid"]) |> Enum.uniq()
 
-  defp no_negative_quantities(lines, quantity_key) do
-    negative =
-      for line <- lines,
-          Decimal.lt?(StockLedger.to_decimal(line[quantity_key]), 0),
-          do: line["item_uuid"]
+  # A quantity must be present, parse as a number and not be negative.
+  # `StockLedger.to_decimal/1` would read a missing, blank or unparseable
+  # value as 0 (an inventory line would then zero the stock), so it is not
+  # used to decide validity.
+  defp valid_quantities(lines, quantity_key) do
+    invalid =
+      for line <- lines, not valid_quantity?(Map.get(line, quantity_key)), do: line["item_uuid"]
 
-    case negative do
+    case invalid do
       [] -> {:ok, lines}
       item_uuids -> {:error, {:invalid_quantity, item_uuids}}
     end
   end
+
+  defp valid_quantity?(%Decimal{} = quantity) do
+    not Decimal.nan?(quantity) and not Decimal.inf?(quantity) and
+      Decimal.compare(quantity, 0) != :lt
+  end
+
+  defp valid_quantity?(quantity) when is_integer(quantity), do: quantity >= 0
+  defp valid_quantity?(quantity) when is_float(quantity), do: quantity >= 0
+
+  defp valid_quantity?(quantity) when is_binary(quantity) do
+    case Number.parse_decimal(quantity) do
+      {:ok, decimal} -> valid_quantity?(decimal)
+      {:error, _reason} -> false
+    end
+  end
+
+  defp valid_quantity?(_other), do: false
 
   @doc """
   Serialises concurrent create-and-post calls that carry the same

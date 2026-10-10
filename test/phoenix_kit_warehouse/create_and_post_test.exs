@@ -239,7 +239,7 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
       assert existing.uuid == first.uuid
     end
 
-    test "external_ref is unique per document type, and a draft or deleted one does not count" do
+    test "external_ref is per document type, and a draft carrying it does not count" do
       a = item_uuid()
       seed!(a, 10)
 
@@ -413,6 +413,184 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
     end
   end
 
+  describe "location handling (all three create_and_post functions)" do
+    @default "00000000-0000-4000-8000-00000000dead"
+
+    # Runs `fun` with no default warehouse configured, restoring it afterwards.
+    defp without_default_location(fun) do
+      StockLedger.set_default_location_uuid(nil)
+      fun.()
+    after
+      StockLedger.set_default_location_uuid(@default)
+    end
+
+    defp posters do
+      [
+        {GoodsIssues, GoodsIssue, &issue_line(&1, 1)},
+        {GoodsReceipts, GoodsReceipt, &receipt_line(&1, 1)},
+        {Inventories, InventoryDocument, &count_line(&1, 1)}
+      ]
+    end
+
+    test "no location and no default warehouse is a changeset error, never a raise" do
+      for {context, schema, line} <- posters(), location <- [:absent, nil, "", "  "] do
+        a = item_uuid()
+        seed!(a, 5, location: @default)
+        before = row_count(schema)
+        attrs = if location == :absent, do: %{}, else: %{location_uuid: location}
+
+        assert {:error, %Ecto.Changeset{} = changeset} =
+                 without_default_location(fn ->
+                   context.create_and_post(Map.put(attrs, :lines, [line.(a)]), nil)
+                 end)
+
+        assert %{location_uuid: [_]} = errors_on(changeset)
+        assert row_count(schema) == before
+      end
+    end
+
+    test "a blank location falls back to the default warehouse" do
+      for {context, _schema, line} <- posters(), location <- [nil, "", "  "] do
+        a = item_uuid()
+        seed!(a, 5, location: @default)
+
+        assert {:ok, %{location_uuid: @default}} =
+                 context.create_and_post(%{location_uuid: location, lines: [line.(a)]}, nil)
+      end
+    end
+  end
+
+  describe "quantity validation (all three create_and_post functions)" do
+    test "a missing, nil, blank or unparseable quantity is refused, not read as zero" do
+      for {context, schema, key} <- [
+            {GoodsIssues, GoodsIssue, "issued_quantity"},
+            {GoodsReceipts, GoodsReceipt, "received_quantity"},
+            {Inventories, InventoryDocument, "counted_quantity"}
+          ],
+          bad <- [:missing, nil, "", "abc", %{}] do
+        a = item_uuid()
+        seed!(a, 5)
+        before = row_count(schema)
+        seq_before = sequence_state(sequence_table(schema))
+
+        line = if bad == :missing, do: %{"item_uuid" => a}, else: %{"item_uuid" => a, key => bad}
+
+        assert {:error, {:invalid_quantity, [^a]}} =
+                 context.create_and_post(issue_attrs([line]), nil)
+
+        assert row_count(schema) == before
+        assert sequence_state(sequence_table(schema)) == seq_before
+        assert Decimal.equal?(qty(a), Decimal.new("5"))
+      end
+    end
+
+    test "an explicit zero is a valid quantity" do
+      a = item_uuid()
+      seed!(a, 5)
+      assert {:ok, _} = Inventories.create_and_post(issue_attrs([count_line(a, 0)]), nil)
+      assert Decimal.equal?(qty(a), Decimal.new("0"))
+    end
+
+    defp sequence_table(GoodsIssue), do: "goods_issues"
+    defp sequence_table(GoodsReceipt), do: "goods_receipts"
+    defp sequence_table(InventoryDocument), do: "inventory_documents"
+  end
+
+  describe "external_ref uniqueness (all three document types)" do
+    test "the changeset path trims external_ref and counts its length in code points" do
+      # One grapheme, 256 code points: Ecto's default grapheme count would let
+      # it through and the varchar(255) column would raise.
+      long = "e" <> String.duplicate("\u0301", 255)
+
+      for {create, schema} <- [
+            {&GoodsIssues.create_goods_issue/1, GoodsIssue},
+            {&GoodsReceipts.create_goods_receipt/1, GoodsReceipt},
+            {&Inventories.create_draft/1, InventoryDocument}
+          ] do
+        assert {:ok, trimmed} = create.(%{location_uuid: @location, external_ref: "  REF-1 "})
+        assert trimmed.external_ref == "REF-1"
+        assert Repo.get!(schema, trimmed.uuid).external_ref == "REF-1"
+
+        assert {:error, %Ecto.Changeset{} = changeset} =
+                 create.(%{location_uuid: @location, external_ref: long})
+
+        assert %{external_ref: [_]} = errors_on(changeset)
+      end
+    end
+
+    test "a soft-deleted posted document no longer answers :already_posted" do
+      for {context, schema, line} <- [
+            {GoodsIssues, GoodsIssue, &issue_line(&1, 1)},
+            {GoodsReceipts, GoodsReceipt, &receipt_line(&1, 1)},
+            {Inventories, InventoryDocument, &count_line(&1, 1)}
+          ] do
+        a = item_uuid()
+        seed!(a, 5)
+        attrs = issue_attrs([line.(a)], %{external_ref: "GONE-1"})
+
+        assert {:ok, first} = context.create_and_post(attrs, nil)
+        assert {:ok, :already_posted, _} = context.create_and_post(attrs, nil)
+
+        Repo.update_all(from(d in schema, where: d.uuid == ^first.uuid),
+          set: [deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        )
+
+        assert {:ok, %{} = second} = context.create_and_post(attrs, nil)
+        refute second.uuid == first.uuid
+        assert second.external_ref == "GONE-1"
+      end
+    end
+
+    test "two posted receipts cannot share an external_ref through the plain post path" do
+      a = item_uuid()
+
+      draft = fn ->
+        {:ok, receipt} =
+          GoodsReceipts.create_goods_receipt(%{
+            location_uuid: @location,
+            external_ref: "EXT-R",
+            lines: [%{"item_uuid" => a, "received_quantity" => Decimal.new("1")}]
+          })
+
+        receipt
+      end
+
+      first = draft.()
+      second = draft.()
+
+      assert {:ok, _} = GoodsReceipts.post_goods_receipt(first, nil)
+
+      assert {:error, %Ecto.Changeset{} = changeset} =
+               GoodsReceipts.post_goods_receipt(second, nil)
+
+      assert %{external_ref: [_]} = errors_on(changeset)
+      assert Decimal.equal?(qty(a), Decimal.new("1"))
+    end
+
+    test "two posted inventory documents cannot share an external_ref through the plain post path" do
+      a = item_uuid()
+
+      draft = fn count ->
+        {:ok, doc} =
+          Inventories.create_draft(%{
+            location_uuid: @location,
+            external_ref: "EXT-I",
+            lines: [%{"item_uuid" => a, "counted_quantity" => Decimal.new(count)}]
+          })
+
+        doc
+      end
+
+      first = draft.("3")
+      second = draft.("8")
+
+      assert {:ok, _} = Inventories.post_document(first, nil)
+      assert {:error, %Ecto.Changeset{} = changeset} = Inventories.post_document(second, nil)
+      assert %{external_ref: [_]} = errors_on(changeset)
+      assert Decimal.equal?(qty(a), Decimal.new("3"))
+    end
+  end
+
   describe "Inventories.post_document/2 reads the prior quantity inside the transaction" do
     test "the stock read is a locking read issued after the transaction begins" do
       a = item_uuid()
@@ -432,7 +610,10 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
         Enum.find_index(queries, &(&1 =~ "phoenix_kit_warehouse_stock" and &1 =~ "SELECT"))
 
       write_at =
-        Enum.find_index(queries, &(&1 =~ "INSERT INTO" and &1 =~ "phoenix_kit_warehouse_stock"))
+        Enum.find_index(
+          queries,
+          &(&1 =~ "INSERT INTO" and &1 =~ "phoenix_kit_warehouse_stock" and &1 =~ "DO UPDATE")
+        )
 
       assert begin_at, "no transaction start seen in #{inspect(queries)}"
       assert read_at, "no stock read seen in #{inspect(queries)}"
@@ -443,6 +624,45 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
 
       assert read_at < write_at
       assert Enum.at(queries, read_at) =~ "FOR UPDATE"
+    end
+
+    test "an item with no stock row yet gets its row claimed before the locking read" do
+      present = item_uuid()
+      absent = item_uuid()
+      seed!(present, 9)
+
+      {:ok, doc} =
+        Inventories.create_draft(%{
+          location_uuid: @location,
+          lines: [
+            %{"item_uuid" => present, "counted_quantity" => Decimal.new("4")},
+            %{"item_uuid" => absent, "counted_quantity" => Decimal.new("2")}
+          ]
+        })
+
+      queries = capture_queries(fn -> Inventories.post_document(doc, nil) end)
+
+      claim_at =
+        Enum.find_index(
+          queries,
+          &(&1 =~ "INSERT INTO" and &1 =~ "phoenix_kit_warehouse_stock" and
+              &1 =~ "DO NOTHING")
+        )
+
+      read_at =
+        Enum.find_index(queries, &(&1 =~ "phoenix_kit_warehouse_stock" and &1 =~ "FOR UPDATE"))
+
+      assert claim_at, "no stock-row claim seen in #{inspect(queries)}"
+      assert read_at, "no locking read seen in #{inspect(queries)}"
+
+      assert claim_at < read_at,
+             "a row inserted by a concurrent transaction could slip past the lock: #{inspect(queries)}"
+
+      by_item = Map.new(Repo.get!(InventoryDocument, doc.uuid).lines, &{&1["item_uuid"], &1})
+      assert Decimal.equal?(by_item[present]["previous_quantity"], Decimal.new("9"))
+      assert Decimal.equal?(by_item[absent]["previous_quantity"], Decimal.new("0"))
+      assert Decimal.equal?(qty(present), Decimal.new("4"))
+      assert Decimal.equal?(qty(absent), Decimal.new("2"))
     end
 
     test "repost_document reads the prior quantity inside its transaction too" do

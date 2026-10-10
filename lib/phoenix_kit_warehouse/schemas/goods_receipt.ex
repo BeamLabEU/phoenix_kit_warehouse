@@ -69,7 +69,8 @@ defmodule PhoenixKitWarehouse.GoodsReceipt do
       :external_ref
     ])
     |> validate_required([:location_uuid])
-    |> validate_length(:external_ref, max: @v2_column_widths.external_ref)
+    |> update_change(:external_ref, &String.trim/1)
+    |> validate_length(:external_ref, max: @v2_column_widths.external_ref, count: :codepoints)
   end
 
   @doc "Changeset for posting a goods receipt (programmatic fields only — no cast)."

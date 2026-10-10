@@ -135,46 +135,16 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
   :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`.
   """
   def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
-    attrs = PostingSupport.normalize_attrs(attrs)
-
-    with {:ok, lines} <- PostingSupport.validate_lines(attrs.lines, "received_quantity"),
-         {:ok, changeset} <- draft_changeset(%{attrs | lines: lines}, performed_by_uuid) do
-      changeset
-      |> create_and_post_multi(performed_by_uuid)
-      |> repo().transaction()
-      |> case do
-        {:ok, %{post: posted}} -> {:ok, posted}
-        {:error, :existing, {:already_posted, existing}, _} -> {:ok, :already_posted, existing}
-        {:error, _op, reason, _changes} -> {:error, reason}
-      end
-    end
-  end
-
-  defp draft_changeset(attrs, performed_by_uuid) do
-    created_by_uuid = Map.get(attrs, :created_by_uuid) || performed_by_uuid
-
-    changeset =
-      %GoodsReceipt{}
-      |> GoodsReceipt.changeset(attrs)
-      |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
-
-    if changeset.valid?, do: {:ok, changeset}, else: {:error, changeset}
-  end
-
-  defp create_and_post_multi(changeset, performed_by_uuid) do
-    external_ref = Ecto.Changeset.get_field(changeset, :external_ref)
-
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:existing, fn repo, _changes ->
-      case PostingSupport.find_posted_by_external_ref(repo, GoodsReceipt, external_ref) do
-        {:ok, nil} -> {:ok, nil}
-        {:ok, existing} -> {:error, {:already_posted, existing}}
-      end
-    end)
-    |> Ecto.Multi.insert(:draft, changeset)
-    |> Ecto.Multi.run(:post, fn repo, %{draft: draft} ->
-      apply_stock_and_post(draft, performed_by_uuid, repo)
-    end)
+    PostingSupport.create_and_post(attrs, performed_by_uuid,
+      schema: GoodsReceipt,
+      quantity_key: "received_quantity",
+      changeset: fn attrs, created_by_uuid ->
+        %GoodsReceipt{}
+        |> GoodsReceipt.changeset(attrs)
+        |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+      end,
+      post: &apply_stock_and_post(&2, performed_by_uuid, &1)
+    )
   end
 
   @doc """

@@ -321,51 +321,23 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   - `{:error, %Ecto.Changeset{}}` for an invalid `reason`, `external_ref`, etc.
   """
   def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
-    attrs = PostingSupport.normalize_attrs(attrs)
-
-    with {:ok, lines} <- PostingSupport.validate_lines(attrs.lines, "issued_quantity"),
-         {:ok, changeset} <- draft_changeset(%{attrs | lines: lines}, performed_by_uuid) do
-      changeset
-      |> create_and_post_multi(performed_by_uuid)
-      |> repo().transaction()
-      |> case do
-        {:ok, %{post: posted}} -> {:ok, posted}
-        {:error, :existing, {:already_posted, existing}, _} -> {:ok, :already_posted, existing}
-        {:error, _op, reason, _changes} -> {:error, reason}
-      end
-    end
-  end
-
-  defp draft_changeset(attrs, performed_by_uuid) do
-    created_by_uuid = Map.get(attrs, :created_by_uuid) || performed_by_uuid
-
-    changeset =
-      %GoodsIssue{}
-      |> GoodsIssue.changeset(attrs)
-      |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
-
-    if changeset.valid?, do: {:ok, changeset}, else: {:error, changeset}
-  end
-
-  defp create_and_post_multi(changeset, performed_by_uuid) do
-    location_uuid = Ecto.Changeset.get_field(changeset, :location_uuid)
-    lines = Ecto.Changeset.get_field(changeset, :lines)
-    external_ref = Ecto.Changeset.get_field(changeset, :external_ref)
-
-    Ecto.Multi.new()
-    |> Ecto.Multi.run(:existing, fn repo, _changes ->
-      case PostingSupport.find_posted_by_external_ref(repo, GoodsIssue, external_ref) do
-        {:ok, nil} -> {:ok, nil}
-        {:ok, existing} -> {:error, {:already_posted, existing}}
-      end
-    end)
-    |> Ecto.Multi.run(:stock_check, fn repo, _changes ->
-      check_stock(lines, location_uuid, repo)
-    end)
-    |> Ecto.Multi.insert(:draft, changeset)
-    |> Ecto.Multi.run(:post, fn repo, %{draft: draft} ->
-      apply_stock_and_post(draft, performed_by_uuid, repo)
-    end)
+    PostingSupport.create_and_post(attrs, performed_by_uuid,
+      schema: GoodsIssue,
+      quantity_key: "issued_quantity",
+      changeset: fn attrs, created_by_uuid ->
+        %GoodsIssue{}
+        |> GoodsIssue.changeset(attrs)
+        |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+      end,
+      guard: fn repo, changeset ->
+        check_stock(
+          Ecto.Changeset.get_field(changeset, :lines),
+          Ecto.Changeset.get_field(changeset, :location_uuid),
+          repo
+        )
+      end,
+      post: &apply_stock_and_post(&2, performed_by_uuid, &1)
+    )
   end
 
   # Locks the stock rows of every line (in a stable order, so two concurrent
@@ -384,13 +356,16 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
       |> Map.new()
 
     short =
-      for line <- lines,
-          requested = StockLedger.to_decimal(line["issued_quantity"]),
-          Decimal.gt?(requested, 0),
-          on_hand = Map.get(available, line["item_uuid"], Decimal.new("0")),
-          Decimal.lt?(on_hand, requested) do
-        %{item_uuid: line["item_uuid"], requested: requested, available: on_hand}
-      end
+      Enum.flat_map(lines, fn line ->
+        requested = StockLedger.to_decimal(line["issued_quantity"])
+        on_hand = Map.get(available, line["item_uuid"], Decimal.new("0"))
+
+        if Decimal.gt?(requested, 0) and Decimal.lt?(on_hand, requested) do
+          [%{item_uuid: line["item_uuid"], requested: requested, available: on_hand}]
+        else
+          []
+        end
+      end)
 
     case short do
       [] -> {:ok, :covered}

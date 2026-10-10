@@ -65,6 +65,21 @@ defmodule PhoenixKitWarehouse.SourceKindsModulesTest do
     def warehouse_source_kinds, do: [:not_a_map, %{label: "no kind key"}, nil]
   end
 
+  defmodule MixedModule do
+    @moduledoc false
+    def warehouse_source_kinds do
+      [
+        %{
+          kind: "pos_sale",
+          label: "POS sale",
+          search: {Callbacks, :search, []},
+          resolve: {Callbacks, :resolve, []}
+        },
+        %{kind: :not_a_string}
+      ]
+    end
+  end
+
   defmodule PlainModule do
     @moduledoc false
     def enabled?, do: true
@@ -132,6 +147,17 @@ defmodule PhoenixKitWarehouse.SourceKindsModulesTest do
     register([RaisingModule, GarbageModule, PlainModule, ShopModule, Module.concat(NotLoaded, X)])
 
     assert kinds() == [{"shop_order", "Shop order"}]
+  end
+
+  test "entries that are not kind maps are dropped and logged, the valid ones kept" do
+    register([GarbageModule, MixedModule])
+
+    log = ExUnit.CaptureLog.capture_log(fn -> assert kinds() == [{"pos_sale", "POS sale"}] end)
+
+    assert log =~ "GarbageModule"
+    assert log =~ "3 entries"
+    assert log =~ "MixedModule"
+    assert log =~ "1 entry"
   end
 
   test "the host list is untouched when the registry is empty" do

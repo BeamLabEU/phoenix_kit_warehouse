@@ -57,8 +57,14 @@ defmodule PhoenixKitWarehouse.SourceKinds do
   exporting `warehouse_source_kinds/0`. Deduplicated by `kind` — the host's
   entry wins over a module's, and the first module wins over a later one.
 
-  A module whose callback raises or returns something other than a list of
-  kind maps contributes nothing (logged); it never breaks the list.
+  A module whose callback raises contributes nothing, and entries of its
+  list that are not kind maps with a string `:kind` are dropped; both are
+  logged and neither breaks the list. A bare kind map is accepted in place of
+  a one-element list.
+
+  `warehouse_source_kinds/0` runs on every call (this function is reached
+  once per rendered ref), so it must be cheap and pure: return a literal
+  list, do not query.
   """
   @spec list_kinds() :: [kind_config()]
   def list_kinds do
@@ -78,9 +84,20 @@ defmodule PhoenixKitWarehouse.SourceKinds do
   end
 
   defp declared_by(module) do
-    module.warehouse_source_kinds()
-    |> List.wrap()
-    |> Enum.filter(&match?(%{kind: kind} when is_binary(kind), &1))
+    {kinds, dropped} =
+      module.warehouse_source_kinds()
+      |> List.wrap()
+      |> Enum.split_with(&match?(%{kind: kind} when is_binary(kind), &1))
+
+    if dropped != [] do
+      Logger.warning(
+        "PhoenixKitWarehouse.SourceKinds: #{inspect(module)}.warehouse_source_kinds/0 " <>
+          "returned #{length(dropped)} entr#{if length(dropped) == 1, do: "y", else: "ies"} " <>
+          "that are not kind maps with a string :kind; ignored"
+      )
+    end
+
+    kinds
   rescue
     error ->
       Logger.warning(
