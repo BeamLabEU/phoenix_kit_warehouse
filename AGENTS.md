@@ -149,7 +149,8 @@ inventory documents, and one partial unique index per `external_ref`) only
 ADDS objects core's manifest does not declare, so it needed no manifest
 change. A version that alters or drops an object the manifest declares must
 first add that object to core's manifest generator's `@excluded_exact` and
-regenerate `ExpectedSchema`, then raise this package's core floor. **Phase 2** is a future core baseline squash that
+regenerate `ExpectedSchema`, then raise this package's core floor.
+**Phase 2** is a future core baseline squash that
 drops these tables from core's own chain entirely — V1's `CREATE TABLE`
 statements are therefore already fully self-sufficient definitions (calling
 `Helpers.ensure_extension!/1` + `Helpers.ensure_uuid_v7_function/1` rather

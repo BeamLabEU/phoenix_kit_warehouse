@@ -289,9 +289,12 @@ defmodule PhoenixKitWarehouse.Migrations do
 
   @doc """
   The SQL `down/1` executes, as data (marker bookkeeping only, on the
-  anchor table). V1 changes no shape of its own — it is pure adoption — so
-  there is nothing to drop beyond the marker; all 8 tables and every row in
-  them are left untouched, for any target including `0`.
+  anchor table). The chain never drops data: V1 changes no shape of its own
+  (pure adoption), and stepping down from V2 deliberately KEEPS the
+  `reason` / `external_ref` columns and the three `external_ref` unique
+  indexes, so rows written under V2 survive a rollback. Only the marker is
+  re-stamped; all 8 tables and every row in them are left untouched, for any
+  target including `0`. Running `up` again is idempotent.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ @default_prefix, target \\ 0)
