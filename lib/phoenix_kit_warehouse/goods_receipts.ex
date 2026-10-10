@@ -130,9 +130,12 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   Returns `{:ok, posted_receipt}`; `{:ok, :already_posted, existing_receipt}`
   when a posted, non-deleted receipt already carries the same `external_ref`
-  (nothing is written); `{:error, {:duplicate_lines, item_uuids}}`;
-  `{:error, {:invalid_quantity, item_uuids}}`; `{:error, :no_lines |
-  :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`.
+  (nothing is written, and the lines are not compared with the existing
+  document's); `{:error, {:duplicate_lines, item_uuids}}`;
+  `{:error, {:invalid_quantity, item_uuids}}` (a negative, missing, blank or
+  unparseable quantity); `{:error, :no_lines | :invalid_lines}`; or
+  `{:error, %Ecto.Changeset{}}`. A line's `"unit_value"` is passed through
+  unchecked, as on the plain post path.
   """
   def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
     PostingSupport.create_and_post(attrs, performed_by_uuid,

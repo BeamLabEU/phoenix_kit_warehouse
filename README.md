@@ -53,7 +53,9 @@ Posting semantics worth knowing:
 For callers that are not a person at a form (a shop, a POS, an integration),
 `GoodsIssues.create_and_post/2`, `GoodsReceipts.create_and_post/2` and
 `Inventories.create_and_post/2` create **and post in one transaction**: a
-refused call leaves no draft and consumes no document number.
+call refused by validation or the stock check leaves no draft and consumes
+no document number. A failure after the insert (a database error while
+posting) rolls the draft back too, but the number sequence has advanced.
 
 - Each takes the document attributes and the posting user's UUID.
 - Duplicate item lines are refused (`{:error, {:duplicate_lines, uuids}}`)
@@ -62,7 +64,8 @@ refused call leaves no draft and consumes no document number.
 - All three accept an `external_ref`, the document's number in the outside
   system. It is unique per document type among posted, non-deleted documents,
   and a repeat returns `{:ok, :already_posted, existing_document}` without
-  writing anything, so a retried delivery is harmless.
+  writing anything, so a retried delivery is harmless. The lines of the repeat
+  are not compared with the existing document's.
 
 ### Linking documents to host records
 

@@ -246,6 +246,9 @@ defmodule PhoenixKitWarehouse.Inventories do
   - Updates the document status to "posted" with `posted_at` and
     `performed_by_uuid`.
   - Returns `{:error, :not_draft}` if the document is not in draft status.
+  - Posts the lines and `track_value` of the row read under the status lock,
+    not those of the struct passed in, so a stale struct cannot overwrite a
+    concurrent edit of the draft.
   - Rolls back on any failure.
   """
   def post_document(%InventoryDocument{status: status}, _performed_by_uuid)
@@ -288,10 +291,13 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   Returns `{:ok, posted_document}`; `{:ok, :already_posted, existing}` when a
   posted, non-deleted inventory document already carries the same
-  `external_ref` (nothing is written); `{:error, {:duplicate_lines,
-  item_uuids}}` (the plain post path silently keeps the first);
-  `{:error, {:invalid_quantity, item_uuids}}`; `{:error, :no_lines |
-  :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`.
+  `external_ref` (nothing is written, and the lines are not compared with the
+  existing document's); `{:error, {:duplicate_lines, item_uuids}}` (the plain
+  post path silently keeps the first); `{:error, {:invalid_quantity,
+  item_uuids}}` (a negative, missing, blank or unparseable counted quantity);
+  `{:error, :no_lines | :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`. A
+  line's `"unit_value"` is passed through unchecked, as on the plain post
+  path.
   """
   def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
     PostingSupport.create_and_post(attrs, performed_by_uuid,

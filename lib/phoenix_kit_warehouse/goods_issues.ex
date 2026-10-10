@@ -310,13 +310,15 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   Returns:
   - `{:ok, posted_issue}`;
   - `{:ok, :already_posted, existing_issue}` when a posted, non-deleted goods
-    issue already carries the same `external_ref` — nothing is written;
+    issue already carries the same `external_ref` — nothing is written, and
+    the lines are not compared with the existing document's;
   - `{:error, {:insufficient_stock, [%{item_uuid:, requested:, available:}]}}`
     listing EVERY short line, in line order, after locking the stock rows (the
     plain post path halts at the first short line);
   - `{:error, {:duplicate_lines, item_uuids}}` when an item appears on more
     than one line (the plain post path silently keeps the first);
-  - `{:error, {:invalid_quantity, item_uuids}}` for negative quantities;
+  - `{:error, {:invalid_quantity, item_uuids}}` for a negative, missing, blank
+    or unparseable quantity;
   - `{:error, :no_lines | :invalid_lines}`;
   - `{:error, %Ecto.Changeset{}}` for an invalid `reason`, `external_ref`, etc.
   """
