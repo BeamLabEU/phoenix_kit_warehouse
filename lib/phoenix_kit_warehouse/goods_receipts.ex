@@ -21,6 +21,7 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrders
+  alias PhoenixKitWarehouse.PostingSupport
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrders
@@ -113,6 +114,67 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
     |> GoodsReceipt.changeset(attrs)
     |> Ecto.Changeset.put_change(:created_by_uuid, actor_uuid)
     |> repo().insert()
+  end
+
+  @doc """
+  Creates a goods receipt and posts it in ONE transaction. INCREASES
+  warehouse stock.
+
+  `attrs` takes `:location_uuid` (default warehouse when absent), `:lines`
+  (each `%{"item_uuid" => uuid, "received_quantity" => qty}` with optional
+  `"unit_value"`), `:external_ref`, `:note`, `:source_refs` and
+  `:created_by_uuid` (defaults to `performed_by_uuid`). Atom or string keys.
+
+  Lines are validated before the document row is inserted, so a refused call
+  leaves no draft behind and consumes no document number.
+
+  Returns `{:ok, posted_receipt}`; `{:ok, :already_posted, existing_receipt}`
+  when a posted, non-deleted receipt already carries the same `external_ref`
+  (nothing is written); `{:error, {:duplicate_lines, item_uuids}}`;
+  `{:error, {:invalid_quantity, item_uuids}}`; `{:error, :no_lines |
+  :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`.
+  """
+  def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
+    attrs = PostingSupport.normalize_attrs(attrs)
+
+    with {:ok, lines} <- PostingSupport.validate_lines(attrs.lines, "received_quantity"),
+         {:ok, changeset} <- draft_changeset(%{attrs | lines: lines}, performed_by_uuid) do
+      changeset
+      |> create_and_post_multi(performed_by_uuid)
+      |> repo().transaction()
+      |> case do
+        {:ok, %{post: posted}} -> {:ok, posted}
+        {:error, :existing, {:already_posted, existing}, _} -> {:ok, :already_posted, existing}
+        {:error, _op, reason, _changes} -> {:error, reason}
+      end
+    end
+  end
+
+  defp draft_changeset(attrs, performed_by_uuid) do
+    created_by_uuid = Map.get(attrs, :created_by_uuid) || performed_by_uuid
+
+    changeset =
+      %GoodsReceipt{}
+      |> GoodsReceipt.changeset(attrs)
+      |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+
+    if changeset.valid?, do: {:ok, changeset}, else: {:error, changeset}
+  end
+
+  defp create_and_post_multi(changeset, performed_by_uuid) do
+    external_ref = Ecto.Changeset.get_field(changeset, :external_ref)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.run(:existing, fn repo, _changes ->
+      case PostingSupport.find_posted_by_external_ref(repo, GoodsReceipt, external_ref) do
+        {:ok, nil} -> {:ok, nil}
+        {:ok, existing} -> {:error, {:already_posted, existing}}
+      end
+    end)
+    |> Ecto.Multi.insert(:draft, changeset)
+    |> Ecto.Multi.run(:post, fn repo, %{draft: draft} ->
+      apply_stock_and_post(draft, performed_by_uuid, repo)
+    end)
   end
 
   @doc """
