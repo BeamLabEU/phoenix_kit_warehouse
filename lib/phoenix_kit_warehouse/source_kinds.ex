@@ -59,7 +59,8 @@ defmodule PhoenixKitWarehouse.SourceKinds do
 
   A module whose callback raises contributes nothing, and entries of its
   list that are not kind maps with a string `:kind` are dropped; both are
-  logged and neither breaks the list. A bare kind map is accepted in place of
+  logged (once per module and problem, since this runs at render rate) and
+  neither breaks the list. A bare kind map is accepted in place of
   a one-element list.
 
   `warehouse_source_kinds/0` runs on every call (this function is reached
@@ -90,7 +91,8 @@ defmodule PhoenixKitWarehouse.SourceKinds do
       |> Enum.split_with(&match?(%{kind: kind} when is_binary(kind), &1))
 
     if dropped != [] do
-      Logger.warning(
+      warn_once(
+        {module, :dropped},
         "PhoenixKitWarehouse.SourceKinds: #{inspect(module)}.warehouse_source_kinds/0 " <>
           "returned #{length(dropped)} entr#{if length(dropped) == 1, do: "y", else: "ies"} " <>
           "that are not kind maps with a string :kind; ignored"
@@ -100,12 +102,26 @@ defmodule PhoenixKitWarehouse.SourceKinds do
     kinds
   rescue
     error ->
-      Logger.warning(
+      warn_once(
+        {module, :raised},
         "PhoenixKitWarehouse.SourceKinds: #{inspect(module)}.warehouse_source_kinds/0 raised: " <>
           Exception.message(error)
       )
 
       []
+  end
+
+  # `list_kinds/0` runs at render rate, so a module that stays broken is
+  # reported once per VM, not on every call.
+  defp warn_once(key, message) do
+    flag = {__MODULE__, :warned, key}
+
+    unless :persistent_term.get(flag, false) do
+      :persistent_term.put(flag, true)
+      Logger.warning(message)
+    end
+
+    :ok
   end
 
   @doc """

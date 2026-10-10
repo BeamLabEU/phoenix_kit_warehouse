@@ -87,6 +87,7 @@ defmodule PhoenixKitWarehouse.SourceKindsModulesTest do
 
   setup do
     previous = :persistent_term.get(@registry_key, :unset)
+    reset_warned()
 
     on_exit(fn ->
       case previous do
@@ -95,10 +96,17 @@ defmodule PhoenixKitWarehouse.SourceKindsModulesTest do
       end
 
       Application.delete_env(:phoenix_kit_warehouse, :source_kinds)
+      reset_warned()
     end)
 
     Application.put_env(:phoenix_kit_warehouse, :source_kinds, [])
     :ok
+  end
+
+  defp reset_warned do
+    for {{SourceKinds, :warned, _key} = flag, _} <- :persistent_term.get() do
+      :persistent_term.erase(flag)
+    end
   end
 
   defp register(modules), do: :persistent_term.put(@registry_key, modules)
@@ -158,6 +166,24 @@ defmodule PhoenixKitWarehouse.SourceKindsModulesTest do
     assert log =~ "3 entries"
     assert log =~ "MixedModule"
     assert log =~ "1 entry"
+  end
+
+  test "a module that stays broken is logged once, not on every call" do
+    register([RaisingModule, GarbageModule])
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        for _ <- 1..5, do: SourceKinds.list_kinds()
+      end)
+
+    assert length(String.split(log, "RaisingModule.warehouse_source_kinds/0 raised")) == 2
+    assert length(String.split(log, "GarbageModule.warehouse_source_kinds/0 returned")) == 2
+  end
+
+  test "the registry key the tests write is the one core reads" do
+    register([ShopModule])
+
+    assert ShopModule in PhoenixKit.ModuleRegistry.all_modules()
   end
 
   test "the host list is untouched when the registry is empty" do
