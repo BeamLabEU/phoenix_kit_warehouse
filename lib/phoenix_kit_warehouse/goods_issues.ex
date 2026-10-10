@@ -299,8 +299,9 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   `attrs` takes `:location_uuid` (default warehouse when absent), `:lines`
   (each `%{"item_uuid" => uuid, "issued_quantity" => qty}`, plus the optional
   descriptive keys the form uses), `:reason` (default `"production"`),
-  `:external_ref`, `:note`, `:source_refs` and `:created_by_uuid` (defaults to
-  `performed_by_uuid`). Atom or string keys.
+  `:external_ref`, `:note` and `:created_by_uuid` (defaults to
+  `performed_by_uuid`). Atom or string keys. Source references are attached
+  afterwards with `add_source_ref/3`, which validates the kind.
 
   Everything that can be checked is checked BEFORE the document row is
   inserted: a failure leaves no draft behind and consumes no document number

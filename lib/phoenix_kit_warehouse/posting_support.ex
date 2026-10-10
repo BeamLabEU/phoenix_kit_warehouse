@@ -13,7 +13,7 @@ defmodule PhoenixKitWarehouse.PostingSupport do
 
   alias PhoenixKitWarehouse.StockLedger
 
-  @attr_keys ~w(location_uuid lines note reason external_ref source_refs track_value created_by_uuid)a
+  @attr_keys ~w(location_uuid lines note reason external_ref track_value created_by_uuid)a
 
   @doc """
   Picks the known attributes out of an atom- or string-keyed map, atom-keys
