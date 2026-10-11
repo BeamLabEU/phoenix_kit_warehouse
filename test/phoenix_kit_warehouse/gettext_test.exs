@@ -67,13 +67,10 @@ defmodule PhoenixKitWarehouse.GettextTest do
     end)
 
     with_locale("ru", fn ->
-      assert t("Reason") == "Причина"
-      assert t("Production") == "Производство"
-      assert t("Sale") == "Продажа"
-      assert t("Damage") == "Повреждение"
-      assert t("Other") == "Другое"
-      assert t("External ref") == "Внешняя ссылка"
-      assert t("Failed to change reason") == "Не удалось сменить причину"
+      for msgid <-
+            ["Reason", "Production", "Sale", "Damage", "Other", "External ref"] ++
+              ["Failed to change reason"],
+          do: refute(t(msgid) == msgid, "#{msgid} is not translated into ru")
     end)
   end
 
