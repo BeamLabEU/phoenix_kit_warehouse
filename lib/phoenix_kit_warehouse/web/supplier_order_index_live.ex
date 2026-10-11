@@ -34,7 +34,14 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   alias PhoenixKitWarehouse.ColumnConfig.SupplierOrders, as: SupplierOrderColumnConfig
   alias PhoenixKitWarehouse.{DocRefs, SupplierOrders}
   alias PhoenixKitWarehouse.Web.ColumnManagement
-  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+
+  alias PhoenixKitWarehouse.Web.Components.{
+    ColumnModal,
+    FilterChips,
+    SetupNotice,
+    WarehouseHeader
+  }
+
   alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -52,6 +59,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> SetupNotice.assign_setup_status()
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
       |> ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
@@ -277,6 +285,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     >
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:supplier_orders} />
+        <SetupNotice.setup_notice status={@setup_status} />
 
         <.table_default
           id="supplier-orders-table"

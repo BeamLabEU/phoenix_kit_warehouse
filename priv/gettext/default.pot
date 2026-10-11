@@ -1515,9 +1515,40 @@ msgid "Warehouse location type"
 msgstr ""
 
 #: lib/phoenix_kit_warehouse/web/settings_live.ex:61
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:66
 #: lib/phoenix_kit_warehouse/web/settings_live.ex:81
 #, elixir-autogen, elixir-format
 msgid "Warehouse settings"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:49
+#, elixir-autogen, elixir-format
+msgid "Warehouse is not set up yet"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:76
+#, elixir-autogen, elixir-format
+msgid "Create a location type for warehouses in Locations, then choose it in Warehouse settings."
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:81
+#, elixir-autogen, elixir-format
+msgid "Add at least one location of the warehouse type in Locations."
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:85
+#, elixir-autogen, elixir-format
+msgid "Choose the default warehouse in Warehouse settings."
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:95
+#, elixir-autogen, elixir-format
+msgid "Open Locations"
+msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:98
+#, elixir-autogen, elixir-format
+msgid "Add a location"
 msgstr ""
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:770

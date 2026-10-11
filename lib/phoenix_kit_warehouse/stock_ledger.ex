@@ -60,6 +60,43 @@ defmodule PhoenixKitWarehouse.StockLedger do
     end
   end
 
+  @type setup_step :: :location_type | :locations | :default_location
+
+  @doc """
+  Reports whether the warehouse settings are complete.
+
+  Returns `:ready`, or `{:needs, step}` for the first missing piece, checked in
+  this order: `:location_type` (no warehouse location type chosen, or the
+  chosen one was deleted), `:locations` (the type exists but no Location
+  carries it) and
+  `:default_location` (no default warehouse, or one that is not in
+  `list_warehouses/0`).
+  """
+  @spec setup_status() :: :ready | {:needs, setup_step()}
+  def setup_status do
+    case list_warehouses() do
+      nil -> {:needs, :location_type}
+      [] -> empty_warehouses_status()
+      warehouses -> default_location_status(warehouses)
+    end
+  end
+
+  # An empty list means "no Location carries the type" only while the type
+  # still exists; a setting that points at a deleted type is the type step.
+  defp empty_warehouses_status do
+    if Locations.get_location_type(warehouse_location_type_uuid()),
+      do: {:needs, :locations},
+      else: {:needs, :location_type}
+  end
+
+  defp default_location_status(warehouses) do
+    default = default_location_uuid()
+
+    if default && Enum.any?(warehouses, &(&1.uuid == default)),
+      do: :ready,
+      else: {:needs, :default_location}
+  end
+
   defp blank_to_nil(v) when v in [nil, ""], do: nil
   defp blank_to_nil(v), do: v
 

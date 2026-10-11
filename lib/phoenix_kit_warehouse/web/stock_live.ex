@@ -70,6 +70,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   alias PhoenixKitWarehouse.Web.Components.{
     ColumnModal,
     FilterChips,
+    SetupNotice,
     WarehouseBrowser,
     WarehouseHeader
   }
@@ -109,6 +110,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> SetupNotice.assign_setup_status()
       |> assign(:locale, locale)
       |> assign(:stock_items, [])
       |> assign(:stock_items_loaded?, false)
@@ -623,6 +625,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
     >
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:stock} />
+        <SetupNotice.setup_notice status={@setup_status} />
 
         <%!-- Grouped / Flat toggle + warehouse scope --%>
         <div class="flex flex-wrap items-center gap-2 mb-1">

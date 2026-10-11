@@ -43,7 +43,14 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   alias PhoenixKitWarehouse.ColumnConfig.Inventories, as: InventoryColumnConfig
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitWarehouse.Web.ColumnManagement
-  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+
+  alias PhoenixKitWarehouse.Web.Components.{
+    ColumnModal,
+    FilterChips,
+    SetupNotice,
+    WarehouseHeader
+  }
+
   alias PhoenixKitWarehouse.Web.UserNames
 
   # Opt out of PhoenixKit's auto admin-chrome layout (applied to external Andi
@@ -68,6 +75,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> SetupNotice.assign_setup_status()
       |> assign(:locale, locale)
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:documents, [])
@@ -272,6 +280,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
     >
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:inventories} />
+        <SetupNotice.setup_notice status={@setup_status} />
 
         <.table_default
           id="inventory-documents-table"

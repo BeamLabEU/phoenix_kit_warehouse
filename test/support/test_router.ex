@@ -90,4 +90,14 @@ defmodule PhoenixKitWarehouse.Test.Router do
       live("/turnover", TurnoverReportLive, :index)
     end
   end
+
+  scope "/en/admin/settings/warehouse", PhoenixKitWarehouse.Web do
+    pipe_through(:browser)
+
+    live_session :warehouse_settings_test,
+      on_mount: [{PhoenixKitWeb.Users.Auth, :phoenix_kit_ensure_admin}],
+      layout: {PhoenixKitWarehouse.Test.Layouts, :app} do
+      live("/", SettingsLive, :index)
+    end
+  end
 end
