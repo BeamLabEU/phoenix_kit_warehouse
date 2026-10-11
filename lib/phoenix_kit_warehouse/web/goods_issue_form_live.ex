@@ -399,6 +399,18 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
            )
          )}
 
+      {:error, %Ecto.Changeset{errors: [{:external_ref, _} | _]} = changeset} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "default",
+             "External ref %{ref} is already used by a posted goods issue.",
+             ref: Ecto.Changeset.get_field(changeset, :external_ref)
+           )
+         )}
+
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to post goods issue"))}
     end

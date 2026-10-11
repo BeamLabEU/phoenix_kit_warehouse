@@ -1983,3 +1983,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Set the default warehouse in the warehouse settings first."
 msgstr ""
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:405
+#, elixir-autogen, elixir-format
+msgid "External ref %{ref} is already used by a posted goods issue."
+msgstr ""

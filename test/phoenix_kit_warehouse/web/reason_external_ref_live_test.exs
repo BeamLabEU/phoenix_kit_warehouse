@@ -154,6 +154,34 @@ defmodule PhoenixKitWarehouse.Web.ReasonExternalRefLiveTest do
       assert Repo.get!(GoodsIssue, issue.uuid).reason == "production"
     end
 
+    test "posting a draft whose external_ref a posted issue already holds names the reference",
+         %{conn: conn} do
+      item = Ecto.UUID.generate()
+      seed!(item, "5")
+      lines = [%{"item_uuid" => item, "issued_quantity" => 1}]
+
+      {:ok, draft} =
+        GoodsIssues.create_goods_issue(%{
+          location_uuid: @location,
+          external_ref: "SHOP-DUP",
+          lines: lines
+        })
+
+      {:ok, _posted} =
+        GoodsIssues.create_and_post(
+          %{location_uuid: @location, external_ref: "SHOP-DUP", lines: lines},
+          nil
+        )
+
+      {:ok, lv, _html} = live(conn, Routes.path("/admin/warehouse/goods-issues/#{draft.uuid}"))
+
+      html = lv |> element("button", "Issue") |> render_click()
+
+      assert html =~ "External ref SHOP-DUP is already used by a posted goods issue."
+      refute html =~ "Failed to post goods issue"
+      assert Repo.get!(GoodsIssue, draft.uuid).status == "draft"
+    end
+
     test "a posted issue shows its reason and external_ref read-only", %{conn: conn} do
       item = Ecto.UUID.generate()
       seed!(item, "5")
