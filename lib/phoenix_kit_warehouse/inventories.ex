@@ -408,7 +408,12 @@ defmodule PhoenixKitWarehouse.Inventories do
   # order, so this does not rule out every deadlock, only the order-vs-order
   # one between two inventory counts.
   defp locked_prior_stock(lines, location_uuid, repo) do
-    item_uuids = lines |> Enum.map(& &1["item_uuid"]) |> Enum.filter(& &1)
+    # A malformed uuid is left out here, so the upsert reports it as a
+    # changeset error (and rolls the transaction back) instead of the claim
+    # insert raising on it.
+    item_uuids =
+      for line <- lines, {:ok, item_uuid} <- [Ecto.UUID.cast(line["item_uuid"])], do: item_uuid
+
     claim_missing_rows(item_uuids, location_uuid, repo)
 
     from(s in Stock,
