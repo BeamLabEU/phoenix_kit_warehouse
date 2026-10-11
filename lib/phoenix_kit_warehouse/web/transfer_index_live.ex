@@ -38,7 +38,14 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
   alias PhoenixKitWarehouse.ColumnConfig.Transfers, as: TransferColumnConfig
   alias PhoenixKitWarehouse.{StockLedger, Transfers}
   alias PhoenixKitWarehouse.Web.ColumnManagement
-  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+
+  alias PhoenixKitWarehouse.Web.Components.{
+    ColumnModal,
+    FilterChips,
+    SetupNotice,
+    WarehouseHeader
+  }
+
   alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -56,6 +63,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> SetupNotice.assign_setup_status()
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:transfers, [])
       |> ColumnManagement.assign_column_state(TransferColumnConfig)
@@ -273,6 +281,7 @@ defmodule PhoenixKitWarehouse.Web.TransferIndexLive do
     >
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:transfers} />
+        <SetupNotice.setup_notice status={@setup_status} />
 
         <.table_default
           id="transfers-table"

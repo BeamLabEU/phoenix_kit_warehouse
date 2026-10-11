@@ -34,7 +34,14 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
   alias PhoenixKitWarehouse.ColumnConfig.GoodsReceipts, as: GoodsReceiptColumnConfig
   alias PhoenixKitWarehouse.{DocRefs, GoodsReceipts}
   alias PhoenixKitWarehouse.Web.ColumnManagement
-  alias PhoenixKitWarehouse.Web.Components.{ColumnModal, FilterChips, WarehouseHeader}
+
+  alias PhoenixKitWarehouse.Web.Components.{
+    ColumnModal,
+    FilterChips,
+    SetupNotice,
+    WarehouseHeader
+  }
+
   alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -55,6 +62,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> SetupNotice.assign_setup_status()
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:receipts, [])
       |> ColumnManagement.assign_column_state(GoodsReceiptColumnConfig)
@@ -278,6 +286,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptIndexLive do
     >
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:goods_receipts} />
+        <SetupNotice.setup_notice status={@setup_status} />
 
         <.table_default
           id="goods-receipts-table"

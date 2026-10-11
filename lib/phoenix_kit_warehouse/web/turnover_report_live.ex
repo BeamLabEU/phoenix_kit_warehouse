@@ -28,7 +28,7 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
 
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.Turnover
-  alias PhoenixKitWarehouse.Web.Components.WarehouseHeader
+  alias PhoenixKitWarehouse.Web.Components.{SetupNotice, WarehouseHeader}
 
   # Opt out of PhoenixKit's auto admin-chrome layout so this view self-wraps
   # with `LayoutWrapper.app_layout` in render/1. Same pattern as StockLive.
@@ -45,6 +45,7 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
     socket =
       socket
       |> assign(:page_title, dgettext("default", "Warehouse"))
+      |> SetupNotice.assign_setup_status()
       |> assign(:date_from, Date.beginning_of_month(today))
       |> assign(:date_to, Date.end_of_month(today))
       |> assign(:location_uuid, nil)
@@ -151,6 +152,7 @@ defmodule PhoenixKitWarehouse.Web.TurnoverReportLive do
     >
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:turnover} />
+        <SetupNotice.setup_notice status={@setup_status} />
 
         <form id="turnover-filters" phx-change="filter_change" class="flex flex-wrap items-end gap-3">
           <div class="flex flex-col gap-1">

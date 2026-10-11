@@ -1515,6 +1515,7 @@ msgid "Warehouse location type"
 msgstr "Тип локации для складов"
 
 #: lib/phoenix_kit_warehouse/web/settings_live.ex:61
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:66
 #: lib/phoenix_kit_warehouse/web/settings_live.ex:81
 #, elixir-autogen, elixir-format
 msgid "Warehouse settings"
@@ -1941,3 +1942,33 @@ msgstr "— выберите —"
 #, elixir-autogen, elixir-format
 msgid "Created by"
 msgstr "Создал"
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:49
+#, elixir-autogen, elixir-format
+msgid "Warehouse is not set up yet"
+msgstr "Склад ещё не настроен"
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:76
+#, elixir-autogen, elixir-format
+msgid "Create a location type for warehouses in Locations, then choose it in Warehouse settings."
+msgstr "Создайте в разделе «Локации» тип локации для складов, затем выберите его в настройках склада."
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:81
+#, elixir-autogen, elixir-format
+msgid "Add at least one location of the warehouse type in Locations."
+msgstr "Добавьте в разделе «Локации» хотя бы одну локацию типа склада."
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:85
+#, elixir-autogen, elixir-format
+msgid "Choose the default warehouse in Warehouse settings."
+msgstr "Выберите склад по умолчанию в настройках склада."
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:95
+#, elixir-autogen, elixir-format
+msgid "Open Locations"
+msgstr "Открыть локации"
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:98
+#, elixir-autogen, elixir-format
+msgid "Add a location"
+msgstr "Добавить локацию"
