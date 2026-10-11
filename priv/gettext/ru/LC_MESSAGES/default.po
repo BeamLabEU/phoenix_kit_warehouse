@@ -1946,35 +1946,35 @@ msgstr "Создал"
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:842
 #, elixir-autogen, elixir-format
 msgid "Reason"
-msgstr ""
+msgstr "Причина"
 
 #: lib/phoenix_kit_warehouse/goods_issues.ex:36
 #, elixir-autogen, elixir-format
 msgid "Production"
-msgstr ""
+msgstr "Производство"
 
 #: lib/phoenix_kit_warehouse/goods_issues.ex:37
 #, elixir-autogen, elixir-format
 msgid "Sale"
-msgstr ""
+msgstr "Продажа"
 
 #: lib/phoenix_kit_warehouse/goods_issues.ex:38
 #, elixir-autogen, elixir-format
 msgid "Damage"
-msgstr ""
+msgstr "Повреждение"
 
 #: lib/phoenix_kit_warehouse/goods_issues.ex:39
 #, elixir-autogen, elixir-format
 msgid "Other"
-msgstr ""
+msgstr "Другое"
 
 #: lib/phoenix_kit_warehouse/column_config.ex:219
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:860
 #, elixir-autogen, elixir-format
 msgid "External ref"
-msgstr ""
+msgstr "Внешняя ссылка"
 
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:322
 #, elixir-autogen, elixir-format
 msgid "Failed to change reason"
-msgstr ""
+msgstr "Не удалось сменить причину"

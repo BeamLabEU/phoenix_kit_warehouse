@@ -1475,7 +1475,7 @@ msgstr "Update price"
 #: lib/phoenix_kit_warehouse.ex:692
 #, elixir-format, elixir-autogen
 msgid "Warehouse stock, stocktakes, and document management"
-msgstr ""
+msgstr "Warehouse stock, stocktakes, and document management"
 
 #: lib/phoenix_kit_warehouse.ex:691
 #: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:56
