@@ -404,9 +404,9 @@ defmodule PhoenixKitWarehouse.Inventories do
   # missing row is first claimed with an `ON CONFLICT DO NOTHING` insert at
   # quantity 0 (the count overwrites it anyway): after that, each row either
   # existed or was inserted by this transaction, and the locking read sees it.
-  # Locks are taken in item order; other documents lock in their own line
-  # order, so this does not rule out every deadlock, only the order-vs-order
-  # one between two inventory counts.
+  # Locks are taken in item order, as goods receipts and `create_and_post/2` of
+  # goods issues take theirs, so these cannot deadlock one another. A goods
+  # issue posted from a draft still locks in its own line order.
   defp locked_prior_stock(lines, location_uuid, repo) do
     # A malformed uuid is left out here, so the upsert reports it as a
     # changeset error (and rolls the transaction back) instead of the claim

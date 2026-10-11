@@ -13,6 +13,8 @@ defmodule PhoenixKitWarehouse.CreateAndPostConcurrencyTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias PhoenixKitWarehouse.GoodsIssue
   alias PhoenixKitWarehouse.GoodsIssues
+  alias PhoenixKitWarehouse.GoodsReceipt
+  alias PhoenixKitWarehouse.GoodsReceipts
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.Stock
@@ -134,6 +136,85 @@ defmodule PhoenixKitWarehouse.CreateAndPostConcurrencyTest do
       assert Decimal.equal?(short.requested, Decimal.new("3"))
       assert Decimal.equal?(short.available, Decimal.new("1"))
       assert Decimal.equal?(unboxed(fn -> StockLedger.get_quantity(item, @location) end), 1)
+    end
+  end
+
+  describe "GoodsReceipts.create_and_post/2 lock order" do
+    test "takes the stock rows in item order whatever the line order, so opposite orders cannot deadlock" do
+      [first, second] = Enum.sort([Ecto.UUID.generate(), Ecto.UUID.generate()])
+      ref = "ORDER-#{System.unique_integer([:positive])}"
+      seed!(first, "10")
+      seed!(second, "10")
+      cleanup_on_exit([first, second], [])
+
+      on_exit(fn ->
+        unboxed(fn ->
+          Repo.delete_all(from(r in GoodsReceipt, where: r.external_ref == ^ref))
+        end)
+      end)
+
+      parent = self()
+
+      # Holds the lock of the row that sorts LAST.
+      holder =
+        Task.async(fn ->
+          unboxed(fn ->
+            Repo.transaction(fn ->
+              Repo.all(
+                from(s in Stock,
+                  where: s.item_uuid == ^second and s.location_uuid == ^@location,
+                  lock: "FOR UPDATE"
+                )
+              )
+
+              send(parent, :locked)
+
+              receive do
+                :commit -> :ok
+              after
+                15_000 -> Repo.rollback(:holder_timeout)
+              end
+            end)
+          end)
+        end)
+
+      assert_receive :locked, 10_000
+
+      # Lines arrive in the opposite order: last-sorting item first.
+      attrs = %{
+        location_uuid: @location,
+        external_ref: ref,
+        lines: [
+          %{"item_uuid" => second, "received_quantity" => "1"},
+          %{"item_uuid" => first, "received_quantity" => "1"}
+        ]
+      }
+
+      poster = Task.async(fn -> unboxed(fn -> GoodsReceipts.create_and_post(attrs, nil) end) end)
+
+      wait_until_blocked_on_a_lock()
+
+      # The poster is stuck on the second row. If it works in item order it
+      # already holds the first row; if it works in line order it has not
+      # touched it, and a deadlock with an opposite-order caller is possible.
+      assert {:error, %Postgrex.Error{postgres: %{code: :lock_not_available}}} =
+               unboxed(fn ->
+                 Repo.query(
+                   "SELECT 1 FROM phoenix_kit_warehouse_stock WHERE item_uuid = $1 FOR UPDATE NOWAIT",
+                   [Ecto.UUID.dump!(first)]
+                 )
+               end)
+
+      send(holder.pid, :commit)
+      assert {:ok, :ok} = Task.await(holder, 15_000)
+      assert {:ok, %GoodsReceipt{} = posted} = Task.await(poster, 15_000)
+
+      # The document keeps the caller's line order.
+      assert Enum.map(posted.lines, & &1["item_uuid"]) == [second, first]
+
+      for item <- [first, second] do
+        assert Decimal.equal?(unboxed(fn -> StockLedger.get_quantity(item, @location) end), 11)
+      end
     end
   end
 

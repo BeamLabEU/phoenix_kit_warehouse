@@ -450,8 +450,15 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
     end
   end
 
+  # Each line's stock row is written (and so locked) in item order, whatever
+  # the order of the document's lines, so two receipts that carry the same
+  # items in opposite orders cannot deadlock. The audited lines are returned
+  # in the document's own order.
   defp receive_lines(lines, stock_map, location_uuid, repo) do
-    Enum.reduce_while(lines, {:ok, []}, fn line, {:ok, acc} ->
+    lines
+    |> Enum.with_index()
+    |> Enum.sort_by(fn {line, _index} -> String.downcase(line["item_uuid"] || "") end)
+    |> Enum.reduce_while({:ok, []}, fn {line, index}, {:ok, acc} ->
       item_uuid = line["item_uuid"]
       received_qty = StockLedger.to_decimal(line["received_quantity"])
       unit_value = StockLedger.to_decimal_or_nil(line["unit_value"])
@@ -461,11 +468,15 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
       audited_line = Map.put(line, "previous_quantity", previous_quantity)
 
       case maybe_receive(item_uuid, received_qty, unit_value, location_uuid, repo) do
-        :skip -> {:cont, {:ok, acc ++ [audited_line]}}
-        {:ok, _stock} -> {:cont, {:ok, acc ++ [audited_line]}}
+        :skip -> {:cont, {:ok, [{index, audited_line} | acc]}}
+        {:ok, _stock} -> {:cont, {:ok, [{index, audited_line} | acc]}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
+    |> case do
+      {:ok, indexed} -> {:ok, indexed |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp maybe_receive(item_uuid, received_qty, unit_value, location_uuid, repo) do
