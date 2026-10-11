@@ -1,6 +1,6 @@
 defmodule PhoenixKitWarehouse.GettextTest do
   @moduledoc """
-  Pins live `dgettext` output for every bundled locale (en/et/ru).
+  Pins live `dgettext` output for every bundled locale (en/et/ru/uk).
 
   Guards against gettext.merge fuzzy pollution — a past incident in this
   workspace fuzzy-matched unrelated msgids and shipped wrong ENGLISH strings,
