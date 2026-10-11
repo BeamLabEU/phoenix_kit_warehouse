@@ -84,6 +84,59 @@ defmodule PhoenixKitWarehouse.CreateAndPostConcurrencyTest do
     end
   end
 
+  describe "GoodsIssues.create_and_post/2 under a concurrent stock change" do
+    test "the stock check waits for a pending decrement and reports every short line" do
+      item = Ecto.UUID.generate()
+      ref = "LOCK-#{System.unique_integer([:positive])}"
+      seed!(item, "5")
+      cleanup_on_exit([item], [ref])
+      parent = self()
+
+      # Holds the stock row lock with an uncommitted -4 (5 -> 1) until told to commit.
+      holder =
+        Task.async(fn ->
+          unboxed(fn ->
+            Repo.transaction(fn ->
+              from(s in Stock, where: s.item_uuid == ^item and s.location_uuid == ^@location)
+              |> Repo.update_all(inc: [quantity: Decimal.new("-4")])
+
+              send(parent, :locked)
+
+              receive do
+                :commit -> :ok
+              after
+                15_000 -> Repo.rollback(:holder_timeout)
+              end
+            end)
+          end)
+        end)
+
+      assert_receive :locked, 10_000
+
+      attrs = %{
+        location_uuid: @location,
+        external_ref: ref,
+        lines: [%{"item_uuid" => item, "issued_quantity" => "3"}]
+      }
+
+      poster = Task.async(fn -> unboxed(fn -> GoodsIssues.create_and_post(attrs, nil) end) end)
+
+      wait_until_blocked_on_a_lock()
+      send(holder.pid, :commit)
+
+      assert {:ok, :ok} = Task.await(holder, 15_000)
+
+      # Checked under the row lock, the check sees the committed 1 and answers
+      # with the list-shaped error. Without the lock it reads the old 5, passes,
+      # and the conditional decrement then fails with the single-uuid shape.
+      assert {:error, {:insufficient_stock, [short]}} = Task.await(poster, 15_000)
+      assert short.item_uuid == item
+      assert Decimal.equal?(short.requested, Decimal.new("3"))
+      assert Decimal.equal?(short.available, Decimal.new("1"))
+      assert Decimal.equal?(unboxed(fn -> StockLedger.get_quantity(item, @location) end), 1)
+    end
+  end
+
   describe "Inventories.post_document/2 under a concurrent stock change" do
     test "the recorded previous quantity includes a change committed while the post waited" do
       item = Ecto.UUID.generate()
