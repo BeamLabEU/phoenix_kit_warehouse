@@ -1978,3 +1978,8 @@ msgstr "External ref"
 #, elixir-autogen, elixir-format
 msgid "Failed to change reason"
 msgstr "Failed to change reason"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:185
+#, elixir-autogen, elixir-format
+msgid "Set the default warehouse in the warehouse settings first."
+msgstr "Set the default warehouse in the warehouse settings first."

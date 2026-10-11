@@ -1978,3 +1978,8 @@ msgstr "Väline viide"
 #, elixir-autogen, elixir-format
 msgid "Failed to change reason"
 msgstr "Põhjuse vahetamine ebaõnnestus"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:185
+#, elixir-autogen, elixir-format
+msgid "Set the default warehouse in the warehouse settings first."
+msgstr "Määrake esmalt lao seadetes vaikeladu."

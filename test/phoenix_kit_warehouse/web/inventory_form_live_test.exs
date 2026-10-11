@@ -116,6 +116,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTest do
   # ---------------------------------------------------------------------------
 
   describe "new action" do
+    test "without a default warehouse location redirects to the list instead of crashing",
+         %{conn: conn} do
+      Warehouse.set_default_location_uuid(nil)
+      assert Warehouse.default_location_uuid() == nil
+
+      admin = create_admin_user()
+      conn = log_in_admin(conn, admin)
+
+      assert {:error, {:live_redirect, %{to: to, flash: flash}}} = live(conn, new_path())
+      assert to == Routes.path("/admin/warehouse")
+      assert is_binary(Phoenix.Flash.get(flash, :error))
+      assert Repo.aggregate(PhoenixKitWarehouse.InventoryDocument, :count) == 0
+    end
+
     test "renders the form page", %{conn: conn} do
       admin = create_admin_user()
       conn = log_in_admin(conn, admin)

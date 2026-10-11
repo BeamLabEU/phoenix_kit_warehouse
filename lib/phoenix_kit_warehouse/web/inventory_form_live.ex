@@ -176,10 +176,25 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   end
 
   defp handle_params_new(socket, locale) do
+    case StockLedger.default_location_uuid() do
+      nil ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("default", "Set the default warehouse in the warehouse settings first.")
+         )
+         |> push_navigate(to: Routes.path("/admin/warehouse"))}
+
+      location_uuid ->
+        create_draft_at(socket, locale, location_uuid)
+    end
+  end
+
+  defp create_draft_at(socket, locale, location_uuid) do
     scope = socket.assigns[:phoenix_kit_current_scope]
     current_user = scope && Scope.user(scope)
     user_uuid = current_user && current_user.uuid
-    location_uuid = StockLedger.default_location_uuid()
 
     attrs = %{
       lines: Inventories.seed_lines(locale, location_uuid),
