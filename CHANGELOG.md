@@ -2,6 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.3 - 2026-10-11
+
+### Added
+
+- **Goods issue reason and `external_ref`** (#33) — migration chain V2 adds
+  `goods_issues.reason` (`production | sale | damage | other`, existing rows
+  read `production`) and a nullable `external_ref` on goods issues, goods
+  receipts and inventory documents, each with a partial unique index over
+  posted, non-deleted rows. The reason is editable on a draft goods issue and
+  both fields are list columns. Run `mix phoenix_kit.update` to pick up V2;
+  rolling back never drops the columns.
+- **`create_and_post/2`** on `GoodsIssues`, `GoodsReceipts` and `Inventories`
+  (#33) — create and post in one transaction, validating before the INSERT so
+  a refusal consumes no document number. A repeated `external_ref` answers
+  `{:ok, :already_posted, existing}`; a short goods issue reports every
+  short line.
+- **Module-declared source kinds** (#33) — a PhoenixKit module exporting
+  `warehouse_source_kinds/0` contributes kinds to `SourceKinds.list_kinds/0`
+  alongside the host's config.
+- **Setup notice** (#34) — the Warehouse pages show a warning with links to
+  Locations and the settings page while the warehouse location type, a
+  warehouse location or the default warehouse is missing.
+- **Ukrainian (`uk`) translation** (#35).
+
+### Changed
+
+- Inventory posting reads and writes the stock rows under one row lock, and
+  posts the lines of the row read under the status lock; goods receipts write
+  their stock rows in item order (#33).
+- Inventory "new" with no default warehouse flashes and returns to the list
+  instead of creating a draft without a location (#33).
+
+### Fixed
+
+- **Goods issues write their stock rows in item order** — a draft posted from
+  the UI could deadlock with `create_and_post/2` or another draft carrying the
+  same items in the opposite order.
+- **The setup notice can no longer take a page down** — a malformed warehouse
+  setting, an unmigrated Locations table or an unreachable database hides the
+  notice instead of failing the page on mount.
+- **The `uk` catalogue was missing 15 strings** added by #33 and #34; a test
+  now pins every `default.pot` msgid as translated.
+
 ## 0.5.2 - 2026-09-16
 
 ### Changed
