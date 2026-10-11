@@ -9,6 +9,9 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
   @foreign_key_type Ecto.UUID
 
   @statuses ~w(draft posted)
+  @reasons ~w(production sale damage other)
+  @default_reason "production"
+  @external_ref_index :phoenix_kit_warehouse_goods_issues_external_ref_index
 
   # Single shape authority for `PhoenixKitWarehouse.Migrations` — this width
   # coincides with core's V140 baseline shape, which `ExpectedSchema` audits;
@@ -16,12 +19,21 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
   # the migration DDL.
   @column_widths %{status: 20}
 
+  # Widths of the columns chain version 2 adds. Kept apart from
+  # `@column_widths` because V1 is a published, frozen adoption of core's
+  # baseline: its CREATE TABLE must keep matching core's manifest.
+  @v2_column_widths %{reason: 20, external_ref: 255}
+
   schema "phoenix_kit_warehouse_goods_issues" do
     field(:number, :integer, read_after_writes: true)
     field(:status, :string, default: "draft")
     field(:internal_order_uuid, Ecto.UUID)
     field(:location_uuid, Ecto.UUID)
     field(:note, :string)
+    field(:reason, :string, default: @default_reason)
+    # Number of the document in an outside system; unique among posted,
+    # non-deleted goods issues (partial unique index, chain version 2).
+    field(:external_ref, :string)
     field(:storage_folder_uuid, Ecto.UUID)
     field(:lines, {:array, :map}, default: [])
     field(:source_refs, {:array, :map}, default: [])
@@ -43,6 +55,10 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
   @spec column_widths() :: %{atom() => pos_integer()}
   def column_widths, do: @column_widths
 
+  @doc "Widths of the columns added by chain version 2 (`reason`, `external_ref`)."
+  @spec v2_column_widths() :: %{atom() => pos_integer()}
+  def v2_column_widths, do: @v2_column_widths
+
   @doc "Changeset for creating/editing draft goods issues."
   def changeset(issue, attrs) do
     issue
@@ -52,9 +68,14 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
       :note,
       :lines,
       :storage_folder_uuid,
-      :source_refs
+      :source_refs,
+      :reason,
+      :external_ref
     ])
-    |> validate_required([:location_uuid])
+    |> validate_required([:location_uuid, :reason])
+    |> validate_inclusion(:reason, @reasons)
+    |> update_change(:external_ref, &PhoenixKitWarehouse.PostingSupport.trim_ref/1)
+    |> validate_length(:external_ref, max: @v2_column_widths.external_ref, count: :codepoints)
   end
 
   @doc "Changeset for posting a goods issue (programmatic fields only — no cast)."
@@ -66,6 +87,7 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
       posted_at: DateTime.utc_now() |> DateTime.truncate(:second),
       performed_by_uuid: performed_by_uuid
     })
+    |> unique_constraint(:external_ref, name: @external_ref_index)
   end
 
   @doc "Changeset for soft-deleting a goods issue."
@@ -87,4 +109,10 @@ defmodule PhoenixKitWarehouse.GoodsIssue do
   end
 
   def statuses, do: @statuses
+
+  @doc "Why stock left the warehouse."
+  def reasons, do: @reasons
+
+  @doc "The reason existing rows were given by the migration."
+  def default_reason, do: @default_reason
 end

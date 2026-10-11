@@ -90,6 +90,24 @@ defmodule PhoenixKitWarehouse.Migrations do
   installs are untouched — a baseline squash only affects fresh installs
   and below-floor bridging.
 
+  ## V2 — goods-issue reason and document external references
+
+  The first real shape change. It only ADDS objects core's manifest does not
+  know (so there is nothing to exclude from the manifest generator and
+  `mix phoenix_kit.repair` has nothing to restore):
+
+    * `goods_issues.reason` — `production | sale | damage | other`, `NOT NULL
+      DEFAULT 'production'`, so every existing row reads `production`. The
+      allowed set is enforced by `GoodsIssue.changeset/2`, not by a CHECK, so
+      a later reason is a code change rather than a migration.
+    * `external_ref` (nullable string) on `goods_issues`, `goods_receipts` and
+      `inventory_documents` — the document's number in an outside system.
+    * One partial unique index per table over `external_ref`, restricted to
+      posted, non-deleted documents that carry one: a repeated delivery from
+      the outside system can never produce a second posted document.
+
+  Column widths come from each schema's `v2_column_widths/0`.
+
   ## What must NEVER happen
 
   No conditional core migration of the form "module absent → drop the
@@ -121,7 +139,7 @@ defmodule PhoenixKitWarehouse.Migrations do
   alias PhoenixKitWarehouse.Transfer
 
   @initial_version 1
-  @current_version 1
+  @current_version 2
   @default_prefix "public"
   @marker_prefix "pkw_schema:"
 
@@ -252,7 +270,8 @@ defmodule PhoenixKitWarehouse.Migrations do
   `target` selects how much of the chain to emit (default
   `current_version/0`): `0` applies nothing (not an operation — clearing
   the marker is `down/1`'s job); `1` is the pure `V140`/`V144`-adoption step
-  across all 8 tables.
+  across all 8 tables; `2` is V1 followed by the V2 additions (see the
+  moduledoc). The marker is always stamped last, at `target`.
   """
   @spec up_statements(String.t(), non_neg_integer()) :: [String.t()]
   def up_statements(prefix \\ @default_prefix, target \\ @current_version)
@@ -264,15 +283,18 @@ defmodule PhoenixKitWarehouse.Migrations do
     if target == 0 do
       []
     else
-      v1_statements(prefix, target)
+      v1_statements(prefix) ++ v2_statements(prefix, target) ++ [marker_statement(prefix, target)]
     end
   end
 
   @doc """
   The SQL `down/1` executes, as data (marker bookkeeping only, on the
-  anchor table). V1 changes no shape of its own — it is pure adoption — so
-  there is nothing to drop beyond the marker; all 8 tables and every row in
-  them are left untouched, for any target including `0`.
+  anchor table). The chain never drops data: V1 changes no shape of its own
+  (pure adoption), and stepping down from V2 deliberately KEEPS the
+  `reason` / `external_ref` columns and the three `external_ref` unique
+  indexes, so rows written under V2 survive a rollback. Only the marker is
+  re-stamped; all 8 tables and every row in them are left untouched, for any
+  target including `0`. Running `up` again is idempotent.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ @default_prefix, target \\ 0)
@@ -291,7 +313,7 @@ defmodule PhoenixKitWarehouse.Migrations do
 
   # ── V1 statement builder ────────────────────────────────────────────────
 
-  defp v1_statements(prefix, target) do
+  defp v1_statements(prefix) do
     users = Helpers.qualify_table("phoenix_kit_users", prefix)
     uuid_default = Helpers.uuid_v7_call(prefix)
 
@@ -631,9 +653,51 @@ defmodule PhoenixKitWarehouse.Migrations do
       )
     ]
 
-    marker = ["COMMENT ON TABLE #{qs} IS '#{@marker_prefix}#{target}'"]
+    sequences ++ tables ++ pkeys ++ checks ++ indexes ++ fks
+  end
 
-    sequences ++ tables ++ pkeys ++ checks ++ indexes ++ fks ++ marker
+  defp marker_statement(prefix, target) do
+    qs = Helpers.qualify_table(@stock, prefix)
+    "COMMENT ON TABLE #{qs} IS '#{@marker_prefix}#{target}'"
+  end
+
+  # ── V2 statement builder ────────────────────────────────────────────────
+
+  defp v2_statements(_prefix, target) when target < 2, do: []
+
+  defp v2_statements(prefix, _target) do
+    qgi = Helpers.qualify_table(@goods_issues, prefix)
+    qgr = Helpers.qualify_table(@goods_receipts, prefix)
+    qid = Helpers.qualify_table(@inventory_documents, prefix)
+
+    issue_widths = GoodsIssue.v2_column_widths()
+    receipt_widths = GoodsReceipt.v2_column_widths()
+    document_widths = InventoryDocument.v2_column_widths()
+
+    columns = [
+      "ALTER TABLE #{qgi} ADD COLUMN IF NOT EXISTS \"reason\" " <>
+        "character varying(#{issue_widths.reason}) " <>
+        "DEFAULT '#{GoodsIssue.default_reason()}' NOT NULL",
+      "ALTER TABLE #{qgi} ADD COLUMN IF NOT EXISTS \"external_ref\" " <>
+        "character varying(#{issue_widths.external_ref})",
+      "ALTER TABLE #{qgr} ADD COLUMN IF NOT EXISTS \"external_ref\" " <>
+        "character varying(#{receipt_widths.external_ref})",
+      "ALTER TABLE #{qid} ADD COLUMN IF NOT EXISTS \"external_ref\" " <>
+        "character varying(#{document_widths.external_ref})"
+    ]
+
+    indexes =
+      for {table, qualified} <- [
+            {@goods_issues, qgi},
+            {@goods_receipts, qgr},
+            {@inventory_documents, qid}
+          ] do
+        "CREATE UNIQUE INDEX IF NOT EXISTS #{table}_external_ref_index ON #{qualified} " <>
+          "USING btree (external_ref) " <>
+          "WHERE external_ref IS NOT NULL AND status = 'posted' AND deleted_at IS NULL"
+      end
+
+    columns ++ indexes
   end
 
   defp unique_prefix("UNIQUE"), do: "UNIQUE "

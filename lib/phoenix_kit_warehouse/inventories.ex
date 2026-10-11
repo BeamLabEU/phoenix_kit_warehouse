@@ -10,6 +10,8 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.InventoryDocument
+  alias PhoenixKitWarehouse.PostingSupport
+  alias PhoenixKitWarehouse.Stock
   alias PhoenixKitWarehouse.StockLedger
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
@@ -232,15 +234,21 @@ defmodule PhoenixKitWarehouse.Inventories do
   @doc """
   Posts an inventory document in an `Ecto.Multi` transaction.
 
-  - Reads current stock at the document's own warehouse
-    (`stock_map_for_location(doc.location_uuid)`) once up front for audit
-    `previous_*` fields.
+  - Inside the transaction, locks the stock rows of the document's items at
+    the document's own warehouse (`FOR UPDATE`) and reads them for the audit
+    `previous_*` fields — read and write happen under one lock, so a
+    concurrent stock change can neither slip between them nor leave a wrong
+    prior quantity on the document. A row that does not exist yet cannot be
+    locked, so missing rows are first claimed (`INSERT ... ON CONFLICT DO
+    NOTHING` at quantity 0, overwritten by the count anyway).
   - For each line: coerces quantities/values to Decimal; captures pre-post
-    stock as audit fields; upserts the stock row inside the transaction via
-    `Multi.run/3` (so all writes happen atomically).
+    stock as audit fields; upserts the stock row inside the same transaction.
   - Updates the document status to "posted" with `posted_at` and
     `performed_by_uuid`.
   - Returns `{:error, :not_draft}` if the document is not in draft status.
+  - Posts the lines and `track_value` of the row read under the status lock,
+    not those of the struct passed in, so a stale struct cannot overwrite a
+    concurrent edit of the draft.
   - Rolls back on any failure.
   """
   def post_document(%InventoryDocument{status: status}, _performed_by_uuid)
@@ -249,10 +257,6 @@ defmodule PhoenixKitWarehouse.Inventories do
   end
 
   def post_document(%InventoryDocument{} = doc, performed_by_uuid) do
-    prior_stock = StockLedger.stock_map_for_location(doc.location_uuid)
-    {audited_lines, upserts} = build_posting_multi(doc, prior_stock)
-    posted_changeset = InventoryDocument.post_changeset(doc, audited_lines, performed_by_uuid)
-
     # `lock_status_step` locks the row FOR UPDATE and re-checks status == "draft"
     # inside the transaction, turning draft→posted into an atomic compare-and-swap.
     # The in-memory guard above only sees the struct in hand; a concurrent or
@@ -261,13 +265,55 @@ defmodule PhoenixKitWarehouse.Inventories do
     multi =
       doc.uuid
       |> lock_status_step("draft", :not_draft)
-      |> Ecto.Multi.append(upserts)
-      |> Ecto.Multi.update(:document, posted_changeset)
+      |> Ecto.Multi.run(:document, fn repo, %{lock_status: locked} ->
+        apply_counts_and_post(locked, performed_by_uuid, repo)
+      end)
 
     case repo().transaction(multi) do
       {:ok, %{document: posted_doc}} -> {:ok, posted_doc}
       {:error, _op, reason, _changes} -> {:error, reason}
     end
+  end
+
+  @doc """
+  Creates an inventory document and posts it in ONE transaction.
+
+  `attrs` takes `:location_uuid` (default warehouse when absent), `:lines`
+  (each `%{"item_uuid" => uuid, "counted_quantity" => qty}` with optional
+  `"unit_value"`), `:track_value`, `:external_ref`, `:note` and
+  `:created_by_uuid` (defaults to `performed_by_uuid`). Atom or string keys.
+  Only the listed items are counted; every other stock row is left alone.
+
+  Lines are validated before the document row is inserted, so a refused call
+  leaves no draft behind and consumes no document number. The prior quantity
+  recorded on each line is read inside the posting transaction (see
+  `post_document/2`).
+
+  Returns `{:ok, posted_document}`; `{:ok, :already_posted, existing}` when a
+  posted, non-deleted inventory document already carries the same
+  `external_ref` (nothing is written, and the lines are not compared with the
+  existing document's); `{:error, {:duplicate_lines, item_uuids}}` (the plain
+  post path silently keeps the first); `{:error, {:invalid_quantity,
+  item_uuids}}` (a negative, missing, blank or unparseable counted quantity);
+  `{:error, :no_lines | :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`. A
+  line's `"unit_value"` is passed through unchecked, as on the plain post
+  path.
+  """
+  def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
+    PostingSupport.create_and_post(attrs, performed_by_uuid,
+      schema: InventoryDocument,
+      quantity_key: "counted_quantity",
+      changeset: fn attrs, created_by_uuid ->
+        %InventoryDocument{}
+        |> InventoryDocument.draft_changeset(attrs)
+        # `create_draft/1` fills the location in after building its changeset,
+        # so the schema changeset cannot require it; here it is known by now.
+        |> Ecto.Changeset.validate_required([:location_uuid])
+        |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+        |> Ecto.Changeset.put_change(:performed_by_uuid, performed_by_uuid)
+      end,
+      post: &apply_counts_and_post(&2, performed_by_uuid, &1)
+    )
   end
 
   @doc """
@@ -287,8 +333,9 @@ defmodule PhoenixKitWarehouse.Inventories do
   Re-applies ABSOLUTE stock quantities for an already-posted document.
 
   Mirrors `post_document/2` stock math exactly: reads current stock at the
-  document's own warehouse for audit `previous_*` fields, upserts each line
-  atomically, and re-stamps `posted_at` + `performed_by_uuid`.
+  document's own warehouse, inside the transaction and under a row lock, for
+  audit `previous_*` fields, upserts each line atomically, and re-stamps
+  `posted_at` + `performed_by_uuid`.
 
   Returns `{:error, :not_posted}` when the document is not in `posted`
   status. Rolls back on any failure.
@@ -299,11 +346,10 @@ defmodule PhoenixKitWarehouse.Inventories do
   end
 
   def repost_document(%InventoryDocument{} = doc, performed_by_uuid) do
-    prior_stock = StockLedger.stock_map_for_location(doc.location_uuid)
-    {audited_lines, multi} = build_posting_multi(doc, prior_stock)
-
-    repost_changeset = InventoryDocument.post_changeset(doc, audited_lines, performed_by_uuid)
-    multi = Ecto.Multi.update(multi, :document, repost_changeset)
+    multi =
+      Ecto.Multi.run(Ecto.Multi.new(), :document, fn repo, _changes ->
+        apply_counts_and_post(doc, performed_by_uuid, repo)
+      end)
 
     case repo().transaction(multi) do
       {:ok, %{document: reposted_doc}} -> {:ok, reposted_doc}
@@ -331,53 +377,109 @@ defmodule PhoenixKitWarehouse.Inventories do
     end)
   end
 
-  # Builds the audit lines (with previous_* snapshot) and the Multi of
-  # per-line stock upserts shared by post_document/2 and repost_document/2.
-  defp build_posting_multi(%InventoryDocument{} = doc, prior_stock) do
-    # Dedupe by item_uuid first: two lines with the same item would collide on
-    # the Ecto.Multi op name {:upsert_stock, item_uuid} and crash the posting.
+  # The shared body of post_document/2, repost_document/2 and create_and_post/2.
+  # Runs INSIDE the posting transaction: the prior stock is read under a row
+  # lock taken in that same transaction, then the counts are written and the
+  # document is stamped.
+  defp apply_counts_and_post(%InventoryDocument{} = doc, performed_by_uuid, repo) do
+    # Dedupe by item_uuid first: two lines with the same item would upsert the
+    # same stock row twice and record a wrong prior quantity for the second.
     # Keep the first occurrence (the UI already prevents duplicates; this guards
-    # any non-UI path).
+    # any non-UI path; create_and_post/2 refuses duplicates outright).
     lines = Enum.uniq_by(doc.lines, & &1["item_uuid"])
+    prior_stock = locked_prior_stock(lines, doc.location_uuid, repo)
+    audited_lines = Enum.map(lines, &audit_line(&1, prior_stock))
 
-    audited_lines =
-      Enum.map(lines, fn line ->
-        item_uuid = line["item_uuid"]
-        prior = Map.get(prior_stock, item_uuid)
+    with :ok <- upsert_counts(audited_lines, doc, repo) do
+      doc
+      |> InventoryDocument.post_changeset(audited_lines, performed_by_uuid)
+      |> repo.update()
+    end
+  end
 
-        previous_quantity = if prior, do: prior.quantity, else: Decimal.new("0")
-        previous_unit_value = if prior, do: prior.unit_value, else: nil
+  # Reads, under row locks, the stock rows the document is about to overwrite.
+  #
+  # `FOR UPDATE` cannot lock a row that does not exist yet, and a concurrent
+  # transaction may insert it between this read and the write. So every
+  # missing row is first claimed with an `ON CONFLICT DO NOTHING` insert at
+  # quantity 0 (the count overwrites it anyway): after that, each row either
+  # existed or was inserted by this transaction, and the locking read sees it.
+  # Locks are taken in item order, as goods receipts and `create_and_post/2` of
+  # goods issues take theirs, so these cannot deadlock one another. A goods
+  # issue posted from a draft still locks in its own line order.
+  defp locked_prior_stock(lines, location_uuid, repo) do
+    # A malformed uuid is left out here, so the upsert reports it as a
+    # changeset error (and rolls the transaction back) instead of the claim
+    # insert raising on it.
+    item_uuids =
+      for line <- lines, {:ok, item_uuid} <- [Ecto.UUID.cast(line["item_uuid"])], do: item_uuid
 
-        Map.merge(line, %{
-          "previous_quantity" => previous_quantity,
-          "previous_unit_value" => previous_unit_value
-        })
+    claim_missing_rows(item_uuids, location_uuid, repo)
+
+    from(s in Stock,
+      where: s.item_uuid in ^item_uuids and s.location_uuid == ^location_uuid,
+      order_by: s.item_uuid,
+      lock: "FOR UPDATE"
+    )
+    |> repo.all()
+    |> Map.new(&{&1.item_uuid, %{quantity: &1.quantity, unit_value: &1.unit_value}})
+  end
+
+  defp claim_missing_rows([], _location_uuid, _repo), do: :ok
+
+  defp claim_missing_rows(item_uuids, location_uuid, repo) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    rows =
+      item_uuids
+      |> Enum.sort()
+      |> Enum.map(fn item_uuid ->
+        %{
+          uuid: UUIDv7.generate(),
+          item_uuid: item_uuid,
+          location_uuid: location_uuid,
+          quantity: Decimal.new("0"),
+          inserted_at: now,
+          updated_at: now
+        }
       end)
 
-    multi =
-      Enum.reduce(audited_lines, Ecto.Multi.new(), fn line, multi ->
-        item_uuid = line["item_uuid"]
-        counted_quantity = StockLedger.to_decimal(line["counted_quantity"])
+    repo.insert_all(Stock, rows,
+      on_conflict: :nothing,
+      conflict_target: [:item_uuid, :location_uuid]
+    )
 
-        unit_value_opt =
-          if doc.track_value do
-            StockLedger.to_decimal_or_nil(line["unit_value"])
-          else
-            nil
-          end
+    :ok
+  end
 
-        op_name = {:upsert_stock, item_uuid}
+  defp audit_line(line, prior_stock) do
+    prior = Map.get(prior_stock, line["item_uuid"])
 
-        Ecto.Multi.run(multi, op_name, fn repo, _changes ->
-          StockLedger.upsert_quantity(item_uuid, counted_quantity,
-            unit_value: unit_value_opt,
-            location_uuid: doc.location_uuid,
-            repo: repo
-          )
-        end)
-      end)
+    Map.merge(line, %{
+      "previous_quantity" => if(prior, do: prior.quantity, else: Decimal.new("0")),
+      "previous_unit_value" => if(prior, do: prior.unit_value, else: nil)
+    })
+  end
 
-    {audited_lines, multi}
+  defp upsert_counts(audited_lines, doc, repo) do
+    Enum.reduce_while(audited_lines, :ok, fn line, :ok ->
+      unit_value_opt =
+        if doc.track_value, do: StockLedger.to_decimal_or_nil(line["unit_value"]), else: nil
+
+      result =
+        StockLedger.upsert_quantity(
+          line["item_uuid"],
+          StockLedger.to_decimal(line["counted_quantity"]),
+          unit_value: unit_value_opt,
+          location_uuid: doc.location_uuid,
+          repo: repo
+        )
+
+      case result do
+        {:ok, _stock} -> {:cont, :ok}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
   end
 
   # ---------------------------------------------------------------------------

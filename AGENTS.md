@@ -133,18 +133,24 @@ as version 0. Varchar widths are sourced from each of the six document
 schemas' own `column_widths/0` (`GoodsReceipt`, `GoodsIssue`,
 `InternalOrder`, `SupplierOrder`, `InventoryDocument`, `Transfer` —
 `Stock`/`MinStock` have no varchar column) — never a second hard-coded
-number in the migration DDL.
+number in the migration DDL. The widths of columns added by V2 come from
+`v2_column_widths/0` on the three schemas that gained them, because V1's
+`CREATE TABLE` must keep matching core's manifest.
 
-Ownership unfolds in three phases: **Phase 0** (the current `V1`) is a pure
+Ownership unfolds in three phases: **Phase 0** (`V1`) is a pure
 **adoption** — it reproduces core's V140/V144 shape under core's exact
 object names (idempotent `CREATE TABLE IF NOT EXISTS` / guarded `DO $$ ...
 $$` constraint blocks), so on every existing install it changes nothing
 except stamping the marker; because it changes no shape, core's
 `ExpectedSchema` manifest stays accurate and no core release was required
-to ship it. **Phase 1** is the first real shape change (a future V2+) — it
-requires first adding the altered objects to core's manifest generator's
-`@excluded_exact` and regenerating `ExpectedSchema`, then raising this
-package's core floor. **Phase 2** is a future core baseline squash that
+to ship it. **Phase 1** is the first real shape change. `V2` (the current
+version: goods-issue `reason`, `external_ref` on goods issues, receipts and
+inventory documents, and one partial unique index per `external_ref`) only
+ADDS objects core's manifest does not declare, so it needed no manifest
+change. A version that alters or drops an object the manifest declares must
+first add that object to core's manifest generator's `@excluded_exact` and
+regenerate `ExpectedSchema`, then raise this package's core floor.
+**Phase 2** is a future core baseline squash that
 drops these tables from core's own chain entirely — V1's `CREATE TABLE`
 statements are therefore already fully self-sufficient definitions (calling
 `Helpers.ensure_extension!/1` + `Helpers.ensure_uuid_v7_function/1` rather

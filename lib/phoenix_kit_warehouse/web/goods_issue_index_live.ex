@@ -18,7 +18,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
       sort_by: [
         default: "number",
         url_key: "sort",
-        in: ~w(number status lines_count date posted_at note created_by performed_by)
+        in:
+          ~w(number status reason lines_count date posted_at note external_ref created_by performed_by)
       ],
       sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
     ]
@@ -158,6 +159,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
         number: issue.number,
         status: issue.status,
         status_label: status_label(issue.status),
+        reason: issue.reason,
+        reason_label: GoodsIssues.reason_label(issue.reason),
+        external_ref: issue.external_ref,
         sub_order_uuid: sub_order_uuid,
         sub_order_ref: so_ref,
         internal_order_uuid: issue.internal_order_uuid,
@@ -542,6 +546,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
     end
   end
 
+  defp render_cell("reason", entry), do: entry.reason_label
+  defp render_cell("external_ref", entry), do: emdash(entry.external_ref)
   defp render_cell("location", entry), do: emdash(entry.location_uuid)
   defp render_cell("lines_count", entry), do: entry.lines_count
   defp render_cell("date", entry), do: fmt_date(entry.inserted_at)
@@ -567,6 +573,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
     end
   end
 
+  defp render_card_value("reason", entry), do: entry.reason_label
+  defp render_card_value("external_ref", entry), do: emdash(entry.external_ref)
   defp render_card_value("location", entry), do: emdash(entry.location_uuid)
   defp render_card_value("lines_count", entry), do: entry.lines_count
   defp render_card_value("date", entry), do: fmt_date(entry.inserted_at)

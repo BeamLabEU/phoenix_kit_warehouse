@@ -68,7 +68,8 @@ repo_available =
       # re-applies core's V140/V144 baseline. V1 is a pure adoption (every
       # statement `IF NOT EXISTS`/guarded, so re-running it against the
       # already-migrated core shape is a no-op except for stamping the
-      # `pkw_schema:1` marker), so the statements are executed directly as
+      # `pkw_schema:N` marker for the chain's current version N), so the
+      # statements are executed directly as
       # data via `up_statements/2` rather than through `up/1`: `up/1` needs a
       # live `Ecto.Migration` runner (its `execute/1` is
       # `Ecto.Migration.execute/1`), which this bare setup step doesn't have.

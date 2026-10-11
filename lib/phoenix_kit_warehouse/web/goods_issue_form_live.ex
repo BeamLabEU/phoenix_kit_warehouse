@@ -307,6 +307,28 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   end
 
   # ---------------------------------------------------------------------------
+  # Reason — draft only
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event("set_reason", %{"reason" => reason}, socket) do
+    case socket.assigns.issue do
+      %PhoenixKitWarehouse.GoodsIssue{status: "draft"} = issue ->
+        case GoodsIssues.update_draft(issue, %{reason: reason}) do
+          {:ok, updated} ->
+            {:noreply, assign(socket, :issue, updated)}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, dgettext("default", "Failed to change reason"))}
+        end
+
+      _ ->
+        {:noreply,
+         put_flash(socket, :error, dgettext("default", "Cannot modify: document is not a draft"))}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # Save draft
   # ---------------------------------------------------------------------------
 
@@ -374,6 +396,18 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
              "default",
              "Insufficient stock for: %{item}. Reduce quantity or check stock levels.",
              item: item_name
+           )
+         )}
+
+      {:error, %Ecto.Changeset{errors: [{:external_ref, _} | _]} = changeset} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "default",
+             "External ref %{ref} is already used by a posted goods issue.",
+             ref: Ecto.Changeset.get_field(changeset, :external_ref)
            )
          )}
 
@@ -816,6 +850,30 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                     <% end %>
                   </dd>
                 </div>
+                <div>
+                  <dt class="text-base-content/60 font-medium">{dgettext("default", "Reason")}</dt>
+                  <dd class="mt-0.5">
+                    <%= if !@posted? do %>
+                      <form id="gi-reason-form" phx-change="set_reason" phx-submit="set_reason">
+                        <select id="gi-reason-select" name="reason" class="select select-sm">
+                          <%= for {value, label} <- GoodsIssues.reason_options() do %>
+                            <option value={value} selected={@issue.reason == value}>{label}</option>
+                          <% end %>
+                        </select>
+                      </form>
+                    <% else %>
+                      <span id="gi-reason">{GoodsIssues.reason_label(@issue.reason)}</span>
+                    <% end %>
+                  </dd>
+                </div>
+                <%= if @issue.external_ref do %>
+                  <div>
+                    <dt class="text-base-content/60 font-medium">
+                      {dgettext("default", "External ref")}
+                    </dt>
+                    <dd id="gi-external-ref" class="mt-0.5 font-mono">{@issue.external_ref}</dd>
+                  </div>
+                <% end %>
                 <%= if @sub_order_ref do %>
                   <div>
                     <dt class="text-base-content/60 font-medium">{dgettext("default", "Sub-Order")}</dt>

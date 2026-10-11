@@ -5,7 +5,7 @@ defmodule PhoenixKitWarehouse.SourceKinds do
   `phoenix_kit_warehouse` documents (Internal Orders, Goods Issues) link back
   to arbitrary host-owned "source" records — a sub-order, a top-level order,
   or anything else a consuming app wants to link — via a `source_refs` JSONB
-  column shaped `[%{"kind" => "sub_order", "uuid" => "..."}, ...]`. This
+  column shaped `[%{"type" => "sub_order", "uuid" => "..."}, ...]`. This
   module never queries a host table directly; instead the host registers,
   per kind, three callbacks in its own config:
 
@@ -20,11 +20,18 @@ defmodule PhoenixKitWarehouse.SourceKinds do
           }
         ]
 
-  With no `source_kinds` configured at all, every function in this module
-  degrades gracefully: `search_candidates/1` returns `[]`, `resolve/2`
-  returns `:error` (callers show a plain UUID), and `build_lines/3` returns
-  `{:error, :unsupported_kind}`. This is what makes the package usable
-  standalone, with no host "order" concept at all.
+  A PhoenixKit module can also declare kinds itself, so a host need not (and
+  cannot safely, since `config` replaces the list) patch the host list: any
+  module in `PhoenixKit.ModuleRegistry.all_modules/0` that exports
+  `warehouse_source_kinds/0` returning a list of the same maps contributes
+  them. `list_kinds/0` merges both sources, deduplicated by `kind`; the host
+  list comes first and wins on a conflict, then modules in registry order.
+
+  With no `source_kinds` configured and no module declaring any, every
+  function in this module degrades gracefully: `search_candidates/1` returns
+  `[]`, `resolve/2` returns `:error` (callers show a plain UUID), and
+  `build_lines/3` returns `{:error, :unsupported_kind}`. This is what makes
+  the package usable standalone, with no host "order" concept at all.
 
   `build_lines` is optional per kind — a kind can be searchable/resolvable
   (linkable, shows up in pickers and renders as a link) without being
@@ -44,10 +51,77 @@ defmodule PhoenixKitWarehouse.SourceKinds do
           optional(:build_lines) => mf_args()
         }
 
-  @doc "All kinds registered by the host app, in config order."
+  @doc """
+  All registered kinds: the host app's `:source_kinds` config (in config
+  order) followed by the kinds declared by registered PhoenixKit modules
+  exporting `warehouse_source_kinds/0`. Deduplicated by `kind` — the host's
+  entry wins over a module's, and the first module wins over a later one.
+
+  A module whose callback raises contributes nothing, and entries of its
+  list that are not kind maps with a string `:kind` are dropped; both are
+  logged (once per module and problem, since this runs at render rate) and
+  neither breaks the list. A bare kind map is accepted in place of
+  a one-element list.
+
+  `warehouse_source_kinds/0` runs on every call (this function is reached
+  once per rendered ref), so it must be cheap and pure: return a literal
+  list, do not query.
+  """
   @spec list_kinds() :: [kind_config()]
   def list_kinds do
-    Application.get_env(:phoenix_kit_warehouse, :source_kinds, [])
+    host_kinds = Application.get_env(:phoenix_kit_warehouse, :source_kinds, [])
+
+    Enum.uniq_by(host_kinds ++ module_declared_kinds(), & &1.kind)
+  end
+
+  defp module_declared_kinds do
+    PhoenixKit.ModuleRegistry.all_modules()
+    |> Enum.filter(&declares_kinds?/1)
+    |> Enum.flat_map(&declared_by/1)
+  end
+
+  defp declares_kinds?(module) do
+    Code.ensure_loaded?(module) and function_exported?(module, :warehouse_source_kinds, 0)
+  end
+
+  defp declared_by(module) do
+    {kinds, dropped} =
+      module.warehouse_source_kinds()
+      |> List.wrap()
+      |> Enum.split_with(&match?(%{kind: kind} when is_binary(kind), &1))
+
+    if dropped != [] do
+      warn_once(
+        {module, :dropped},
+        "PhoenixKitWarehouse.SourceKinds: #{inspect(module)}.warehouse_source_kinds/0 " <>
+          "returned #{length(dropped)} entr#{if length(dropped) == 1, do: "y", else: "ies"} " <>
+          "that are not kind maps with a string :kind; ignored"
+      )
+    end
+
+    kinds
+  rescue
+    error ->
+      warn_once(
+        {module, :raised},
+        "PhoenixKitWarehouse.SourceKinds: #{inspect(module)}.warehouse_source_kinds/0 raised: " <>
+          Exception.message(error)
+      )
+
+      []
+  end
+
+  # `list_kinds/0` runs at render rate, so a module that stays broken is
+  # reported once per VM, not on every call.
+  defp warn_once(key, message) do
+    flag = {__MODULE__, :warned, key}
+
+    unless :persistent_term.get(flag, false) do
+      :persistent_term.put(flag, true)
+      Logger.warning(message)
+    end
+
+    :ok
   end
 
   @doc """
@@ -93,7 +167,7 @@ defmodule PhoenixKitWarehouse.SourceKinds do
   end
 
   @doc """
-  Resolves an existing `%{"kind" => kind, "uuid" => uuid}` source ref to a
+  Resolves an existing `%{"type" => kind, "uuid" => uuid}` source ref to a
   `%{label:, path:}` map for rendering a link. Returns `:error` if the kind
   isn't registered, the callback doesn't return the expected shape, or the
   callback itself raises — callers fall back to showing the plain UUID.

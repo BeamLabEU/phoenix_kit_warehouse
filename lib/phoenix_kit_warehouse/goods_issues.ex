@@ -9,14 +9,35 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   limited to note and storage_folder only.
   """
 
+  use Gettext, backend: PhoenixKitWarehouse.Gettext
+
   import Ecto.Query
 
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.GoodsIssue
+  alias PhoenixKitWarehouse.PostingSupport
   alias PhoenixKitWarehouse.SourceKinds
+  alias PhoenixKitWarehouse.Stock
   alias PhoenixKitWarehouse.StockLedger
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
+
+  # ---------------------------------------------------------------------------
+  # Reasons
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  `[{value, label}]` for every goods-issue reason, in display order, labels
+  translated in the current Gettext locale.
+  """
+  def reason_options, do: Enum.map(GoodsIssue.reasons(), &{&1, reason_label(&1)})
+
+  @doc "Translated label of a reason; an unknown value is returned as is."
+  def reason_label("production"), do: dgettext("default", "Production")
+  def reason_label("sale"), do: dgettext("default", "Sale")
+  def reason_label("damage"), do: dgettext("default", "Damage")
+  def reason_label("other"), do: dgettext("default", "Other")
+  def reason_label(other), do: other
 
   # ---------------------------------------------------------------------------
   # Queries
@@ -269,6 +290,89 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
     |> GoodsIssue.changeset(attrs)
     |> Ecto.Changeset.put_change(:created_by_uuid, actor_uuid)
     |> repo().insert()
+  end
+
+  @doc """
+  Creates a goods issue and posts it in ONE transaction. DECREASES warehouse
+  stock.
+
+  `attrs` takes `:location_uuid` (default warehouse when absent), `:lines`
+  (each `%{"item_uuid" => uuid, "issued_quantity" => qty}`, plus the optional
+  descriptive keys the form uses), `:reason` (default `"production"`),
+  `:external_ref`, `:note` and `:created_by_uuid` (defaults to
+  `performed_by_uuid`). Atom or string keys. Source references are attached
+  afterwards with `add_source_ref/3`, which validates the kind.
+
+  Everything that can be checked is checked BEFORE the document row is
+  inserted: a failure leaves no draft behind and consumes no document number
+  (the number is drawn by the INSERT, and a sequence is not rolled back).
+
+  Returns:
+  - `{:ok, posted_issue}`;
+  - `{:ok, :already_posted, existing_issue}` when a posted, non-deleted goods
+    issue already carries the same `external_ref` — nothing is written, and
+    the lines are not compared with the existing document's;
+  - `{:error, {:insufficient_stock, [%{item_uuid:, requested:, available:}]}}`
+    listing EVERY short line, in line order, after locking the stock rows (the
+    plain post path halts at the first short line);
+  - `{:error, {:duplicate_lines, item_uuids}}` when an item appears on more
+    than one line (the plain post path silently keeps the first);
+  - `{:error, {:invalid_quantity, item_uuids}}` for a negative, missing, blank
+    or unparseable quantity;
+  - `{:error, :no_lines | :invalid_lines}`;
+  - `{:error, %Ecto.Changeset{}}` for an invalid `reason`, `external_ref`, etc.
+  """
+  def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
+    PostingSupport.create_and_post(attrs, performed_by_uuid,
+      schema: GoodsIssue,
+      quantity_key: "issued_quantity",
+      changeset: fn attrs, created_by_uuid ->
+        %GoodsIssue{}
+        |> GoodsIssue.changeset(attrs)
+        |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+      end,
+      guard: fn repo, changeset ->
+        check_stock(
+          Ecto.Changeset.get_field(changeset, :lines),
+          Ecto.Changeset.get_field(changeset, :location_uuid),
+          repo
+        )
+      end,
+      post: &apply_stock_and_post(&2, performed_by_uuid, &1)
+    )
+  end
+
+  # Locks the stock rows of every line (in a stable order, so two concurrent
+  # callers cannot deadlock) and reports ALL lines that cannot be covered.
+  defp check_stock(lines, location_uuid, repo) do
+    item_uuids = Enum.map(lines, & &1["item_uuid"])
+
+    available =
+      from(s in Stock,
+        where: s.item_uuid in ^item_uuids and s.location_uuid == ^location_uuid,
+        order_by: s.item_uuid,
+        lock: "FOR UPDATE",
+        select: {s.item_uuid, s.quantity}
+      )
+      |> repo.all()
+      |> Map.new()
+
+    short =
+      Enum.flat_map(lines, fn line ->
+        requested = StockLedger.to_decimal(line["issued_quantity"])
+        on_hand = Map.get(available, line["item_uuid"], Decimal.new("0"))
+
+        if Decimal.gt?(requested, 0) and Decimal.lt?(on_hand, requested) do
+          [%{item_uuid: line["item_uuid"], requested: requested, available: on_hand}]
+        else
+          []
+        end
+      end)
+
+    case short do
+      [] -> {:ok, :covered}
+      _ -> {:error, {:insufficient_stock, short}}
+    end
   end
 
   @doc """

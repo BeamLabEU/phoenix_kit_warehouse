@@ -4,6 +4,7 @@ defmodule PhoenixKitWarehouse.InventoriesTest do
   alias PhoenixKit.Users.Auth
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StockLedger, as: Warehouse
 
   # ---------------------------------------------------------------------------
@@ -703,6 +704,65 @@ defmodule PhoenixKitWarehouse.InventoriesTest do
       # row is "posted". The in-memory guard alone would re-post it; the DB-level
       # guard must reject the second attempt.
       assert {:error, :not_draft} = Inventories.post_document(draft, user_uuid())
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # post_document/2 — posts the row read under the status lock
+  # ---------------------------------------------------------------------------
+
+  describe "post_document/2 — stale struct" do
+    test "posts the lines and track_value stored in the database, not the struct's" do
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+      {:ok, _} = Warehouse.upsert_quantity(item.uuid, "1", unit_value: nil)
+
+      {:ok, stale} =
+        Inventories.create_draft(%{
+          track_value: false,
+          lines: [%{"item_uuid" => item.uuid, "counted_quantity" => "5", "unit_value" => "2"}]
+        })
+
+      # Another tab edits the same draft after `stale` was loaded.
+      {:ok, _edited} =
+        Inventories.update_draft(stale, %{
+          track_value: true,
+          lines: [%{"item_uuid" => item.uuid, "counted_quantity" => "8", "unit_value" => "3"}]
+        })
+
+      assert {:ok, posted} = Inventories.post_document(stale, user_uuid())
+
+      assert [%{"counted_quantity" => counted}] = posted.lines
+      assert Decimal.equal?(StockLedger.to_decimal(counted), Decimal.new("8"))
+      assert posted.track_value
+
+      row = Warehouse.stock_map()[item.uuid]
+      assert Decimal.equal?(row.quantity, Decimal.new("8"))
+      assert Decimal.equal?(row.unit_value, Decimal.new("3"))
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # post_document/2 — a malformed item_uuid is a changeset error, not a crash
+  # ---------------------------------------------------------------------------
+
+  describe "post_document/2 — malformed item_uuid" do
+    test "returns {:error, changeset} and leaves the draft and the stock alone" do
+      cat = create_catalogue!()
+      item = create_active_item!(cat)
+
+      {:ok, draft} =
+        Inventories.create_draft(%{
+          lines: [
+            %{"item_uuid" => item.uuid, "counted_quantity" => "5"},
+            %{"item_uuid" => "not-a-uuid", "counted_quantity" => "2"}
+          ]
+        })
+
+      assert {:error, %Ecto.Changeset{}} = Inventories.post_document(draft, user_uuid())
+
+      assert Inventories.get_document!(draft.uuid).status == "draft"
+      assert Warehouse.stock_map()[item.uuid] == nil
     end
   end
 end

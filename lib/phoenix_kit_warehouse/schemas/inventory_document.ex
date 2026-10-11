@@ -9,12 +9,16 @@ defmodule PhoenixKitWarehouse.InventoryDocument do
   @foreign_key_type Ecto.UUID
 
   @statuses ~w(draft posted)
+  @external_ref_index :phoenix_kit_warehouse_inventory_documents_external_ref_index
 
   # Single shape authority for `PhoenixKitWarehouse.Migrations` — this width
   # coincides with core's V140 baseline shape, which `ExpectedSchema` audits;
   # changing it is a chain version (V2+), never a second hard-coded number in
   # the migration DDL.
   @column_widths %{status: 20}
+
+  # Widths of the columns chain version 2 adds (see `GoodsIssue`).
+  @v2_column_widths %{external_ref: 255}
 
   schema "phoenix_kit_warehouse_inventory_documents" do
     field(:number, :integer, read_after_writes: true)
@@ -26,6 +30,9 @@ defmodule PhoenixKitWarehouse.InventoryDocument do
     field(:location_uuid, Ecto.UUID)
     field(:storage_folder_uuid, Ecto.UUID)
     field(:note, :string)
+    # Number of the document in an outside system; unique among posted,
+    # non-deleted inventory documents (partial unique index, chain version 2).
+    field(:external_ref, :string)
     field(:lines, {:array, :map}, default: [])
     field(:created_by_uuid, Ecto.UUID)
     field(:performed_by_uuid, Ecto.UUID)
@@ -45,11 +52,24 @@ defmodule PhoenixKitWarehouse.InventoryDocument do
   @spec column_widths() :: %{atom() => pos_integer()}
   def column_widths, do: @column_widths
 
+  @doc "Widths of the columns added by chain version 2 (`external_ref`)."
+  @spec v2_column_widths() :: %{atom() => pos_integer()}
+  def v2_column_widths, do: @v2_column_widths
+
   @doc "Changeset for creating/editing draft inventory documents."
   def draft_changeset(doc, attrs) do
     doc
-    |> cast(attrs, [:track_value, :note, :lines, :created_by_uuid, :location_uuid])
+    |> cast(attrs, [
+      :track_value,
+      :note,
+      :lines,
+      :created_by_uuid,
+      :location_uuid,
+      :external_ref
+    ])
     |> validate_inclusion(:status, @statuses)
+    |> update_change(:external_ref, &PhoenixKitWarehouse.PostingSupport.trim_ref/1)
+    |> validate_length(:external_ref, max: @v2_column_widths.external_ref, count: :codepoints)
   end
 
   @doc "Changeset for correcting a posted or draft document (content only — does not change :status)."
@@ -67,6 +87,7 @@ defmodule PhoenixKitWarehouse.InventoryDocument do
       performed_by_uuid: performed_by_uuid,
       lines: audited_lines
     })
+    |> unique_constraint(:external_ref, name: @external_ref_index)
   end
 
   @doc "Changeset for soft-deleting an inventory document."

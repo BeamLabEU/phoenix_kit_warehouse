@@ -21,6 +21,7 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrders
+  alias PhoenixKitWarehouse.PostingSupport
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrders
@@ -113,6 +114,40 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
     |> GoodsReceipt.changeset(attrs)
     |> Ecto.Changeset.put_change(:created_by_uuid, actor_uuid)
     |> repo().insert()
+  end
+
+  @doc """
+  Creates a goods receipt and posts it in ONE transaction. INCREASES
+  warehouse stock.
+
+  `attrs` takes `:location_uuid` (default warehouse when absent), `:lines`
+  (each `%{"item_uuid" => uuid, "received_quantity" => qty}` with optional
+  `"unit_value"`), `:external_ref`, `:note` and `:created_by_uuid` (defaults
+  to `performed_by_uuid`). Atom or string keys.
+
+  Lines are validated before the document row is inserted, so a refused call
+  leaves no draft behind and consumes no document number.
+
+  Returns `{:ok, posted_receipt}`; `{:ok, :already_posted, existing_receipt}`
+  when a posted, non-deleted receipt already carries the same `external_ref`
+  (nothing is written, and the lines are not compared with the existing
+  document's); `{:error, {:duplicate_lines, item_uuids}}`;
+  `{:error, {:invalid_quantity, item_uuids}}` (a negative, missing, blank or
+  unparseable quantity); `{:error, :no_lines | :invalid_lines}`; or
+  `{:error, %Ecto.Changeset{}}`. A line's `"unit_value"` is passed through
+  unchecked, as on the plain post path.
+  """
+  def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
+    PostingSupport.create_and_post(attrs, performed_by_uuid,
+      schema: GoodsReceipt,
+      quantity_key: "received_quantity",
+      changeset: fn attrs, created_by_uuid ->
+        %GoodsReceipt{}
+        |> GoodsReceipt.changeset(attrs)
+        |> Ecto.Changeset.put_change(:created_by_uuid, created_by_uuid)
+      end,
+      post: &apply_stock_and_post(&2, performed_by_uuid, &1)
+    )
   end
 
   @doc """
@@ -415,8 +450,15 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
     end
   end
 
+  # Each line's stock row is written (and so locked) in item order, whatever
+  # the order of the document's lines, so two receipts that carry the same
+  # items in opposite orders cannot deadlock. The audited lines are returned
+  # in the document's own order.
   defp receive_lines(lines, stock_map, location_uuid, repo) do
-    Enum.reduce_while(lines, {:ok, []}, fn line, {:ok, acc} ->
+    lines
+    |> Enum.with_index()
+    |> Enum.sort_by(fn {line, _index} -> String.downcase(line["item_uuid"] || "") end)
+    |> Enum.reduce_while({:ok, []}, fn {line, index}, {:ok, acc} ->
       item_uuid = line["item_uuid"]
       received_qty = StockLedger.to_decimal(line["received_quantity"])
       unit_value = StockLedger.to_decimal_or_nil(line["unit_value"])
@@ -426,11 +468,15 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
       audited_line = Map.put(line, "previous_quantity", previous_quantity)
 
       case maybe_receive(item_uuid, received_qty, unit_value, location_uuid, repo) do
-        :skip -> {:cont, {:ok, acc ++ [audited_line]}}
-        {:ok, _stock} -> {:cont, {:ok, acc ++ [audited_line]}}
+        :skip -> {:cont, {:ok, [{index, audited_line} | acc]}}
+        {:ok, _stock} -> {:cont, {:ok, [{index, audited_line} | acc]}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
+    |> case do
+      {:ok, indexed} -> {:ok, indexed |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp maybe_receive(item_uuid, received_qty, unit_value, location_uuid, repo) do

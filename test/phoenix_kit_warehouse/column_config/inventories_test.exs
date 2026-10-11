@@ -34,6 +34,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig.InventoriesTest do
              "note",
              "posted_at",
              "lines_count",
+             "external_ref",
              "created_by",
              "performed_by"
            ]

@@ -28,7 +28,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
       sort_by: [
         default: "number",
         url_key: "sort",
-        in: ~w(number date status note posted_at lines_count created_by performed_by)
+        in: ~w(number date status note posted_at lines_count external_ref created_by performed_by)
       ],
       sort_dir: [default: :desc, cast: :atom, in: [:asc, :desc], url_key: "dir"]
     ]
@@ -162,6 +162,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
         inserted_at: doc.inserted_at,
         posted_at: doc.posted_at,
         note: doc.note,
+        external_ref: doc.external_ref,
         lines_count: length(doc.lines || [])
       }
     end)
@@ -502,6 +503,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   end
 
   defp render_cell("note", entry), do: emdash(entry.note)
+  defp render_cell("external_ref", entry), do: emdash(entry.external_ref)
   defp render_cell("created_by", entry), do: entry.created_by
   defp render_cell("performed_by", entry), do: entry.performed_by
   defp render_cell(_col, _entry), do: "—"
@@ -526,6 +528,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   defp render_card_value("posted_at", entry), do: fmt_date(entry.posted_at)
   defp render_card_value("lines_count", entry), do: entry.lines_count
   defp render_card_value("note", entry), do: emdash(entry.note)
+  defp render_card_value("external_ref", entry), do: emdash(entry.external_ref)
   defp render_card_value("created_by", entry), do: entry.created_by
   defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"

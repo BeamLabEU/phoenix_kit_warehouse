@@ -5,7 +5,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig.GoodsReceipts do
   Operates on enriched goods-receipt maps of shape:
   `%{uuid, number, status, status_label, supplier_order_uuid, supplier_uuid,
      supplier_name, location_uuid, inserted_at, posted_at, lines_count, note,
-     created_by, performed_by}`.
+     external_ref, created_by, performed_by}`.
   """
 
   use PhoenixKitWarehouse.ColumnConfig, scope: "warehouse_goods_receipts"
@@ -21,6 +21,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig.GoodsReceipts do
       date_column(),
       posted_at_column(),
       note_column(),
+      external_ref_column(),
       created_by_column(),
       performed_by_column()
     ]

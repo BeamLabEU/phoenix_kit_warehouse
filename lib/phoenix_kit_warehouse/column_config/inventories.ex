@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig.Inventories do
 
   Operates on enriched inventory-document maps of shape `%{uuid, number,
   status, status_label, inserted_at, posted_at, note, lines_count,
-  created_by, performed_by}`.
+  external_ref, created_by, performed_by}`.
   """
 
   use PhoenixKitWarehouse.ColumnConfig, scope: "warehouse_inventories"
@@ -17,6 +17,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig.Inventories do
       note_column(default?: true),
       posted_at_column(),
       lines_count_column(default?: false),
+      external_ref_column(),
       created_by_column(),
       performed_by_column()
     ]
