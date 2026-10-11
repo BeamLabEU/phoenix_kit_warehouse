@@ -86,7 +86,7 @@ defmodule PhoenixKitWarehouse.GettextTest do
 
         incomplete =
           for %Expo.Message.Singular{msgid: msgid, msgstr: msgstr, flags: flags} <- messages,
-              IO.iodata_to_binary(msgstr) == "" or ["fuzzy"] in flags,
+              IO.iodata_to_binary(msgstr) == "" or Enum.any?(flags, &("fuzzy" in &1)),
               do: IO.iodata_to_binary(msgid)
 
         assert incomplete == []
