@@ -1941,3 +1941,80 @@ msgstr "— виберіть —"
 #, elixir-autogen, elixir-format
 msgid "Created by"
 msgstr "Автор"
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:98
+#, elixir-autogen, elixir-format
+msgid "Add a location"
+msgstr "Додати розташування"
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex
+#, elixir-autogen, elixir-format
+msgid "Add at least one location of the warehouse type in Locations."
+msgstr "Додайте в розділі «Розташування» принаймні одне розташування типу складу."
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex
+#, elixir-autogen, elixir-format
+msgid "Choose the default warehouse in Warehouse settings."
+msgstr "Виберіть склад за замовчуванням у налаштуваннях складу."
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex
+#, elixir-autogen, elixir-format
+msgid "Create a location type for warehouses in Locations, then choose it in Warehouse settings."
+msgstr "Створіть у розділі «Розташування» тип розташування для складів, а потім виберіть його в налаштуваннях складу."
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:38
+#, elixir-autogen, elixir-format
+msgid "Damage"
+msgstr "Пошкодження"
+
+#: lib/phoenix_kit_warehouse/column_config.ex:219
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:860
+#, elixir-autogen, elixir-format
+msgid "External ref"
+msgstr "Зовнішнє посилання"
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex
+#, elixir-autogen, elixir-format
+msgid "External ref %{ref} is already used by a posted goods issue."
+msgstr "Зовнішнє посилання %{ref} уже використовується проведеною видачею."
+
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex
+#, elixir-autogen, elixir-format
+msgid "Failed to change reason"
+msgstr "Не вдалося змінити причину"
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:95
+#, elixir-autogen, elixir-format
+msgid "Open Locations"
+msgstr "Відкрити розташування"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:39
+#, elixir-autogen, elixir-format
+msgid "Other"
+msgstr "Інше"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:36
+#, elixir-autogen, elixir-format
+msgid "Production"
+msgstr "Виробництво"
+
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:34
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:842
+#, elixir-autogen, elixir-format
+msgid "Reason"
+msgstr "Причина"
+
+#: lib/phoenix_kit_warehouse/goods_issues.ex:37
+#, elixir-autogen, elixir-format
+msgid "Sale"
+msgstr "Продаж"
+
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex
+#, elixir-autogen, elixir-format
+msgid "Set the default warehouse in the warehouse settings first."
+msgstr "Спершу вкажіть склад за замовчуванням у налаштуваннях складу."
+
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex
+#, elixir-autogen, elixir-format
+msgid "Warehouse is not set up yet"
+msgstr "Склад ще не налаштовано"

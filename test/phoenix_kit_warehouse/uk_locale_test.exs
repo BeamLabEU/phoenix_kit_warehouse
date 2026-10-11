@@ -46,6 +46,13 @@ defmodule PhoenixKitWarehouse.UkLocaleTest do
       assert MapSet.difference(uk_ids, pot_ids) == MapSet.new()
     end
 
+    test "translates every msgid of default.pot" do
+      pot_ids = @pot_path |> messages() |> singular_ids() |> MapSet.new()
+      uk_ids = @uk_path |> messages() |> singular_ids() |> MapSet.new()
+
+      assert MapSet.difference(pot_ids, uk_ids) |> Enum.sort() == []
+    end
+
     test "has no empty msgstr and no fuzzy entries" do
       uk_messages = messages(@uk_path)
 

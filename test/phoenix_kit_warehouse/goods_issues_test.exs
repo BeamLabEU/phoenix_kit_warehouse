@@ -546,6 +546,31 @@ defmodule PhoenixKitWarehouse.GoodsIssuesTest do
       assert Decimal.equal?(prev_qty, Decimal.new("15"))
     end
 
+    test "stock is written in item order but the lines keep the document's order" do
+      actor = user_uuid()
+      [low, high] = Enum.sort([Ecto.UUID.generate(), Ecto.UUID.generate()])
+      seed_stock!(low, "7")
+      seed_stock!(high, "9")
+
+      issue =
+        create_draft!(%{
+          lines: [sample_gi_line(high, issued: "2"), sample_gi_line(low, issued: "3")]
+        })
+
+      {:ok, posted} = GoodsIssues.post_goods_issue(issue, actor)
+
+      assert Enum.map(posted.lines, & &1["item_uuid"]) == [high, low]
+
+      assert Enum.map(
+               posted.lines,
+               &Decimal.to_integer(Warehouse.to_decimal(&1["previous_quantity"]))
+             ) ==
+               [9, 7]
+
+      assert Decimal.equal?(Warehouse.get_quantity(low), Decimal.new("4"))
+      assert Decimal.equal?(Warehouse.get_quantity(high), Decimal.new("7"))
+    end
+
     test "previous_quantity is 0 when item had no prior stock and issued=0 (no-op line)" do
       actor = user_uuid()
       item_uuid = Ecto.UUID.generate()

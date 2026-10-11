@@ -15,14 +15,35 @@ defmodule PhoenixKitWarehouse.Web.Components.SetupNotice do
   use Phoenix.Component
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
+  require Logger
+
   import PhoenixKitWeb.Components.Core.Icon, only: [icon: 1]
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitWarehouse.StockLedger
 
-  @doc "Assigns `:setup_status` (see `PhoenixKitWarehouse.StockLedger.setup_status/0`)."
+  @doc """
+  Assigns `:setup_status` (see `PhoenixKitWarehouse.StockLedger.setup_status/0`).
+
+  A banner must never take the page down: when the status cannot be read (the
+  database is unreachable, the Locations tables are not migrated, a setting
+  holds something that is not a UUID) the notice is hidden (`:ready`) and the
+  reason is logged at `:debug`.
+  """
   def assign_setup_status(socket) do
-    assign(socket, :setup_status, StockLedger.setup_status())
+    assign(socket, :setup_status, read_setup_status())
+  end
+
+  defp read_setup_status do
+    StockLedger.setup_status()
+  rescue
+    error ->
+      Logger.debug("Warehouse setup status unavailable: #{Exception.message(error)}")
+      :ready
+  catch
+    :exit, reason ->
+      Logger.debug("Warehouse setup status unavailable: #{inspect(reason)}")
+      :ready
   end
 
   attr(:status, :any, required: true, doc: "`:ready` or `{:needs, step}`")

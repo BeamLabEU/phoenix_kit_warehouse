@@ -500,8 +500,16 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
     end
   end
 
+  # Each line's stock row is decremented (and so locked) in item order,
+  # whatever the order of the document's lines — the order `create_and_post/2`
+  # and goods receipts lock in — so a draft posted from the UI cannot deadlock
+  # with them or with another draft that carries the same items in the opposite
+  # order. The audited lines are returned in the document's own order.
   defp issue_lines(lines, stock_map, location_uuid, repo) do
-    Enum.reduce_while(lines, {:ok, []}, fn line, {:ok, acc} ->
+    lines
+    |> Enum.with_index()
+    |> Enum.sort_by(fn {line, _index} -> String.downcase(line["item_uuid"] || "") end)
+    |> Enum.reduce_while({:ok, []}, fn {line, index}, {:ok, acc} ->
       item_uuid = line["item_uuid"]
       issued_qty = StockLedger.to_decimal(line["issued_quantity"])
 
@@ -510,11 +518,15 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
       audited_line = Map.put(line, "previous_quantity", previous_quantity)
 
       case maybe_issue(item_uuid, issued_qty, location_uuid, repo) do
-        :skip -> {:cont, {:ok, acc ++ [audited_line]}}
-        {:ok, _new_qty} -> {:cont, {:ok, acc ++ [audited_line]}}
+        :skip -> {:cont, {:ok, [{index, audited_line} | acc]}}
+        {:ok, _new_qty} -> {:cont, {:ok, [{index, audited_line} | acc]}}
         {:error, reason} -> {:halt, {:error, reason}}
       end
     end)
+    |> case do
+      {:ok, indexed} -> {:ok, indexed |> Enum.sort_by(&elem(&1, 0)) |> Enum.map(&elem(&1, 1))}
+      {:error, reason} -> {:error, reason}
+    end
   end
 
   defp maybe_issue(item_uuid, issued_qty, location_uuid, repo) do

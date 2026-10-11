@@ -163,6 +163,25 @@ defmodule PhoenixKitWarehouse.Web.SetupNoticeLiveTest do
     end
   end
 
+  describe "unreadable status" do
+    setup %{conn: conn} do
+      PhoenixKitLocations.enable_system()
+      {:ok, conn: login_admin(conn)}
+    end
+
+    test "a setting that is not a UUID hides the notice instead of crashing the page", %{
+      conn: conn
+    } do
+      configure!(:location_type)
+      PhoenixKit.Settings.update_setting("warehouse_location_type_uuid", "not-a-uuid")
+
+      {:ok, lv, _} = live(conn, Routes.path("/admin/warehouse/goods-issues"))
+
+      refute has_element?(lv, @notice)
+      assert has_element?(lv, "#goods-issues-table")
+    end
+  end
+
   describe "other pages" do
     setup %{conn: conn} do
       PhoenixKitLocations.enable_system()
