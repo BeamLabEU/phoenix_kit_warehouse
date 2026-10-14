@@ -26,9 +26,9 @@ defmodule PhoenixKitWarehouse.API.Stock do
   """
   @spec get_stock(map(), map()) :: {:ok, map()} | {:error, atom(), String.t(), map()}
   def get_stock(input, _ctx) do
-    with {:ok, catalogue_uuid} <- Refs.catalogue_scope(input["catalogue_id"], :read),
+    with {:ok, refs} <- refs_list(input["refs"]),
+         {:ok, catalogue_uuid} <- Refs.catalogue_scope(input["catalogue_id"], :read),
          {:ok, location_uuid} <- optional_location(input["location_id"]) do
-      refs = input["refs"] || []
       resolved = Refs.resolve(refs, catalogue_uuid: catalogue_uuid)
       rows = stock_rows(resolved, location_uuid)
       names = location_names()
@@ -42,6 +42,12 @@ defmodule PhoenixKitWarehouse.API.Stock do
     else
       {:error, error} -> fail("The request was refused.", [error])
     end
+  end
+
+  defp refs_list(refs) when is_list(refs), do: {:ok, refs}
+
+  defp refs_list(_other) do
+    {:error, %{path: "refs", code: "validation_failed", message: "refs must be a list."}}
   end
 
   defp optional_location(nil), do: {:ok, nil}

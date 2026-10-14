@@ -171,6 +171,14 @@ defmodule PhoenixKitWarehouse.API.GetStockTest do
              call(%{"refs" => [%{"id" => item.uuid}], "location_id" => Ecto.UUID.generate()}, ctx)
   end
 
+  test "refs that is missing or not a list is a top-level validation_failed", %{ctx: ctx} do
+    for input <- [%{}, %{"refs" => nil}, %{"refs" => "x"}, %{"refs" => %{}}] do
+      assert {:error, :validation_failed, _message,
+              %{errors: [%{path: "refs", code: "validation_failed"}]}} = call(input, ctx),
+             inspect(input)
+    end
+  end
+
   test "reading writes nothing", %{catalogue: catalogue, ctx: ctx} do
     item = item!(catalogue)
     before = Repo.aggregate(PhoenixKitWarehouse.Stock, :count)

@@ -117,15 +117,12 @@ defmodule PhoenixKitWarehouse.API.LinesTest do
     end
   end
 
-  test "an empty list, a non-list and a list with only unusable entries are refused at lines", %{
-    a: a
-  } do
+  test "an empty list and a non-list are refused at lines; an unusable entry at its index" do
     for bad <- [[], nil, "x", %{}, 5] do
       assert {:error, [%{path: "lines", code: "validation_failed"}]} = prep(bad), inspect(bad)
     end
 
-    assert {:error, [_]} = prep([nil])
-    assert a.uuid
+    assert {:error, [%{path: "lines[0]", code: "validation_failed"}]} = prep([nil])
   end
 
   test "a product of an archived catalogue is refused for a write, at its ref", %{
