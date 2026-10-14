@@ -93,15 +93,23 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp run(kind, input, ctx) do
     case posted_by_reference(kind, input) do
-      nil -> run_new(kind, input, ctx)
-      doc -> answer_retry(kind, input, doc)
+      nil ->
+        run_new(kind, input, ctx)
+
+      doc ->
+        if Map.get(ctx, :dry_run?, false),
+          do: preview_retry(kind, input, doc),
+          else: answer_retry(kind, input, doc)
     end
   end
 
   defp run_new(kind, input, ctx) do
     case prepare(kind, input) do
-      {:ok, request} -> execute(request, ctx)
-      {:error, errors} -> refuse_request(errors)
+      {:ok, request} ->
+        if Map.get(ctx, :dry_run?, false), do: preview(request), else: execute(request, ctx)
+
+      {:error, errors} ->
+        refuse_request(errors)
     end
   end
 
@@ -536,6 +544,103 @@ defmodule PhoenixKitWarehouse.API.Write do
           "compared with it (a product no longer resolves, or a line is invalid). Nothing was posted now."
     }
   end
+
+  # --- preview: what a real call would do, with no side effects ----------------
+
+  # A repeated reference: the answer a real call gives, as a preview (reads only).
+  defp preview_retry(kind, input, doc) do
+    {body, effects} = retry_body(kind, input, doc)
+    body = Map.put(body, "status", "would_skip")
+    body = if effects == [], do: body, else: Map.put(body, "effects", effects)
+
+    {:preview, body, fingerprint({kind, doc.uuid})}
+  end
+
+  # Reads the current stock; writes nothing (no draft, no stock row, no
+  # Activity entry, no source ref).
+  defp preview(request) do
+    spec = Map.fetch!(@kinds, request.kind)
+    current = current_quantities(request)
+
+    case shortages(request, current) do
+      [] ->
+        results = preview_results(request, current)
+
+        body = %{
+          "status" => "would_post",
+          "document" => preview_document(request, spec),
+          "results" => results,
+          "summary" => Enum.frequencies_by(results, & &1["action"])
+        }
+
+        {:preview, body,
+         fingerprint({request.kind, request.location_uuid, line_state(request, current)})}
+
+      short ->
+        insufficient(request, short)
+    end
+  end
+
+  defp current_quantities(request) do
+    request.lines
+    |> Enum.map(& &1.item.uuid)
+    |> StockLedger.stock_for_items_at_location(request.location_uuid)
+    |> Map.new(&{&1.item_uuid, &1.quantity})
+  end
+
+  defp from_of(current, line), do: Map.get(current, line.item.uuid, Decimal.new(0))
+
+  defp shortages(%{kind: :issue} = request, current) do
+    Enum.flat_map(request.lines, fn line ->
+      available = from_of(current, line)
+
+      if Decimal.lt?(available, line.quantity),
+        do: [{line.item.uuid, line.quantity, available}],
+        else: []
+    end)
+  end
+
+  defp shortages(_request, _current), do: []
+
+  defp preview_results(request, current) do
+    Enum.map(request.lines, fn line ->
+      from = from_of(current, line)
+      to = project(request.kind, from, line.quantity)
+
+      %{
+        "ref" => line.ref,
+        "action" => if(Decimal.eq?(from, to), do: "unchanged", else: "updated"),
+        "id" => line.item.uuid,
+        "from" => Quantity.format(from),
+        "to" => Quantity.format(to)
+      }
+    end)
+  end
+
+  defp project(:receipt, from, quantity), do: Decimal.add(from, quantity)
+  defp project(:issue, from, quantity), do: Decimal.sub(from, quantity)
+  defp project(:inventory, _from, quantity), do: quantity
+
+  defp preview_document(request, spec) do
+    base = %{
+      "id" => nil,
+      "type" => spec.type,
+      "number" => nil,
+      "external_ref" => request.external_ref,
+      "location_id" => request.location_uuid,
+      "posted_at" => nil
+    }
+
+    if request.kind == :issue, do: Map.put(base, "reason", request.reason), else: base
+  end
+
+  defp line_state(request, current),
+    do: Enum.map(request.lines, &{&1.item.uuid, Quantity.format(from_of(current, &1))})
+
+  # A hash of the current values of what the operation touches: never
+  # `updated_at`, so an unrelated touch of the row does not change it.
+  defp fingerprint(material),
+    do: :crypto.hash(:sha256, :erlang.term_to_binary(material)) |> Base.encode16(case: :lower)
 
   # --- refusals from the posting layer ----------------------------------------
 
