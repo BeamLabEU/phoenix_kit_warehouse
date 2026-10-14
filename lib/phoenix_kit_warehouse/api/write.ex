@@ -457,12 +457,13 @@ defmodule PhoenixKitWarehouse.API.Write do
   end
 
   # The posted, not deleted document with this reference: the posting layer's
-  # own lookup, so there is one definition of "already posted". Outside a
-  # transaction its advisory lock lasts one statement.
-  defp existing(schema, external_ref) do
-    {:ok, document} = PostingSupport.find_posted_by_external_ref(repo(), schema, external_ref)
-    document
-  end
+  # own query, so there is one definition of "already posted". It takes no
+  # lock: this lookup also serves requests that are refused, previews and dry
+  # runs, which must not wait for a posting in flight. A miss falls through to
+  # the locked lookup inside the posting transaction, which answers
+  # `already_posted` for a retry that raced the first call.
+  defp existing(schema, external_ref),
+    do: PostingSupport.posted_by_external_ref(repo(), schema, external_ref)
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
