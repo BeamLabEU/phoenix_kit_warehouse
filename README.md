@@ -132,8 +132,9 @@ How they behave, in short:
   - `source_ref_not_attached`, with two meanings. On the first call of an issue for a
     shop order: the document was posted, but linking it to the order failed; link it
     from the admin UI. On a retry: the document is not linked to the order the retry
-    names. A document posted within the last few seconds that has no order linked yet
-    is not reported, because the first call may still be linking it.
+    names. A document posted within the last 10 seconds (9 to 10 in practice, as the
+    posting time is kept to the second) that has no order linked yet is not
+    reported, because the first call may still be linking it.
 - `issue_stock` takes a required `reason` (`sale`, `damage`, `production`, `other`) and
   may link the write-off to a shop order with `source: {"kind": "shop_order", "id": ...}`
   (needs the E-commerce module, enabled, which registers that source kind). An issue

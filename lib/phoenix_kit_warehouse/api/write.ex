@@ -28,6 +28,13 @@ defmodule PhoenixKitWarehouse.API.Write do
   A retry that raced past the lookup is answered by the posting layer and gets
   the same comparison.
 
+  An issue for a shop order links the order after its posting committed, so a
+  retry can read the document before the link. For `@link_grace_seconds` (10)
+  after the posting, a document with no shop order linked yet is not reported as
+  unlinked: a retry inside that window is not told that the order link is
+  missing (the window is effectively 9 to 10 seconds, as `posted_at` is kept to
+  the second). After it, `source_ref_not_attached` is reported.
+
   Handlers are called as `f.(input, ctx)` with a string-keyed `input` already
   validated against the closed schema of the tool.
   """
