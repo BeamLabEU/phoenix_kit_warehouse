@@ -5,6 +5,7 @@ defmodule PhoenixKitWarehouse.API.ActivityLogPostedTest do
   """
   use PhoenixKitWarehouse.DataCase, async: false
 
+  import ExUnit.CaptureLog
   import PhoenixKitWarehouse.Test.ApiFixtures
 
   alias PhoenixKit.Activity.Entry
@@ -52,7 +53,7 @@ defmodule PhoenixKitWarehouse.API.ActivityLogPostedTest do
            }
   end
 
-  test "a goods issue entry carries the reason" do
+  test "a goods issue entry carries the reason and the reference" do
     user = user!()
     item = Ecto.UUID.generate()
     seed!(item, "5", @location)
@@ -62,6 +63,7 @@ defmodule PhoenixKitWarehouse.API.ActivityLogPostedTest do
         %{
           location_uuid: @location,
           reason: "damage",
+          external_ref: "ISS-1",
           lines: [%{"item_uuid" => item, "issued_quantity" => "1"}]
         },
         user.uuid
@@ -71,6 +73,7 @@ defmodule PhoenixKitWarehouse.API.ActivityLogPostedTest do
 
     assert %Entry{metadata: metadata} = entry("warehouse.goods_issue.posted", issue.uuid)
     assert metadata["reason"] == "damage"
+    assert metadata["external_ref"] == "ISS-1"
     assert metadata["number"] == to_string(issue.number)
   end
 
@@ -161,13 +164,32 @@ defmodule PhoenixKitWarehouse.API.ActivityLogPostedTest do
       assert Repo.get!(GoodsReceipt, receipt.uuid).status == "posted"
     end
 
-    test "an entry that cannot be written is swallowed and the document stays posted" do
+    test "an entry that core cannot write is swallowed and the document stays posted" do
       receipt = posted_receipt()
 
       # A pid cannot be encoded as JSON: the insert fails on the client side,
       # before any statement reaches the database (the sandbox transaction
-      # stays usable).
-      assert :ok = ActivityLog.log_posted(receipt, metadata: %{"pid" => self()})
+      # stays usable). It is core's `Activity.log/1` that catches this.
+      capture_log(fn ->
+        assert :ok = ActivityLog.log_posted(receipt, metadata: %{"pid" => self()})
+      end)
+
+      assert Repo.get!(GoodsReceipt, receipt.uuid).status == "posted"
+    end
+
+    test "an error in the module itself is swallowed, and only its kind is logged" do
+      receipt = posted_receipt()
+
+      # A metadata that is not a map raises in `do_log/2`, before core is
+      # called: this is the module's own rescue. Its message quotes the value.
+      log =
+        capture_log(fn ->
+          assert :ok = ActivityLog.log_posted(receipt, metadata: "SECRET-REQUEST-VALUE")
+        end)
+
+      assert log =~ "[Warehouse.ActivityLog] log error: BadMapError"
+      refute log =~ "SECRET-REQUEST-VALUE"
+      assert entry("warehouse.goods_receipt.posted", receipt.uuid) == nil
       assert Repo.get!(GoodsReceipt, receipt.uuid).status == "posted"
     end
   end

@@ -175,7 +175,9 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     end
   rescue
     e ->
-      Logger.warning("[Warehouse.ActivityLog] log error: #{Exception.message(e)}")
+      # Only the kind of the exception: its message can quote the metadata, which
+      # carries values of an API request.
+      Logger.warning("[Warehouse.ActivityLog] log error: #{inspect(e.__struct__)}")
       :ok
   end
 
