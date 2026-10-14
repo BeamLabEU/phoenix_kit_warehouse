@@ -446,6 +446,31 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, input, ctx)
     end
 
+    test "another catalogue that is stated is reported; the same one is not", %{a: a, ctx: ctx} do
+      {input, _id} = posted_receipt(a, ctx, "RB-RACE-4C")
+
+      same = Map.put(input, "catalogue_id", a.catalogue_uuid)
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, same, ctx)
+
+      # The lines are read within the stated catalogue, so they name a product of
+      # it; they differ from the posted ones too.
+      other_catalogue = catalogue!()
+      other_item = item!(other_catalogue)
+
+      other =
+        input
+        |> Map.put("catalogue_id", other_catalogue.uuid)
+        |> Map.put("lines", [line(other_item, "5")])
+
+      result = Write.run_new(:receipt, other, ctx)
+      assert "external_ref_basis_differs" in codes(result)
+
+      assert %{"message" => message} =
+               Enum.find(effects(result), &(&1["code"] == "external_ref_basis_differs"))
+
+      assert message =~ "catalogue_id"
+    end
+
     test "another reason is reported", %{first: first, a: a, ctx: ctx} do
       seed!(a.uuid, "10", first.uuid)
       input = %{"external_ref" => "RB-RACE-5", "reason" => "sale", "lines" => [line(a, "2")]}

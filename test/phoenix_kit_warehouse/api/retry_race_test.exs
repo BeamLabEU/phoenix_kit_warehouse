@@ -34,6 +34,9 @@ defmodule PhoenixKitWarehouse.API.RetryRaceTest do
 
   defp unboxed(fun), do: Sandbox.unboxed_run(Repo, fun)
 
+  # The calls run on separate unboxed connections, outside the test's sandbox
+  # transaction, so the fixtures and the documents are really committed. The
+  # `on_exit` below removes everything this test created.
   setup do
     order = Ecto.UUID.generate()
     refs = Enum.map(@delays, &"RACE-#{System.unique_integer([:positive])}-#{&1}")

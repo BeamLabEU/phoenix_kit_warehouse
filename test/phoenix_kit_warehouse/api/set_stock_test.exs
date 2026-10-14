@@ -167,7 +167,7 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
     a: a,
     ctx: ctx
   } do
-    body = set!(%{"lines" => [line(a, "1")]}, ctx)
+    body = set!(%{"external_ref" => "ACT-1", "lines" => [line(a, "1")]}, ctx)
 
     entry =
       Repo.one!(
@@ -182,6 +182,7 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
              "via" => "api",
              "tool" => "warehouse.set_stock",
              "lines" => 1,
+             "external_ref" => "ACT-1",
              "location_uuid" => location_uuid
            } = entry.metadata
 
