@@ -160,6 +160,25 @@ defmodule PhoenixKitWarehouse.API.GetStockTest do
              call(input, ctx)
   end
 
+  if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
+       function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
+    test "an ambiguous sku is a row error with its candidates; the other rows are answered", %{
+      catalogue: catalogue,
+      ctx: ctx
+    } do
+      one = item!(catalogue, %{sku: "TWIN-STOCK"})
+      two = item!(catalogue, %{sku: "TWIN-STOCK"})
+      good = item!(catalogue)
+
+      assert {:ok, %{"results" => [ambiguous, found]}} =
+               call(%{"refs" => [%{"sku" => "TWIN-STOCK"}, %{"id" => good.uuid}]}, ctx)
+
+      assert %{"error" => %{"code" => "ambiguous_ref", "candidates" => candidates}} = ambiguous
+      assert Enum.sort(candidates) == Enum.sort([one.uuid, two.uuid])
+      assert found["id"] == good.uuid
+    end
+  end
+
   test "a location_id that is not a warehouse is a top-level validation_failed", %{
     catalogue: catalogue,
     ctx: ctx

@@ -143,4 +143,66 @@ defmodule PhoenixKitWarehouse.API.LinesTest do
 
     assert {:error, [%{path: "lines[12]", first_line: 0}]} = prep(lines)
   end
+
+  describe "the order of the errors" do
+    test "a duplicate of an earlier line comes before the error of a later line", %{a: a} do
+      # The duplicates are found after the errors of the lines, and must be
+      # put back in line order.
+      lines = [line(a, "1"), line(a, "1"), %{"ref" => %{"id" => Ecto.UUID.generate()}}]
+
+      assert {:error, errors} = prep(lines)
+
+      assert Enum.map(errors, & &1.path) ==
+               ["lines[1]", "lines[2].ref", "lines[2].quantity"]
+    end
+
+    test "lines[2] comes before lines[10], and the errors of one line keep their order", %{
+      catalogue: catalogue,
+      a: a
+    } do
+      others = for _ <- 1..8, do: item!(catalogue)
+
+      lines =
+        [line(a, "1"), line(hd(others), "1"), %{"ref" => %{"id" => Ecto.UUID.generate()}}] ++
+          Enum.map(tl(others), &line(&1, "1")) ++
+          [line(a, "x")]
+
+      assert length(lines) == 11
+      assert {:error, errors} = prep(lines)
+
+      assert Enum.map(errors, & &1.path) ==
+               ["lines[2].ref", "lines[2].quantity", "lines[10].quantity", "lines[10]"]
+    end
+  end
+
+  describe "refs that need the catalogue's resolver" do
+    if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
+         function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
+      test "the same product as an id and as a sku is a duplicate_line", %{
+        catalogue: catalogue,
+        a: a
+      } do
+        lines = [
+          %{"ref" => %{"id" => a.uuid}, "quantity" => "1"},
+          %{"ref" => %{"sku" => a.sku}, "quantity" => "1"}
+        ]
+
+        assert {:error, [error]} = prep(lines, catalogue_uuid: catalogue.uuid)
+        assert %{path: "lines[1]", code: "duplicate_line", first_line: 0} = error
+      end
+
+      test "an ambiguous ref carries its candidates on the line's ref", %{catalogue: catalogue} do
+        first = item!(catalogue, %{sku: "TWIN-LINES"})
+        second = item!(catalogue, %{sku: "TWIN-LINES"})
+
+        assert {:error, [error]} =
+                 prep([%{"ref" => %{"sku" => "TWIN-LINES"}, "quantity" => "1"}],
+                   catalogue_uuid: catalogue.uuid
+                 )
+
+        assert %{path: "lines[0].ref", code: "ambiguous_ref", candidates: candidates} = error
+        assert Enum.sort(candidates) == Enum.sort([first.uuid, second.uuid])
+      end
+    end
+  end
 end
