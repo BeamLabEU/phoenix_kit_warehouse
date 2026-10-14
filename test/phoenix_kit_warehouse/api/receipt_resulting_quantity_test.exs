@@ -51,15 +51,23 @@ defmodule PhoenixKitWarehouse.API.ReceiptResultingQuantityTest do
   end
 
   test "lines keep the document's own order and each has its own resulting quantity" do
-    [a, b] = [Ecto.UUID.generate(), Ecto.UUID.generate()]
+    # The lines are posted in the order of their item UUIDs, and the
+    # accumulated result is the reverse of that: three items whose document
+    # order is neither the sorted order nor its reverse.
+    low = "00000000-0000-4000-8000-000000000001"
+    mid = "88888888-0000-4000-8000-000000000002"
+    high = "ffffffff-0000-4000-8000-000000000003"
 
     lines =
       post!([
-        %{"item_uuid" => b, "received_quantity" => "1"},
-        %{"item_uuid" => a, "received_quantity" => "2"}
+        %{"item_uuid" => mid, "received_quantity" => "1"},
+        %{"item_uuid" => high, "received_quantity" => "2"},
+        %{"item_uuid" => low, "received_quantity" => "3"}
       ]).lines
 
-    assert Enum.map(lines, & &1["item_uuid"]) == [b, a]
-    assert Enum.map(lines, &StockLedger.format_quantity(&1["resulting_quantity"])) == ["1", "2"]
+    assert Enum.map(lines, & &1["item_uuid"]) == [mid, high, low]
+
+    assert Enum.map(lines, &StockLedger.format_quantity(&1["resulting_quantity"])) ==
+             ["1", "2", "3"]
   end
 end

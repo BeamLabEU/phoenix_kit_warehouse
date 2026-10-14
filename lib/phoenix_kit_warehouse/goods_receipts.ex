@@ -405,7 +405,9 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
     - Captures `previous_quantity` = current on-hand for audit.
     - Calls `StockLedger.receive_quantity/3` (additive stock delta).
   - Lines with received_quantity == 0 contribute no stock change.
-  - Merges `previous_quantity` into the persisted lines (audit trail).
+  - Merges `previous_quantity` into the persisted lines (audit trail), and
+    `resulting_quantity` (the quantity the atomic add returned) into the lines
+    that moved stock.
   - Flips status → "posted", sets posted_at and performed_by_uuid.
 
   Returns `{:error, :not_draft}` for non-draft receipts.
