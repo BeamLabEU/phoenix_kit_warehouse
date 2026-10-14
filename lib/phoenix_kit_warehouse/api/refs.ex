@@ -158,7 +158,7 @@ defmodule PhoenixKitWarehouse.API.Refs do
   end
 
   defp fallback_scope(id, mode) when is_binary(id) do
-    with {:ok, uuid} <- Ecto.UUID.cast(id),
+    with {:ok, uuid} <- cast_uuid(id),
          %{} = catalogue <- Catalogue.get_catalogue(uuid) do
       fallback_check(catalogue, mode)
     else
@@ -183,6 +183,14 @@ defmodule PhoenixKitWarehouse.API.Refs do
   defp scope_error(message),
     do: %{path: "catalogue_id", code: "validation_failed", message: message}
 
+  @doc false
+  # `Ecto.UUID.cast/1` takes any 16-byte binary as a raw UUID, so a 16-character
+  # string would turn into an unrelated UUID. Only the 36-character text form
+  # (any letter case) is an id.
+  @spec cast_uuid(term()) :: {:ok, String.t()} | :error
+  def cast_uuid(id) when is_binary(id) and byte_size(id) == 36, do: Ecto.UUID.cast(id)
+  def cast_uuid(_other), do: :error
+
   @doc "A row error as JSON-ready data: `code`, `message`, and `candidates` when present."
   @spec error_json(row_error()) :: map()
   def error_json(%{code: code, message: message} = error) do
@@ -199,7 +207,7 @@ defmodule PhoenixKitWarehouse.API.Refs do
   defp parse(%{} = ref) when not is_struct(ref) do
     case Map.to_list(ref) do
       [{"id", id}] when is_binary(id) ->
-        case Ecto.UUID.cast(id) do
+        case cast_uuid(id) do
           {:ok, uuid} -> {:ok, {:id, uuid}}
           :error -> invalid("id must be a UUID.")
         end

@@ -113,6 +113,13 @@ defmodule PhoenixKitWarehouse.API.WarehousesTest do
       end
     end
 
+    test "a 16-character value is malformed, not read as a raw UUID" do
+      assert {:error, %{path: "location_id", code: "validation_failed", message: message}} =
+               Warehouses.resolve("0123456789abcdef", :write)
+
+      assert message =~ "must be a UUID"
+    end
+
     test "an inactive warehouse can be read but not written", %{second: second} do
       {:ok, _} = Locations.update_location(second, %{status: "inactive"})
 

@@ -9,6 +9,7 @@ defmodule PhoenixKitWarehouse.API.Warehouses do
   `active` warehouses; it can be read from any.
   """
 
+  alias PhoenixKitWarehouse.API.Refs
   alias PhoenixKitWarehouse.StockLedger
 
   @default_setting "warehouse_default_location_uuid"
@@ -76,7 +77,7 @@ defmodule PhoenixKitWarehouse.API.Warehouses do
   end
 
   defp wanted(id) when is_binary(id) do
-    case Ecto.UUID.cast(id) do
+    case Refs.cast_uuid(id) do
       {:ok, uuid} -> {:ok, uuid}
       :error -> {:error, error("location_id must be a UUID.")}
     end

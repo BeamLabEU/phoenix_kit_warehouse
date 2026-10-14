@@ -89,6 +89,8 @@ defmodule PhoenixKitWarehouse.API.RefsTest do
     test "each is a validation_failed row error, none raises" do
       bad = [
         %{"id" => "nope"},
+        # 16 bytes: `Ecto.UUID.cast/1` alone would take it as a raw UUID
+        %{"id" => "0123456789abcdef"},
         %{"id" => 5},
         %{},
         %{"id" => Ecto.UUID.generate(), "sku" => "X"},
@@ -188,6 +190,51 @@ defmodule PhoenixKitWarehouse.API.RefsTest do
         assert [{:error, %{code: "not_found"}}] =
                  Refs.resolve([%{"sku" => item.sku}], catalogue_uuid: other.uuid)
       end
+
+      test "a sku or external_id of an item in a deleted catalogue is not found, read or write",
+           %{catalogue: catalogue} do
+        item = item!(catalogue, %{data: %{"api" => %{"external_id" => "EXT-DEL"}}})
+        set_catalogue_status!(catalogue, "deleted")
+
+        for write <- [false, true],
+            ref <- [%{"sku" => item.sku}, %{"external_id" => "EXT-DEL"}] do
+          assert [{:error, %{code: "not_found"}}] = Refs.resolve([ref], write: write),
+                 inspect({ref, write})
+        end
+      end
+
+      test "a sku or external_id of an item in an archived catalogue is read, not written",
+           %{catalogue: catalogue} do
+        item = item!(catalogue, %{data: %{"api" => %{"external_id" => "EXT-ARC"}}})
+        set_catalogue_status!(catalogue, "archived")
+
+        for ref <- [%{"sku" => item.sku}, %{"external_id" => "EXT-ARC"}] do
+          assert [{:ok, %{uuid: uuid}}] = Refs.resolve([ref]), inspect(ref)
+          assert uuid == item.uuid
+
+          assert [{:error, %{code: "not_found", message: message}}] =
+                   Refs.resolve([ref], write: true),
+                 inspect(ref)
+
+          assert message =~ "archived"
+        end
+      end
+
+      test "a trashed item found by sku is not found", %{catalogue: catalogue} do
+        item = item!(catalogue, %{data: %{"api" => %{"external_id" => "EXT-TRASH"}}})
+        {:ok, _} = Catalogue.trash_item(item)
+
+        for ref <- [%{"sku" => item.sku}, %{"external_id" => "EXT-TRASH"}] do
+          assert [{:error, %{code: "not_found"}}] = Refs.resolve([ref]), inspect(ref)
+        end
+      end
+
+      test "a NUL byte in a sku or external_id is a row error, not a crash" do
+        for ref <- [%{"sku" => "A" <> <<0>> <> "B"}, %{"external_id" => "A" <> <<0>> <> "B"}] do
+          assert [{:error, %{code: code}}] = Refs.resolve([ref]), inspect(ref)
+          assert code in ["not_found", "validation_failed"]
+        end
+      end
     else
       test "answer a row error that says the catalogue lacks the resolver", %{item: item} do
         assert [{:error, %{code: "validation_failed", message: message}}] =
@@ -248,7 +295,7 @@ defmodule PhoenixKitWarehouse.API.RefsTest do
     end
 
     test "an unknown, malformed or non-string value is a validation_failed at catalogue_id" do
-      for bad <- [Ecto.UUID.generate(), "nope", 5, %{}] do
+      for bad <- [Ecto.UUID.generate(), "nope", "0123456789abcdef", 5, %{}] do
         assert {:error, %{path: "catalogue_id", code: "validation_failed", message: message}} =
                  Refs.catalogue_scope(bad)
 
