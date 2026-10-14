@@ -47,4 +47,21 @@ defmodule PhoenixKitWarehouse.API.StoredLinesRenderTest do
     assert html =~ item.name
     assert html =~ item.sku
   end
+
+  test "a posted goods issue shows each line's name and sku", %{
+    conn: conn,
+    admin: admin,
+    first: first,
+    item: item
+  } do
+    seed!(item.uuid, "5", first.uuid)
+
+    assert {:ok, %{"document" => %{"id" => id}}} =
+             Write.issue_stock(%{"reason" => "sale", "lines" => [line(item, "2")]}, ctx(admin))
+
+    {:ok, _view, html} = live(conn, Routes.path("/admin/warehouse/goods-issues/#{id}/lines"))
+
+    assert html =~ item.name
+    assert html =~ item.sku
+  end
 end

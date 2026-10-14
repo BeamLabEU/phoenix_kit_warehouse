@@ -35,6 +35,8 @@ defmodule PhoenixKitWarehouse.API.Write do
   alias PhoenixKitWarehouse.API.Refs
   alias PhoenixKitWarehouse.API.Source
   alias PhoenixKitWarehouse.API.Warehouses
+  alias PhoenixKitWarehouse.GoodsIssue
+  alias PhoenixKitWarehouse.GoodsIssues
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.GoodsReceipts
   alias PhoenixKitWarehouse.Inventories
@@ -56,6 +58,12 @@ defmodule PhoenixKitWarehouse.API.Write do
       schema: InventoryDocument,
       minimum: :zero,
       unit_value: false
+    },
+    issue: %{
+      type: "goods_issue",
+      schema: GoodsIssue,
+      minimum: :positive,
+      unit_value: false
     }
   }
 
@@ -74,6 +82,14 @@ defmodule PhoenixKitWarehouse.API.Write do
   """
   @spec set_stock(map(), map()) :: result()
   def set_stock(input, ctx), do: run(:inventory, input, ctx)
+
+  @doc """
+  `warehouse.issue_stock`: a goods issue (write-off) with many lines. All
+  lines are checked against stock under row locks; every short line is
+  reported in one `insufficient_stock` answer and nothing is posted.
+  """
+  @spec issue_stock(map(), map()) :: result()
+  def issue_stock(input, ctx), do: run(:issue, input, ctx)
 
   defp run(kind, input, ctx) do
     case posted_by_reference(kind, input) do
@@ -177,6 +193,19 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp note_error(message), do: %{path: "note", code: "validation_failed", message: message}
 
+  defp reason(:issue, value) do
+    if value in GoodsIssue.reasons() do
+      {:ok, value}
+    else
+      {:error,
+       %{
+         path: "reason",
+         code: "validation_failed",
+         message: "reason must be one of: #{Enum.join(GoodsIssue.reasons(), ", ")}."
+       }}
+    end
+  end
+
   defp reason(_kind, _value), do: {:ok, nil}
 
   # --- execute: post, then shape the answer -----------------------------------
@@ -197,13 +226,18 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp post(%{kind: :inventory} = request, user_uuid),
     do: Inventories.create_and_post(attrs(request), user_uuid)
 
+  defp post(%{kind: :issue} = request, user_uuid),
+    do: GoodsIssues.create_and_post(attrs(request), user_uuid)
+
   defp attrs(request) do
-    %{
+    base = %{
       location_uuid: request.location_uuid,
       lines: Enum.map(request.lines, &line_attrs(request.kind, &1)),
       external_ref: request.external_ref,
       note: request.note
     }
+
+    if request.kind == :issue, do: Map.put(base, :reason, request.reason), else: base
   end
 
   # What the Warehouse pages print for a line (name, SKU, unit) and the
@@ -237,6 +271,13 @@ defmodule PhoenixKitWarehouse.API.Write do
     })
   end
 
+  defp line_attrs(:issue, line) do
+    Map.merge(identity(line), %{
+      "item_uuid" => line.item.uuid,
+      "issued_quantity" => Quantity.to_param(line.quantity)
+    })
+  end
+
   defp finish(status, doc, request, ctx) do
     {doc, effects} = after_post(status, request, doc)
     if status == :posted, do: Audit.posted(request, doc, ctx)
@@ -266,6 +307,30 @@ defmodule PhoenixKitWarehouse.API.Write do
     {doc, reference_effects(doc, request.kind, {:ok, requested})}
   end
 
+  # A shop-order basis is attached with `GoodsIssues.add_source_ref/3`, which
+  # stores `%{"type" => "shop_order", "uuid" => id}` (the key is "type", never
+  # "kind"). It is a second write: if it fails the document is already posted
+  # and immutable, so the call still succeeds and carries an effect.
+  defp after_post(:posted, %{kind: :issue, order_uuid: order_uuid}, doc)
+       when is_binary(order_uuid) do
+    case GoodsIssues.add_source_ref(doc, "shop_order", order_uuid) do
+      {:ok, updated} ->
+        {updated, []}
+
+      {:error, reason} ->
+        Logger.warning("[PhoenixKitWarehouse.API] could not link order: #{reason_kind(reason)}")
+
+        {doc,
+         [
+           %{
+             "code" => "source_ref_not_attached",
+             "message" =>
+               "The goods issue was posted, but linking it to the order failed. Link it from the admin UI."
+           }
+         ]}
+    end
+  end
+
   defp after_post(_status, _request, doc), do: {doc, []}
 
   defp document(kind, doc) do
@@ -279,7 +344,11 @@ defmodule PhoenixKitWarehouse.API.Write do
       "location_id" => doc.location_uuid,
       "posted_at" => iso(doc.posted_at)
     }
+    |> put_reason(doc)
   end
+
+  defp put_reason(document, %GoodsIssue{reason: reason}), do: Map.put(document, "reason", reason)
+  defp put_reason(document, _doc), do: document
 
   defp iso(nil), do: nil
   defp iso(%DateTime{} = at), do: DateTime.to_iso8601(at)
@@ -322,6 +391,14 @@ defmodule PhoenixKitWarehouse.API.Write do
         to = StockLedger.to_decimal(resulting)
         {Decimal.sub(to, line.quantity), to}
     end
+  end
+
+  # The stock rows were locked by the shortage check (`GoodsIssues.check_stock/3`)
+  # before `previous_quantity` was read, so `from` is exact.
+  defp change(:issue, line, doc) do
+    audited = audited_line(doc, line)
+    from = StockLedger.to_decimal(audited["previous_quantity"])
+    {from, Decimal.sub(from, line.quantity)}
   end
 
   defp change(:inventory, line, doc) do
@@ -462,6 +539,21 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   # --- refusals from the posting layer ----------------------------------------
 
+  defp refuse({:insufficient_stock, short}, request) when is_list(short) do
+    insufficient(request, Enum.map(short, &{&1.item_uuid, &1.requested, &1.available}))
+  end
+
+  defp refuse({:insufficient_stock, item_uuid}, request) when is_binary(item_uuid) do
+    requested =
+      case Enum.find(request.lines, &(&1.item.uuid == item_uuid)) do
+        nil -> Decimal.new(0)
+        line -> line.quantity
+      end
+
+    available = StockLedger.get_quantity(item_uuid, request.location_uuid)
+    insufficient(request, [{item_uuid, requested, available}])
+  end
+
   defp refuse({:duplicate_lines, uuids}, request),
     do: refuse_lines("duplicate_line", "This product is on more than one line.", uuids, request)
 
@@ -490,6 +582,29 @@ defmodule PhoenixKitWarehouse.API.Write do
        do: Atom.to_string(elem(reason, 0))
 
   defp reason_kind(_reason), do: "unexpected reason"
+
+  # `short` is a list of `{item_uuid, requested, available}`. The answer lists
+  # every short line with the caller's own ref.
+  defp insufficient(request, short) do
+    lines =
+      Enum.map(short, fn {item_uuid, requested, available} ->
+        line = Enum.find(request.lines, &(&1.item.uuid == item_uuid))
+
+        %{
+          product: item_uuid,
+          ref: line && line.ref,
+          sku: line && line.item.sku,
+          requested: Quantity.format(requested),
+          available: Quantity.format(available)
+        }
+      end)
+
+    fail(
+      :insufficient_stock,
+      "Nothing was posted: #{length(lines)} line(s) exceed the stock on hand.",
+      %{lines: lines, posted: false}
+    )
+  end
 
   defp refuse_lines(code, message, uuids, request) do
     errors =
