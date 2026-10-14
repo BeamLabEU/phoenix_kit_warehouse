@@ -37,6 +37,8 @@ defmodule PhoenixKitWarehouse.API.Write do
   alias PhoenixKitWarehouse.API.Warehouses
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.GoodsReceipts
+  alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.PostingSupport
   alias PhoenixKitWarehouse.StockLedger
 
@@ -48,6 +50,12 @@ defmodule PhoenixKitWarehouse.API.Write do
       schema: GoodsReceipt,
       minimum: :positive,
       unit_value: true
+    },
+    inventory: %{
+      type: "inventory",
+      schema: InventoryDocument,
+      minimum: :zero,
+      unit_value: false
     }
   }
 
@@ -59,6 +67,13 @@ defmodule PhoenixKitWarehouse.API.Write do
   @doc "`warehouse.receive_stock`: a goods receipt with many lines."
   @spec receive_stock(map(), map()) :: result()
   def receive_stock(input, ctx), do: run(:receipt, input, ctx)
+
+  @doc """
+  `warehouse.set_stock`: a stocktake document that sets the listed items to
+  absolute quantities (zero allowed); other stock rows are untouched.
+  """
+  @spec set_stock(map(), map()) :: result()
+  def set_stock(input, ctx), do: run(:inventory, input, ctx)
 
   defp run(kind, input, ctx) do
     case posted_by_reference(kind, input) do
@@ -179,6 +194,9 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp post(%{kind: :receipt} = request, user_uuid),
     do: GoodsReceipts.create_and_post(attrs(request), user_uuid)
 
+  defp post(%{kind: :inventory} = request, user_uuid),
+    do: Inventories.create_and_post(attrs(request), user_uuid)
+
   defp attrs(request) do
     %{
       location_uuid: request.location_uuid,
@@ -210,6 +228,13 @@ defmodule PhoenixKitWarehouse.API.Write do
     if line.unit_value,
       do: Map.put(base, "unit_value", Quantity.to_param(line.unit_value)),
       else: base
+  end
+
+  defp line_attrs(:inventory, line) do
+    Map.merge(identity(line), %{
+      "item_uuid" => line.item.uuid,
+      "counted_quantity" => Quantity.to_param(line.quantity)
+    })
   end
 
   defp finish(status, doc, request, ctx) do
@@ -297,6 +322,13 @@ defmodule PhoenixKitWarehouse.API.Write do
         to = StockLedger.to_decimal(resulting)
         {Decimal.sub(to, line.quantity), to}
     end
+  end
+
+  defp change(:inventory, line, doc) do
+    # The prior quantity of an inventory line is read under a row lock inside
+    # the posting transaction (`Inventories.locked_prior_stock/3`): exact.
+    audited = audited_line(doc, line)
+    {StockLedger.to_decimal(audited["previous_quantity"]), line.quantity}
   end
 
   defp audited_line(doc, line),
