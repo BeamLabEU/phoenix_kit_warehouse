@@ -11,6 +11,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
   alias PhoenixKitWarehouse.API.Write
   alias PhoenixKitWarehouse.GoodsIssue
+  alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.Test.ApiOrders, as: Orders
 
   setup do
@@ -42,6 +43,13 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
   defp body({:ok, body}), do: body
   defp body({:ok, body, _effects}), do: body
   defp body({:preview, body, _fingerprint}), do: body
+
+  # A document posted long enough ago for its first call to have finished.
+  defp age!(id) do
+    at = DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
+    {1, _} = Repo.update_all(from(i in GoodsIssue, where: i.uuid == ^id), set: [posted_at: at])
+    :ok
+  end
 
   defp register_orders(uuid) do
     Orders.put(uuid, "Order #1001")
@@ -142,8 +150,30 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       result = Write.receive_stock(Map.put(input, "catalogue_id", other.uuid), ctx)
       assert "external_ref_basis_differs" in codes(result)
 
-      result = Write.receive_stock(Map.put(input, "catalogue_id", Ecto.UUID.generate()), ctx)
-      assert "external_ref_basis_differs" in codes(result)
+      for garbage <- [Ecto.UUID.generate(), "not-a-uuid", "0123456789abcdef", 5] do
+        result = Write.receive_stock(Map.put(input, "catalogue_id", garbage), ctx)
+        assert "external_ref_basis_differs" in codes(result), inspect(garbage)
+      end
+    end
+
+    test "a catalogue that was archived or deleted since the first call is still the same one",
+         %{catalogue: catalogue, a: a, ctx: ctx} do
+      input = %{
+        "external_ref" => "RB-CAT-2",
+        "catalogue_id" => catalogue.uuid,
+        "lines" => [line(a, "5")]
+      }
+
+      assert {:ok, %{"status" => "posted"}} = Write.receive_stock(input, ctx)
+
+      for status <- ["archived", "deleted"],
+          id <- [catalogue.uuid, String.upcase(catalogue.uuid)] do
+        set_catalogue_status!(catalogue, status)
+        result = Write.receive_stock(Map.put(input, "catalogue_id", id), ctx)
+
+        assert {:ok, %{"status" => "skipped"}, _effects} = result
+        refute "external_ref_basis_differs" in codes(result), "#{status} #{id}"
+      end
     end
   end
 
@@ -192,6 +222,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       order: order
     } do
       {input, id} = crashed_issue(a, ctx)
+      age!(id)
       retry = Map.put(input, "source", %{"kind" => "shop_order", "id" => order})
 
       result = Write.issue_stock(retry, ctx)
@@ -199,6 +230,24 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert {:ok, %{"status" => "skipped"}, [effect]} = result
       assert effect["code"] == "source_ref_not_attached"
       assert Repo.get!(GoodsIssue, id).source_refs == []
+    end
+
+    test "a retry right behind the first call, before it linked the order, is not told the link is missing",
+         %{a: a, ctx: ctx, dry: dry, order: order} do
+      # The first call links the order after its posting committed; a retry
+      # that reads the document in between sees no link yet.
+      {input, id} = crashed_issue(a, ctx)
+      retry = Map.put(input, "source", %{"kind" => "shop_order", "id" => order})
+
+      assert {:ok, %{"status" => "skipped"}} = Write.issue_stock(retry, ctx)
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:issue, retry, ctx)
+      assert codes(Write.issue_stock(retry, dry)) == []
+      assert Repo.get!(GoodsIssue, id).source_refs == []
+
+      age!(id)
+      assert codes(Write.issue_stock(retry, ctx)) == ["source_ref_not_attached"]
+      assert codes(Write.run_new(:issue, retry, ctx)) == ["source_ref_not_attached"]
+      assert codes(Write.issue_stock(retry, dry)) == ["source_ref_not_attached"]
     end
 
     test "a retry that names another order than the linked one says so", %{
@@ -279,6 +328,94 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
         assert {:error, :validation_failed, _message, %{errors: [%{path: ^path}], posted: false}} =
                  Write.issue_stock(input, ctx)
       end
+    end
+  end
+
+  describe "a retry that raced past the early lookup" do
+    # `Write.run_new/3` skips the early lookup, so the posting layer is the
+    # one that answers `already_posted`: what a retry racing the first call
+    # gets.
+    defp activity_entries(id),
+      do:
+        Repo.aggregate(
+          from(e in PhoenixKit.Activity.Entry, where: e.resource_uuid == ^id),
+          :count
+        )
+
+    defp posted_receipt(a, ctx, ref, quantity \\ "5") do
+      input = %{"external_ref" => ref, "lines" => [line(a, quantity)]}
+
+      assert {:ok, %{"status" => "posted", "document" => %{"id" => id}}} =
+               Write.receive_stock(input, ctx)
+
+      {input, id}
+    end
+
+    test "a plain retry is skipped: no effect, no second document, no second Activity entry", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      {input, id} = posted_receipt(a, ctx, "RB-RACE-1")
+      entries = activity_entries(id)
+      assert entries >= 1
+
+      assert {:ok,
+              %{
+                "status" => "skipped",
+                "document" => %{"id" => ^id},
+                "results" => [%{"action" => "skipped"}],
+                "summary" => %{"skipped" => 1}
+              }} = Write.run_new(:receipt, input, ctx)
+
+      assert activity_entries(id) == entries
+      assert Repo.aggregate(GoodsReceipt, :count) == 1
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
+    end
+
+    test "other lines are reported", %{a: a, ctx: ctx} do
+      {input, _id} = posted_receipt(a, ctx, "RB-RACE-2")
+      other = Map.put(input, "lines", [line(a, "6")])
+
+      assert codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
+    end
+
+    test "a stocktake is compared too", %{a: a, ctx: ctx} do
+      input = %{"external_ref" => "RB-RACE-3", "lines" => [line(a, "5")]}
+      assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
+
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:inventory, input, ctx)
+
+      other = Map.put(input, "lines", [line(a, "7")])
+      assert codes(Write.run_new(:inventory, other, ctx)) == ["external_ref_lines_differ"]
+    end
+
+    test "another warehouse that is stated is reported; the default, moved since, is not", %{
+      second: second,
+      a: a,
+      ctx: ctx
+    } do
+      {input, _id} = posted_receipt(a, ctx, "RB-RACE-4")
+
+      result = Write.run_new(:receipt, Map.put(input, "location_id", second.uuid), ctx)
+      assert codes(result) == ["external_ref_basis_differs"]
+      assert [%{"message" => message}] = effects(result)
+      assert message =~ "location_id"
+
+      PhoenixKitWarehouse.StockLedger.set_default_location_uuid(second.uuid)
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, input, ctx)
+    end
+
+    test "another reason is reported", %{first: first, a: a, ctx: ctx} do
+      seed!(a.uuid, "10", first.uuid)
+      input = %{"external_ref" => "RB-RACE-5", "reason" => "sale", "lines" => [line(a, "2")]}
+      assert {:ok, %{"status" => "posted"}} = Write.issue_stock(input, ctx)
+
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:issue, input, ctx)
+
+      result = Write.run_new(:issue, Map.put(input, "reason", "damage"), ctx)
+      assert codes(result) == ["external_ref_basis_differs"]
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(8))
     end
   end
 end

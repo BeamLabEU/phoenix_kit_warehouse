@@ -20,8 +20,13 @@ defmodule PhoenixKitWarehouse.API.Write do
   `external_ref`: such a request is a retry and is answered from that
   document (`answer_retry/3`), so a product trashed or a default warehouse
   changed since the first call cannot turn it into a 422. The posting layer
-  compares nothing, so the answer also says when the lines are not the posted
-  ones (`external_ref_lines_differ`).
+  compares nothing, so the answer also says when the request is not the one
+  that was posted: other lines (`external_ref_lines_differ`), lines that
+  cannot be compared (`external_ref_lines_unverified`), another warehouse,
+  catalogue or reason that the request states (`external_ref_basis_differs`),
+  or a shop order the document is not linked to (`source_ref_not_attached`).
+  A retry that raced past the lookup is answered by the posting layer and gets
+  the same comparison.
 
   Handlers are called as `f.(input, ctx)` with a string-keyed `input` already
   validated against the closed schema of the tool.
@@ -45,6 +50,12 @@ defmodule PhoenixKitWarehouse.API.Write do
   alias PhoenixKitWarehouse.StockLedger
 
   @max_note 1000
+
+  # The first call of an issue with a shop order links the order after its
+  # posting committed, so a retry that reads the document in between sees no
+  # link yet. A document posted this recently, with no order linked at all, is
+  # not reported as unlinked.
+  @link_grace_seconds 10
 
   @kinds %{
     receipt: %{
@@ -103,7 +114,13 @@ defmodule PhoenixKitWarehouse.API.Write do
     end
   end
 
-  defp run_new(kind, input, ctx) do
+  # Public only so that a test can reach the answer of the posting layer to a
+  # repeated reference (`already_posted`), which the early lookup of `run/3`
+  # otherwise gives first: a retry racing the first call gets there in real
+  # life.
+  @doc false
+  @spec run_new(:receipt | :inventory | :issue, map(), map()) :: result()
+  def run_new(kind, input, ctx) do
     case prepare(kind, input) do
       {:ok, request} ->
         if Map.get(ctx, :dry_run?, false), do: preview(request), else: execute(request, ctx)
@@ -157,12 +174,12 @@ defmodule PhoenixKitWarehouse.API.Write do
       end)
 
     case errors do
-      [] -> {:ok, build(kind, parts)}
+      [] -> {:ok, build(kind, parts, input)}
       errors -> {:error, errors}
     end
   end
 
-  defp build(kind, parts) do
+  defp build(kind, parts, input) do
     {:ok, location_uuid} = parts[:location]
     {:ok, basis} = parts[:basis]
     {:ok, note} = parts[:note]
@@ -176,7 +193,8 @@ defmodule PhoenixKitWarehouse.API.Write do
       external_ref: basis.external_ref,
       order_uuid: basis.order_uuid,
       note: note,
-      reason: reason
+      reason: reason,
+      stated: requested_basis(kind, input)
     }
   end
 
@@ -311,20 +329,8 @@ defmodule PhoenixKitWarehouse.API.Write do
   # racing the first call) is answered by the posting layer: compare its
   # lines too.
   defp after_post(:skipped, request, doc) do
-    requested = Enum.map(request.lines, &{&1.item.uuid, &1.quantity})
-
-    wanted = %{
-      location: request.location_uuid,
-      catalogue: nil,
-      reason: request.reason,
-      order: request.order_uuid
-    }
-
-    effects =
-      reference_effects(doc, request.kind, {:ok, requested}) ++
-        basis_effects(doc, request.kind, wanted)
-
-    {doc, effects}
+    requested = {:ok, Enum.map(request.lines, &{&1.item.uuid, &1.quantity})}
+    {doc, comparison_effects(doc, request.kind, requested, request.stated)}
   end
 
   # A shop-order basis is attached with `GoodsIssues.add_source_ref/3`, which
@@ -470,8 +476,7 @@ defmodule PhoenixKitWarehouse.API.Write do
     }
 
     effects =
-      reference_effects(doc, kind, requested_lines(input)) ++
-        basis_effects(doc, kind, requested_basis(kind, input))
+      comparison_effects(doc, kind, requested_lines(input), requested_basis(kind, input))
 
     {body, effects}
   end
@@ -515,6 +520,9 @@ defmodule PhoenixKitWarehouse.API.Write do
       {:error, _errors} -> :unknown
     end
   end
+
+  defp comparison_effects(doc, kind, requested, stated),
+    do: reference_effects(doc, kind, requested) ++ basis_effects(doc, kind, stated)
 
   # The posting layer answers a repeated reference with the existing document
   # and compares nothing. A reference reused by another system, another key
@@ -563,8 +571,8 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp explicit_location(_other), do: :invalid
 
-  defp order_of(%{"kind" => "shop_order", "id" => id}) when is_binary(id) do
-    case Ecto.UUID.cast(id) do
+  defp order_of(%{"kind" => "shop_order", "id" => id}) do
+    case Refs.cast_uuid(id) do
       {:ok, uuid} -> uuid
       :error -> nil
     end
@@ -596,9 +604,11 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp catalogue_differs?(doc, explicit) do
     stored = doc.lines |> Enum.map(& &1["catalogue_uuid"]) |> Enum.reject(&is_nil/1)
 
-    case {stored, Refs.catalogue_scope(explicit, :read)} do
-      {[], _scope} -> false
-      {_stored, {:error, _error}} -> true
+    # Compared as an id, not resolved: the catalogue may have been archived or
+    # deleted since, which does not make the request another catalogue's.
+    case {stored, Refs.cast_uuid(explicit)} do
+      {[], _cast} -> false
+      {_stored, :error} -> true
       {stored, {:ok, uuid}} -> uuid not in stored
     end
   end
@@ -621,22 +631,35 @@ defmodule PhoenixKitWarehouse.API.Write do
   end
 
   defp order_effects(%GoodsIssue{} = doc, :issue, order_uuid) when is_binary(order_uuid) do
-    if Enum.any?(
-         doc.source_refs || [],
-         &(&1["type"] == "shop_order" and &1["uuid"] == order_uuid)
-       ),
-       do: [],
-       else: [
-         %{
-           "code" => "source_ref_not_attached",
-           "message" =>
-             "This external_ref belongs to document ##{doc.number}, which is not linked to this order. " <>
-               "Nothing was posted now. Link it from the admin UI."
-         }
-       ]
+    if linked?(doc, order_uuid) or link_pending?(doc),
+      do: [],
+      else: [order_not_linked_effect(doc)]
   end
 
   defp order_effects(_doc, _kind, _order_uuid), do: []
+
+  defp linked?(%GoodsIssue{source_refs: refs}, order_uuid) do
+    Enum.any?(refs || [], &(&1["type"] == "shop_order" and &1["uuid"] == order_uuid))
+  end
+
+  # The first call may still be linking its order: the document is new and no
+  # shop order is linked to it yet. An order linked to it already (another
+  # one than the request's) is not pending.
+  defp link_pending?(%GoodsIssue{source_refs: refs, posted_at: %DateTime{} = posted_at}) do
+    not Enum.any?(refs || [], &(&1["type"] == "shop_order")) and
+      DateTime.diff(DateTime.utc_now(), posted_at) < @link_grace_seconds
+  end
+
+  defp link_pending?(_doc), do: false
+
+  defp order_not_linked_effect(doc) do
+    %{
+      "code" => "source_ref_not_attached",
+      "message" =>
+        "This external_ref belongs to document ##{doc.number}, which is not linked to this order. " <>
+          "Nothing was posted now. Link it from the admin UI."
+    }
+  end
 
   defp quantity_key(:receipt), do: "received_quantity"
   defp quantity_key(:inventory), do: "counted_quantity"

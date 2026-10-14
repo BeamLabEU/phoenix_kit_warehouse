@@ -118,13 +118,21 @@ How they behave, in short:
   `skipped` with the existing document and moves no stock. On `issue_stock`
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
   The retry is answered from the posted document before the lines are checked (a
-  product trashed or a default warehouse changed since does not matter); when the
-  lines of the retry are not the posted ones the answer adds the effect
-  `external_ref_lines_differ` (or `external_ref_lines_unverified` when they can no
-  longer be compared). An explicit `location_id`, `catalogue_id` or `reason` that
-  differs from the posted document adds `external_ref_basis_differs`; a shop order
-  the document is not linked to adds `source_ref_not_attached`. A `location_id`
-  left out is not compared (the default warehouse may have moved).
+  product trashed or a default warehouse changed since does not matter). What a retry
+  is compared on: the lines (the product and the quantity of each), an explicit
+  `location_id`, an explicit `catalogue_id`, an explicit `reason`, and the shop order
+  of the `source`. A `location_id` or `catalogue_id` left out is not compared (the
+  default warehouse may have moved), and neither are `unit_value` and `note`. The
+  answer carries an effect for each difference and posts nothing:
+  - `external_ref_lines_differ`: the lines are not the posted ones
+    (`external_ref_lines_unverified` when they can no longer be compared).
+  - `external_ref_basis_differs`: a stated `location_id`, `catalogue_id` or `reason`
+    is not the posted document's (the message names which).
+  - `source_ref_not_attached`, with two meanings. On the first call of an issue for a
+    shop order: the document was posted, but linking it to the order failed; link it
+    from the admin UI. On a retry: the document is not linked to the order the retry
+    names. A document posted within the last few seconds that has no order linked yet
+    is not reported, because the first call may still be linking it.
 - `issue_stock` takes a required `reason` (`sale`, `damage`, `production`, `other`) and
   may link the write-off to a shop order with `source: {"kind": "shop_order", "id": ...}`
   (needs the E-commerce module, enabled, which registers that source kind). An issue
