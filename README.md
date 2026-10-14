@@ -99,7 +99,8 @@ How they behave, in short:
   or `external_id`. Only live (not trashed) catalogue items are accepted; `sku` and
   `external_id` need a catalogue release with the shop API support. Refs of every
   kind resolve inside one catalogue: `catalogue_id` is required when the shop has
-  more than one active catalogue (otherwise the only active one is used); a deleted
+  more than one active catalogue (otherwise the only active one is used; the refusal
+  lists the catalogue ids to choose from as `allowed`); a deleted
   catalogue is refused, an archived one can be read but not written. An ambiguous
   ref is reported with the `candidates` it matches, at the top level of its row
   error.
