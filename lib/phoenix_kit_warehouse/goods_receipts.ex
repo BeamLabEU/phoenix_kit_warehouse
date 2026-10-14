@@ -468,9 +468,18 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
       audited_line = Map.put(line, "previous_quantity", previous_quantity)
 
       case maybe_receive(item_uuid, received_qty, unit_value, location_uuid, repo) do
-        :skip -> {:cont, {:ok, [{index, audited_line} | acc]}}
-        {:ok, _stock} -> {:cont, {:ok, [{index, audited_line} | acc]}}
-        {:error, reason} -> {:halt, {:error, reason}}
+        :skip ->
+          {:cont, {:ok, [{index, audited_line} | acc]}}
+
+        # The quantity returned by the atomic add: exact even when another
+        # document moved the same stock after `previous_quantity` was read
+        # above (the API derives its `{from, to}` from it).
+        {:ok, stock} ->
+          audited = Map.put(audited_line, "resulting_quantity", stock.quantity)
+          {:cont, {:ok, [{index, audited} | acc]}}
+
+        {:error, reason} ->
+          {:halt, {:error, reason}}
       end
     end)
     |> case do
