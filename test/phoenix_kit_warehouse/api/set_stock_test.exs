@@ -163,6 +163,7 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
   end
 
   test "the Activity entry is the existing inventory action with the API metadata", %{
+    first: first,
     a: a,
     ctx: ctx
   } do
@@ -177,6 +178,13 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
         )
       )
 
-    assert %{"via" => "api", "tool" => "warehouse.set_stock", "lines" => 1} = entry.metadata
+    assert %{
+             "via" => "api",
+             "tool" => "warehouse.set_stock",
+             "lines" => 1,
+             "location_uuid" => location_uuid
+           } = entry.metadata
+
+    assert location_uuid == first.uuid
   end
 end

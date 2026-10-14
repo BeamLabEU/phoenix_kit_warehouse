@@ -383,11 +383,8 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
     end
   end
 
-  test "the module's own Activity entry names the key, the request and the tool", %{
-    a: a,
-    user: user,
-    ctx: ctx
-  } do
+  test "the module's own Activity entry names the key, the request, the tool and the warehouse",
+       %{first: first, a: a, user: user, ctx: ctx} do
     body = receive!(%{"external_ref" => "ACC-9", "lines" => [line(a, "1")]}, ctx)
 
     entry =
@@ -408,8 +405,11 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
              "request_id" => "req-test",
              "tool" => "warehouse.receive_stock",
              "lines" => 1,
-             "external_ref" => "ACC-9"
+             "external_ref" => "ACC-9",
+             "location_uuid" => location_uuid
            } = entry.metadata
+
+    assert location_uuid == first.uuid
 
     refute Map.has_key?(entry.metadata, "approved_by_uuid")
   end

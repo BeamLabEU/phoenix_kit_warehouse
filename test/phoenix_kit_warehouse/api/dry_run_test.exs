@@ -17,7 +17,7 @@ defmodule PhoenixKitWarehouse.API.DryRunTest do
   alias PhoenixKitWarehouse.Test.ApiOrders, as: Orders
 
   setup do
-    %{locations: [first, _second]} = warehouses!(2)
+    %{locations: [first, second]} = warehouses!(2)
     catalogue = shop_catalogue!()
     user = user!()
 
@@ -25,6 +25,7 @@ defmodule PhoenixKitWarehouse.API.DryRunTest do
 
     %{
       first: first,
+      second: second,
       a: item!(catalogue),
       b: item!(catalogue),
       ctx: ctx(user),
@@ -117,6 +118,37 @@ defmodule PhoenixKitWarehouse.API.DryRunTest do
     assert narrower != changed
   end
 
+  test "the fingerprint covers the warehouse, also when the stock is the same in both",
+       %{first: first, second: second, a: a, dry: dry} do
+    input = %{"lines" => [line(a, "1")]}
+
+    {:preview, _, in_default} = Write.receive_stock(input, dry)
+
+    {:preview, _, in_first} =
+      Write.receive_stock(Map.put(input, "location_id", first.uuid), dry)
+
+    {:preview, _, in_second} =
+      Write.receive_stock(Map.put(input, "location_id", second.uuid), dry)
+
+    assert in_default == in_first
+    assert in_second != in_first
+
+    # The default warehouse moves between the preview and the confirmation.
+    PhoenixKitWarehouse.StockLedger.set_default_location_uuid(second.uuid)
+    {:preview, _, moved} = Write.receive_stock(input, dry)
+    assert moved == in_second
+    assert moved != in_default
+  end
+
+  test "the fingerprint covers the kind of document", %{a: a, dry: dry} do
+    input = %{"lines" => [line(a, "1")]}
+
+    {:preview, _, receipt} = Write.receive_stock(input, dry)
+    {:preview, _, stocktake} = Write.set_stock(input, dry)
+
+    assert receipt != stocktake
+  end
+
   test "an issue preview reports every short line like the real call and writes nothing",
        %{first: first, a: a, b: b, ctx: ctx, dry: dry} do
     seed!(a.uuid, "1", first.uuid)
@@ -166,6 +198,44 @@ defmodule PhoenixKitWarehouse.API.DryRunTest do
     assert document["id"] == posted["document"]["id"]
     assert document["number"] == posted["document"]["number"]
     assert footprint() == before
+  end
+
+  test "a would_skip preview names the document in its fingerprint", %{a: a, ctx: ctx, dry: dry} do
+    first = %{"external_ref" => "DRY-FP-1", "lines" => [line(a, "1")]}
+    second = %{"external_ref" => "DRY-FP-2", "lines" => [line(a, "1")]}
+    {:ok, _} = Write.receive_stock(first, ctx)
+    {:ok, _} = Write.receive_stock(second, ctx)
+
+    {:preview, %{"status" => "would_skip"}, one} = Write.receive_stock(first, dry)
+    {:preview, %{"status" => "would_skip"}, same} = Write.receive_stock(first, dry)
+    {:preview, %{"status" => "would_skip"}, other} = Write.receive_stock(second, dry)
+
+    {:preview, %{"status" => "would_post"}, fresh} =
+      Write.receive_stock(%{"lines" => [line(a, "1")]}, dry)
+
+    assert one == same
+    assert one != other
+    assert one != fresh
+  end
+
+  test "a would_skip preview carries the effects of the retry", %{a: a, b: b, ctx: ctx, dry: dry} do
+    input = %{"external_ref" => "DRY-FX-1", "lines" => [line(a, "1")]}
+    {:ok, _} = Write.receive_stock(input, ctx)
+
+    assert {:preview, preview, _} = Write.receive_stock(input, dry)
+    refute Map.has_key?(preview, "effects")
+
+    other = Map.put(input, "lines", [line(a, "2")])
+    assert {:preview, %{"effects" => [%{"code" => code}]}, _} = Write.receive_stock(other, dry)
+    assert code == "external_ref_lines_differ"
+
+    third = Map.put(input, "lines", [line(a, "1"), line(b, "1")])
+    assert {:preview, %{"effects" => [%{"code" => code}]}, _} = Write.receive_stock(third, dry)
+    assert code == "external_ref_lines_differ"
+
+    {:ok, _} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+    assert {:preview, %{"effects" => [%{"code" => code}]}, _} = Write.receive_stock(input, dry)
+    assert code == "external_ref_lines_unverified"
   end
 
   test "a shop_order basis is checked but not attached", %{first: first, a: a, dry: dry} do
