@@ -198,6 +198,7 @@ defmodule PhoenixKitWarehouse.API.Write do
       kind: kind,
       location_uuid: location_uuid,
       lines: lines,
+      raw_lines: input["lines"],
       external_ref: basis.external_ref,
       order_uuid: basis.order_uuid,
       note: note,
@@ -387,9 +388,8 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp iso(nil), do: nil
   defp iso(%DateTime{} = at), do: DateTime.to_iso8601(at)
 
-  defp results(:skipped, request, _doc) do
-    Enum.map(request.lines, &%{"ref" => &1.ref, "action" => "skipped", "id" => &1.item.uuid})
-  end
+  # The stored lines, as the early lookup answers a retry.
+  defp results(:skipped, request, doc), do: retry_results(doc, request.raw_lines)
 
   defp results(:posted, request, doc) do
     Enum.map(request.lines, fn line ->

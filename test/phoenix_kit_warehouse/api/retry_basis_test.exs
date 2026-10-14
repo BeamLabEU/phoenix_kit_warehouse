@@ -459,6 +459,26 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
                Write.run_new(:inventory, %{count | "lines" => noisy.(count["lines"])}, ctx)
     end
 
+    test "both retry paths answer with the stored lines, whatever the request lists", %{
+      catalogue: catalogue,
+      a: a,
+      ctx: ctx
+    } do
+      b = item!(catalogue)
+      {input, _id} = posted_receipt(a, ctx, "RB-RACE-SHAPE")
+
+      more = %{input | "lines" => [line(a, "5"), line(b, "1")]}
+      early = Write.receive_stock(more, ctx)
+      raced = Write.run_new(:receipt, more, ctx)
+
+      assert codes(early) == ["external_ref_lines_differ"]
+      assert codes(raced) == codes(early)
+      assert body(raced) == body(early)
+      assert [%{"id" => id}] = body(raced)["results"]
+      assert id == a.uuid
+      assert body(raced)["summary"] == %{"skipped" => 1}
+    end
+
     test "a stocktake is compared too", %{a: a, ctx: ctx} do
       input = %{"external_ref" => "RB-RACE-3", "lines" => [line(a, "5")]}
       assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
