@@ -7,6 +7,9 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
   """
   use PhoenixKitWarehouse.DataCase, async: false
 
+  # Runs only against a core that has the API (see test_helper.exs).
+  @moduletag :core_api
+
   import PhoenixKitWarehouse.Test.ApiFixtures
   import Plug.Conn
 
@@ -264,7 +267,7 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
       names = PhoenixKit.ModuleRegistry.all_api_tools() |> Enum.map(& &1.name)
       assert Enum.all?(Map.keys(@scopes), &(&1 in names))
 
-      assert {:ok, %Tool{module: PhoenixKitWarehouse, name: "warehouse.get_stock"}} =
+      assert {:ok, %{module: PhoenixKitWarehouse, name: "warehouse.get_stock"}} =
                Registry.find("warehouse.get_stock", :admin)
 
       {:ok, _} = PhoenixKitWarehouse.disable_system()
