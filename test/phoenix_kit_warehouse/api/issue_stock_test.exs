@@ -177,6 +177,18 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
                Write.issue_stock(%{"lines" => [line(a, "1")]}, ctx)
     end
 
+    test "a wrong reason is reported together with the errors of the lines", %{a: a, ctx: ctx} do
+      input = %{
+        "reason" => "gift",
+        "lines" => [line(a, "1"), %{"ref" => %{"id" => Ecto.UUID.generate()}, "quantity" => "1"}]
+      }
+
+      assert {:error, :validation_failed, _message, %{errors: errors, posted: false}} =
+               Write.issue_stock(input, ctx)
+
+      assert Enum.sort(Enum.map(errors, & &1.path)) == ["lines[1].ref", "reason"]
+    end
+
     test "unknown product, duplicate line and zero quantity are atomic refusals", %{
       first: first,
       a: a,
@@ -300,7 +312,33 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
       assert [%{path: "source", message: message}] =
                refused(%{"source" => source, "lines" => [line(a, "1")]}, ctx)
 
-      assert message =~ "E-commerce"
+      assert message =~ "registers that kind"
+      refute message =~ "disabled"
+    end
+
+    test "the 16 raw bytes of an order's UUID do not name that order", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      seed!(a.uuid, "3", first.uuid)
+      order = register_orders()
+      raw = Ecto.UUID.dump!(order)
+      assert byte_size(raw) == 16
+      before = counters()
+
+      for extra <- [%{}, %{"external_ref" => "RAW-ORDER-1"}] do
+        input =
+          Map.merge(extra, %{
+            "source" => %{"kind" => "shop_order", "id" => raw},
+            "lines" => [line(a, "1")]
+          })
+
+        assert [%{path: "source.id", code: "validation_failed"}] = refused(input, ctx)
+      end
+
+      assert counters() == before
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(3))
     end
 
     test "an unknown order is a validation_failed at source.id", %{a: a, ctx: ctx} do
@@ -354,18 +392,25 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
       # (which runs after the posting) finds no registered kind.
       :persistent_term.put({Orders, :withdraw_kind}, true)
 
-      assert {:ok, body, [effect]} =
-               Write.issue_stock(
-                 %{
-                   "reason" => "sale",
-                   "source" => %{"kind" => "shop_order", "id" => order},
-                   "lines" => [line(a, "1")]
-                 },
-                 ctx
-               )
+      {result, log} =
+        ExUnit.CaptureLog.with_log(fn ->
+          Write.issue_stock(
+            %{
+              "reason" => "sale",
+              "source" => %{"kind" => "shop_order", "id" => order},
+              "lines" => [line(a, "1")]
+            },
+            ctx
+          )
+        end)
 
+      assert {:ok, body, [effect]} = result
       assert body["status"] == "posted"
       assert effect["code"] == "source_ref_not_attached"
+
+      # Only the shape of the reason is logged.
+      assert log =~ "could not link order: invalid_ref_type"
+      refute log =~ order
       assert Repo.get!(GoodsIssue, body["document"]["id"]).source_refs == []
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(2))
     end
@@ -458,6 +503,49 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(7))
     end
 
+    test "a retry with a shop order is answered from the document after the product was trashed and the order kind withdrawn",
+         %{first: first, a: a, ctx: ctx} do
+      seed!(a.uuid, "10", first.uuid)
+      order = register_orders()
+
+      input = %{
+        "reason" => "sale",
+        "external_ref" => "SHOP-OUT-2",
+        "source" => %{"kind" => "shop_order", "id" => order},
+        "lines" => [line(a, "3")]
+      }
+
+      posted = issue!(input, ctx)
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      Application.put_env(:phoenix_kit_warehouse, :source_kinds, [])
+
+      assert {:ok, again, [effect]} = Write.issue_stock(input, ctx)
+      assert again["status"] == "skipped"
+      assert again["document"]["number"] == posted["document"]["number"]
+      assert effect["code"] == "external_ref_lines_unverified"
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(7))
+    end
+
+    test "a retry with an external source is answered from the document after the product was trashed",
+         %{first: first, a: a, ctx: ctx} do
+      seed!(a.uuid, "10", first.uuid)
+
+      input = %{
+        "source" => %{"kind" => "external", "ref" => "ACC-OUT-11"},
+        "lines" => [line(a, "3")]
+      }
+
+      posted = issue!(input, ctx)
+
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+
+      assert {:ok, again, [effect]} = Write.issue_stock(Map.put(input, "reason", "sale"), ctx)
+      assert again["status"] == "skipped"
+      assert again["document"]["number"] == posted["document"]["number"]
+      assert effect["code"] == "external_ref_lines_unverified"
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(7))
+    end
+
     test "a blank or non-string external_ref is refused at external_ref", %{
       first: first,
       a: a,
@@ -491,7 +579,11 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
     end
   end
 
-  test "the Activity entry names the reason and the order", %{first: first, a: a, ctx: ctx} do
+  test "the Activity entry names the reason, the order, the reference and the warehouse", %{
+    first: first,
+    a: a,
+    ctx: ctx
+  } do
     seed!(a.uuid, "3", first.uuid)
     order = register_orders()
 
@@ -499,6 +591,7 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
       issue!(
         %{
           "reason" => "sale",
+          "external_ref" => "ISSUE-ACT-1",
           "source" => %{"kind" => "shop_order", "id" => order},
           "lines" => [line(a, "1")]
         },
@@ -518,7 +611,11 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
              "via" => "api",
              "tool" => "warehouse.issue_stock",
              "reason" => "sale",
-             "order_uuid" => ^order
+             "order_uuid" => ^order,
+             "external_ref" => "ISSUE-ACT-1",
+             "location_uuid" => location_uuid
            } = entry.metadata
+
+    assert location_uuid == first.uuid
   end
 end

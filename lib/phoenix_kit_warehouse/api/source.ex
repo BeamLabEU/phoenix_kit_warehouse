@@ -9,6 +9,7 @@ defmodule PhoenixKitWarehouse.API.Source do
   the protection off silently, so it is refused here instead.
   """
 
+  alias PhoenixKitWarehouse.API.Refs
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.SourceKinds
 
@@ -74,7 +75,7 @@ defmodule PhoenixKitWarehouse.API.Source do
   def reference(_kind, input), do: clean_external_ref(input["external_ref"])
 
   defp order_reference(id, ref) do
-    case Ecto.UUID.cast(id) do
+    case Refs.cast_uuid(id) do
       {:ok, _uuid} -> clean_external_ref(ref)
       :error -> {:ok, nil}
     end
@@ -176,7 +177,7 @@ defmodule PhoenixKitWarehouse.API.Source do
     do: {:error, [error("source", "kind must be external or #{@order_kind}.")]}
 
   defp shop_order(id) do
-    case Ecto.UUID.cast(id) do
+    case Refs.cast_uuid(id) do
       {:ok, uuid} -> check_order(uuid)
       :error -> {:error, [error("source.id", "must be an order UUID.")]}
     end

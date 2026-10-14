@@ -57,6 +57,45 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
     uuid
   end
 
+  describe "one reference on three kinds of document" do
+    test "a receipt, an issue and a stocktake with one external_ref are three documents", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      seed!(a.uuid, "10", first.uuid)
+      ref = "X-1"
+      lines = [line(a, "1")]
+
+      calls = [
+        {"goods_receipt", &Write.receive_stock/2, %{"external_ref" => ref, "lines" => lines}},
+        {"goods_issue", &Write.issue_stock/2,
+         %{"external_ref" => ref, "reason" => "sale", "lines" => lines}},
+        {"inventory", &Write.set_stock/2, %{"external_ref" => ref, "lines" => lines}}
+      ]
+
+      posted =
+        for {type, call, input} <- calls do
+          assert {:ok, %{"status" => "posted", "document" => %{"type" => ^type, "id" => id}}} =
+                   call.(input, ctx)
+
+          id
+        end
+
+      assert length(Enum.uniq(posted)) == 3
+
+      # Each is retried on its own: it answers its own document.
+      for {{type, call, input}, id} <- Enum.zip(calls, posted) do
+        assert {:ok, %{"status" => "skipped", "document" => %{"type" => ^type, "id" => ^id}}} =
+                 call.(input, ctx)
+      end
+
+      assert Repo.aggregate(GoodsReceipt, :count) == 1
+      assert Repo.aggregate(GoodsIssue, :count) == 1
+      assert Repo.aggregate(PhoenixKitWarehouse.InventoryDocument, :count) == 1
+    end
+  end
+
   describe "the warehouse" do
     test "a receipt reference reused for another warehouse says so and moves no stock", %{
       first: first,
@@ -316,6 +355,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       # A shop order source that is malformed, with the reference of the posted document.
       for {source, path} <- [
             {%{"kind" => "shop_order", "id" => "not-a-uuid"}, "source.id"},
+            {%{"kind" => "shop_order", "id" => Ecto.UUID.dump!(order)}, "source.id"},
             {%{"kind" => "shop_order", "id" => order, "ref" => "RB-SRC-1"}, "source"}
           ] do
         input = %{
