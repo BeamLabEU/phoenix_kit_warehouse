@@ -121,7 +121,10 @@ How they behave, in short:
   product trashed or a default warehouse changed since does not matter); when the
   lines of the retry are not the posted ones the answer adds the effect
   `external_ref_lines_differ` (or `external_ref_lines_unverified` when they can no
-  longer be compared).
+  longer be compared). An explicit `location_id`, `catalogue_id` or `reason` that
+  differs from the posted document adds `external_ref_basis_differs`; a shop order
+  the document is not linked to adds `source_ref_not_attached`. A `location_id`
+  left out is not compared (the default warehouse may have moved).
 - `issue_stock` takes a required `reason` (`sale`, `damage`, `production`, `other`) and
   may link the write-off to a shop order with `source: {"kind": "shop_order", "id": ...}`
   (needs the E-commerce module, enabled, which registers that source kind). An issue

@@ -54,16 +54,31 @@ defmodule PhoenixKitWarehouse.API.Source do
           {:ok, String.t() | nil} | {:error, String.t()}
   def reference(:issue, input) do
     case {input["source"], input["external_ref"]} do
-      {%{"kind" => "external", "ref" => ref}, nil} -> clean_external_ref(ref)
-      {nil, ref} -> clean_external_ref(ref)
-      {%{"kind" => @order_kind}, ref} -> clean_external_ref(ref)
+      {%{"kind" => "external", "ref" => ref} = source, nil} when map_size(source) == 2 ->
+        clean_external_ref(ref)
+
+      {nil, ref} ->
+        clean_external_ref(ref)
+
+      {%{"kind" => @order_kind, "id" => id} = source, ref}
+      when map_size(source) == 2 and is_binary(id) ->
+        order_reference(id, ref)
+
       # Both given, or a source of no known shape: not a retry the early
       # lookup can answer; the full check refuses the request.
-      _other -> {:ok, nil}
+      _other ->
+        {:ok, nil}
     end
   end
 
   def reference(_kind, input), do: clean_external_ref(input["external_ref"])
+
+  defp order_reference(id, ref) do
+    case Ecto.UUID.cast(id) do
+      {:ok, _uuid} -> clean_external_ref(ref)
+      :error -> {:ok, nil}
+    end
+  end
 
   @doc """
   Cleans a reference: `nil` stays `nil`; a string is trimmed and must then be

@@ -312,7 +312,19 @@ defmodule PhoenixKitWarehouse.API.Write do
   # lines too.
   defp after_post(:skipped, request, doc) do
     requested = Enum.map(request.lines, &{&1.item.uuid, &1.quantity})
-    {doc, reference_effects(doc, request.kind, {:ok, requested})}
+
+    wanted = %{
+      location: request.location_uuid,
+      catalogue: nil,
+      reason: request.reason,
+      order: request.order_uuid
+    }
+
+    effects =
+      reference_effects(doc, request.kind, {:ok, requested}) ++
+        basis_effects(doc, request.kind, wanted)
+
+    {doc, effects}
   end
 
   # A shop-order basis is attached with `GoodsIssues.add_source_ref/3`, which
@@ -457,7 +469,11 @@ defmodule PhoenixKitWarehouse.API.Write do
       "summary" => Enum.frequencies_by(results, & &1["action"])
     }
 
-    {body, reference_effects(doc, kind, requested_lines(input))}
+    effects =
+      reference_effects(doc, kind, requested_lines(input)) ++
+        basis_effects(doc, kind, requested_basis(kind, input))
+
+    {body, effects}
   end
 
   defp retry_results(doc, raw_lines) do
@@ -522,6 +538,105 @@ defmodule PhoenixKitWarehouse.API.Write do
         end
       end)
   end
+
+  # What the request states besides its lines: an explicit `location_id`, an
+  # explicit `reason`, a shop-order source (each `nil` when not stated). A
+  # location left out is the default warehouse, which may have moved since:
+  # it is not compared.
+  defp requested_basis(kind, input) do
+    %{
+      location: explicit_location(input["location_id"]),
+      catalogue: input["catalogue_id"],
+      reason: if(kind == :issue, do: input["reason"]),
+      order: if(kind == :issue, do: order_of(input["source"]))
+    }
+  end
+
+  defp explicit_location(nil), do: nil
+
+  defp explicit_location(id) when is_binary(id) do
+    case Refs.cast_uuid(id) do
+      {:ok, uuid} -> uuid
+      :error -> id
+    end
+  end
+
+  defp explicit_location(_other), do: :invalid
+
+  defp order_of(%{"kind" => "shop_order", "id" => id}) when is_binary(id) do
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> uuid
+      :error -> nil
+    end
+  end
+
+  defp order_of(_source), do: nil
+
+  # The same warning for the rest of the basis: a reference reused for another
+  # warehouse, catalogue, reason or order is not a retry either, and the stock
+  # did not move.
+  defp basis_effects(doc, kind, wanted) do
+    differing =
+      for {name, differs?} <- [
+            {"location_id", location_differs?(doc, wanted.location)},
+            {"catalogue_id", catalogue_differs?(doc, wanted.catalogue)},
+            {"reason", reason_differs?(doc, kind, wanted.reason)}
+          ],
+          differs?,
+          do: name
+
+    List.wrap(basis_differs_effect(doc, differing)) ++ order_effects(doc, kind, wanted.order)
+  end
+
+  defp location_differs?(_doc, nil), do: false
+  defp location_differs?(doc, location), do: location != doc.location_uuid
+
+  defp catalogue_differs?(_doc, nil), do: false
+
+  defp catalogue_differs?(doc, explicit) do
+    stored = doc.lines |> Enum.map(& &1["catalogue_uuid"]) |> Enum.reject(&is_nil/1)
+
+    case {stored, Refs.catalogue_scope(explicit, :read)} do
+      {[], _scope} -> false
+      {_stored, {:error, _error}} -> true
+      {stored, {:ok, uuid}} -> uuid not in stored
+    end
+  end
+
+  defp reason_differs?(%GoodsIssue{reason: posted}, :issue, reason) when is_binary(reason),
+    do: reason != posted
+
+  defp reason_differs?(_doc, _kind, _reason), do: false
+
+  defp basis_differs_effect(_doc, []), do: nil
+
+  defp basis_differs_effect(doc, differing) do
+    %{
+      "code" => "external_ref_basis_differs",
+      "message" =>
+        "This external_ref belongs to document ##{doc.number}, which was posted with a different " <>
+          "#{Enum.join(differing, ", ")}. Nothing was posted now. " <>
+          "If this is a new document, send a new external_ref."
+    }
+  end
+
+  defp order_effects(%GoodsIssue{} = doc, :issue, order_uuid) when is_binary(order_uuid) do
+    if Enum.any?(
+         doc.source_refs || [],
+         &(&1["type"] == "shop_order" and &1["uuid"] == order_uuid)
+       ),
+       do: [],
+       else: [
+         %{
+           "code" => "source_ref_not_attached",
+           "message" =>
+             "This external_ref belongs to document ##{doc.number}, which is not linked to this order. " <>
+               "Nothing was posted now. Link it from the admin UI."
+         }
+       ]
+  end
+
+  defp order_effects(_doc, _kind, _order_uuid), do: []
 
   defp quantity_key(:receipt), do: "received_quantity"
   defp quantity_key(:inventory), do: "counted_quantity"

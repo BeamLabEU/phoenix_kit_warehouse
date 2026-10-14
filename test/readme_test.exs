@@ -32,6 +32,7 @@ defmodule PhoenixKitWarehouse.ReadmeTest do
     for phrase <- [
           "more than one active catalogue",
           "external_ref_lines_differ",
+          "external_ref_basis_differs",
           "not protected against a repeated request",
           "confirm_token",
           ":inventory_activity_logging"
