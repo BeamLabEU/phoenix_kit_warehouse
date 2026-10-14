@@ -22,10 +22,10 @@ defmodule PhoenixKitWarehouse.API.Write do
   changed since the first call cannot turn it into a 422. The posting layer
   compares nothing, so the answer also says when the request is not the one
   that was posted: other lines, or for a receipt another unit value on a line
-  (`external_ref_lines_differ`), lines that
-  cannot be compared (`external_ref_lines_unverified`), another warehouse,
-  catalogue or reason that the request states (`external_ref_basis_differs`),
-  or a shop order the document is not linked to (`source_ref_not_attached`).
+  (`external_ref_lines_differ`), lines that cannot be compared
+  (`external_ref_lines_unverified`), another warehouse, catalogue or reason
+  that the request states (`external_ref_basis_differs`), or a shop order the
+  document is not linked to (`source_ref_not_attached`).
   A retry that raced past the lookup is answered by the posting layer and gets
   the same comparison.
 
@@ -34,7 +34,8 @@ defmodule PhoenixKitWarehouse.API.Write do
   after the posting, a document with no shop order linked yet is not reported as
   unlinked: a retry inside that window is not told that the order link is
   missing, whichever order the retry names (the window is effectively 9 to 10
-  seconds, as `posted_at` is kept to the second). After it, `source_ref_not_attached` is reported.
+  seconds, as `posted_at` is kept to the second). After it,
+  `source_ref_not_attached` is reported.
 
   Handlers are called as `f.(input, ctx)` with a string-keyed `input` already
   validated against the closed schema of the tool.
