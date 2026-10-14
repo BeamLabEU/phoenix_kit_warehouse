@@ -120,11 +120,12 @@ How they behave, in short:
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
   The retry is answered from the posted document before the lines are checked (a
   product trashed or a default warehouse changed since does not matter). What a retry
-  is compared on: the lines (the product and the quantity of each), an explicit
-  `location_id`, an explicit `catalogue_id`, an explicit `reason`, and the shop order
-  of the `source`. A `location_id` or `catalogue_id` left out is not compared (the
-  default warehouse may have moved), and neither are `unit_value` and `note`. The
-  answer carries an effect for each difference and posts nothing:
+  is compared on: the lines (the product and the quantity of each, and for a receipt
+  the `unit_value` of each), an explicit `location_id`, an explicit `catalogue_id`, an
+  explicit `reason`, and the shop order of the `source`. A `location_id` or
+  `catalogue_id` left out is not compared (the default warehouse may have moved), and
+  neither is `note`. The answer carries an effect for each difference and posts
+  nothing:
   - `external_ref_lines_differ`: the lines are not the posted ones
     (`external_ref_lines_unverified` when they can no longer be compared).
   - `external_ref_basis_differs`: a stated `location_id`, `catalogue_id` or `reason`

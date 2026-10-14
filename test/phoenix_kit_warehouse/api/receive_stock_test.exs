@@ -211,6 +211,52 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(4))
       assert Decimal.equal?(quantity(b.uuid, first.uuid), Decimal.new(0))
     end
+
+    test "a reference reused with another unit_value is skipped, says so, and keeps the stored one",
+         %{first: first, a: a, ctx: ctx} do
+      priced = fn unit_value -> [line(a, "3", %{"unit_value" => unit_value})] end
+      receive!(%{"external_ref" => "ACC-82", "lines" => priced.("5")}, ctx)
+
+      effects = fn lines ->
+        assert {:ok, %{"status" => "skipped"}, effects} =
+                 Write.receive_stock(%{"external_ref" => "ACC-82", "lines" => lines}, ctx)
+
+        Enum.map(effects, & &1["code"])
+      end
+
+      assert effects.(priced.("9")) == ["external_ref_lines_differ"]
+      # a retry that leaves the unit value out is not the posted request either
+      assert effects.([line(a, "3")]) == ["external_ref_lines_differ"]
+
+      stock = Repo.get_by!(Stock, item_uuid: a.uuid, location_uuid: first.uuid)
+      assert Decimal.equal?(stock.unit_value, Decimal.new(5))
+      assert Decimal.equal?(stock.quantity, Decimal.new(3))
+    end
+
+    test "the same unit_value written differently, or none on both calls, is a plain retry", %{
+      a: a,
+      b: b,
+      ctx: ctx
+    } do
+      receive!(
+        %{
+          "external_ref" => "ACC-83",
+          "lines" => [line(a, "3", %{"unit_value" => "5"}), line(b, "1")]
+        },
+        ctx
+      )
+
+      same = [line(a, "3", %{"unit_value" => "5.00"}), line(b, "1")]
+
+      assert {:ok, %{"status" => "skipped"}} =
+               Write.receive_stock(%{"external_ref" => "ACC-83", "lines" => same}, ctx)
+
+      # a unit value where the posted line had none
+      priced_b = [line(a, "3", %{"unit_value" => "5"}), line(b, "1", %{"unit_value" => "2"})]
+
+      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_differ"}]} =
+               Write.receive_stock(%{"external_ref" => "ACC-83", "lines" => priced_b}, ctx)
+    end
   end
 
   describe "an atomic refusal posts nothing" do

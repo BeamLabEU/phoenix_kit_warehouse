@@ -21,7 +21,8 @@ defmodule PhoenixKitWarehouse.API.Write do
   document (`answer_retry/3`), so a product trashed or a default warehouse
   changed since the first call cannot turn it into a 422. The posting layer
   compares nothing, so the answer also says when the request is not the one
-  that was posted: other lines (`external_ref_lines_differ`), lines that
+  that was posted: other lines, or for a receipt another unit value on a line
+  (`external_ref_lines_differ`), lines that
   cannot be compared (`external_ref_lines_unverified`), another warehouse,
   catalogue or reason that the request states (`external_ref_basis_differs`),
   or a shop order the document is not linked to (`source_ref_not_attached`).
@@ -336,7 +337,7 @@ defmodule PhoenixKitWarehouse.API.Write do
   # racing the first call) is answered by the posting layer: compare its
   # lines too.
   defp after_post(:skipped, request, doc) do
-    requested = {:ok, Enum.map(request.lines, &{&1.item.uuid, &1.quantity})}
+    requested = {:ok, Enum.map(request.lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
     {doc, comparison_effects(doc, request.kind, requested, request.stated)}
   end
 
@@ -484,7 +485,7 @@ defmodule PhoenixKitWarehouse.API.Write do
     }
 
     effects =
-      comparison_effects(doc, kind, requested_lines(input), requested_basis(kind, input))
+      comparison_effects(doc, kind, requested_lines(kind, input), requested_basis(kind, input))
 
     {body, effects}
   end
@@ -513,18 +514,25 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp echo_ref(_raw, item_uuid), do: %{"id" => item_uuid}
 
-  # What this request asks for as `[{item_uuid, quantity}]`, or `:unknown`
+  # What this request asks for as `[{item_uuid, quantity, unit_value}]` (the
+  # unit value is `nil` unless the kind of document stores one), or `:unknown`
   # when it can no longer be read (a product no longer resolves, a quantity
   # is wrong, the catalogue is closed).
-  defp requested_lines(input) do
+  defp requested_lines(kind, input) do
     catalogue_uuid =
       case Refs.catalogue_scope(input["catalogue_id"], :write) do
         {:ok, uuid} -> uuid
         {:error, _error} -> nil
       end
 
-    case Lines.prepare(input["lines"], minimum: :zero, catalogue_uuid: catalogue_uuid) do
-      {:ok, lines} -> {:ok, Enum.map(lines, &{&1.item.uuid, &1.quantity})}
+    opts = [
+      minimum: :zero,
+      unit_value: Map.fetch!(@kinds, kind).unit_value,
+      catalogue_uuid: catalogue_uuid
+    ]
+
+    case Lines.prepare(input["lines"], opts) do
+      {:ok, lines} -> {:ok, Enum.map(lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
       {:error, _errors} -> :unknown
     end
   end
@@ -544,16 +552,32 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp same_lines?(doc, kind, requested) do
     key = quantity_key(kind)
-    stored = Map.new(doc.lines, &{&1["item_uuid"], StockLedger.to_decimal(&1[key])})
+    stored = Map.new(doc.lines, &{&1["item_uuid"], &1})
 
     map_size(stored) == length(requested) and
-      Enum.all?(requested, fn {item_uuid, quantity} ->
+      Enum.all?(requested, fn {item_uuid, quantity, unit_value} ->
         case Map.fetch(stored, item_uuid) do
-          {:ok, posted} -> Decimal.eq?(posted, quantity)
-          :error -> false
+          {:ok, line} ->
+            Decimal.eq?(StockLedger.to_decimal(line[key]), quantity) and
+              same_unit_value?(kind, line, unit_value)
+
+          :error ->
+            false
         end
       end)
   end
+
+  # A receipt line replaces the stored unit value of its stock row, so a retry
+  # that only changes it is not the posted request. Absent equals absent.
+  defp same_unit_value?(:receipt, line, requested) do
+    case {StockLedger.to_decimal_or_nil(line["unit_value"]), requested} do
+      {nil, nil} -> true
+      {%Decimal{} = posted, %Decimal{}} -> Decimal.eq?(posted, requested)
+      _different -> false
+    end
+  end
+
+  defp same_unit_value?(_kind, _line, _requested), do: true
 
   # What the request states besides its lines: an explicit `location_id`, an
   # explicit `reason`, a shop-order source (each `nil` when not stated). A

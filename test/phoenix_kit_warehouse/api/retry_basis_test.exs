@@ -420,6 +420,45 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
     end
 
+    test "another unit_value on a receipt line is reported; the same one written differently is not",
+         %{a: a, ctx: ctx} do
+      priced = fn unit_value -> [line(a, "5") |> Map.put("unit_value", unit_value)] end
+      input = %{"external_ref" => "RB-RACE-UV", "lines" => priced.("5")}
+      assert {:ok, %{"status" => "posted"}} = Write.receive_stock(input, ctx)
+
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, input, ctx)
+
+      same = %{input | "lines" => priced.("5.0")}
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, same, ctx)
+
+      other = %{input | "lines" => priced.("9")}
+      assert codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
+
+      assert codes(Write.run_new(:receipt, %{input | "lines" => [line(a, "5")]}, ctx)) ==
+               ["external_ref_lines_differ"]
+    end
+
+    test "the unit_value is not compared on a goods issue or a stocktake", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      seed!(a.uuid, "10", first.uuid)
+      noisy = fn lines -> Enum.map(lines, &Map.put(&1, "unit_value", "99")) end
+
+      issue = %{"external_ref" => "RB-RACE-UV2", "reason" => "sale", "lines" => [line(a, "2")]}
+      assert {:ok, %{"status" => "posted"}} = Write.issue_stock(issue, ctx)
+
+      assert {:ok, %{"status" => "skipped"}} =
+               Write.run_new(:issue, %{issue | "lines" => noisy.(issue["lines"])}, ctx)
+
+      count = %{"external_ref" => "RB-RACE-UV2", "lines" => [line(a, "7")]}
+      assert {:ok, %{"status" => "posted"}} = Write.set_stock(count, ctx)
+
+      assert {:ok, %{"status" => "skipped"}} =
+               Write.run_new(:inventory, %{count | "lines" => noisy.(count["lines"])}, ctx)
+    end
+
     test "a stocktake is compared too", %{a: a, ctx: ctx} do
       input = %{"external_ref" => "RB-RACE-3", "lines" => [line(a, "5")]}
       assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
