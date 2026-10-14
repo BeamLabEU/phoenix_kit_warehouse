@@ -242,6 +242,41 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
       assert counters() == before
     end
 
+    if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
+         function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
+      test "the same product as an id and as a sku: duplicate_line, nothing posted", %{
+        a: a,
+        ctx: ctx
+      } do
+        before = counters()
+
+        lines = [line(a, "1"), %{"ref" => %{"sku" => a.sku}, "quantity" => "2"}]
+
+        assert [%{path: "lines[1]", code: "duplicate_line", first_line: 0}] =
+                 refused(%{"lines" => lines}, ctx)
+
+        assert counters() == before
+      end
+
+      test "an ambiguous sku is refused with the candidates on the line's ref", %{
+        catalogue: catalogue,
+        a: a,
+        ctx: ctx
+      } do
+        twin_one = item!(catalogue, %{sku: "TWIN-WRITE"})
+        twin_two = item!(catalogue, %{sku: "TWIN-WRITE"})
+        before = counters()
+
+        lines = [line(a, "1"), %{"ref" => %{"sku" => "TWIN-WRITE"}, "quantity" => "1"}]
+
+        assert [%{path: "lines[1].ref", code: "ambiguous_ref", candidates: candidates}] =
+                 refused(%{"lines" => lines}, ctx)
+
+        assert Enum.sort(candidates) == Enum.sort([twin_one.uuid, twin_two.uuid])
+        assert counters() == before
+      end
+    end
+
     test "quantities: zero, negative, exponent and 7 places are refused at lines[i].quantity", %{
       a: a,
       ctx: ctx
@@ -287,6 +322,20 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
                refused(%{"lines" => [line(a, "1")]}, ctx)
 
       assert message =~ "warehouse_default_location_uuid"
+    end
+
+    test "the 16 raw bytes of a catalogue's UUID do not name that catalogue", %{
+      catalogue: catalogue,
+      a: a,
+      ctx: ctx
+    } do
+      before = counters()
+      raw = Ecto.UUID.dump!(catalogue.uuid)
+
+      assert [%{path: "catalogue_id", code: "validation_failed"}] =
+               refused(%{"catalogue_id" => raw, "lines" => [line(a, "1")]}, ctx)
+
+      assert counters() == before
     end
 
     test "a ref to an item of another catalogue is not found when catalogue_id is given", %{

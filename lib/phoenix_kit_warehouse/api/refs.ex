@@ -50,7 +50,12 @@ defmodule PhoenixKitWarehouse.API.Refs do
           required(:message) => String.t(),
           optional(:candidates) => [String.t()]
         }
-  @type scope_error :: %{path: String.t(), code: String.t(), message: String.t()}
+  @type scope_error :: %{
+          required(:path) => String.t(),
+          required(:code) => String.t(),
+          required(:message) => String.t(),
+          optional(:allowed) => [String.t()]
+        }
 
   @doc """
   Resolves `refs` (a list of anything the caller sent). The result has the
@@ -119,7 +124,8 @@ defmodule PhoenixKitWarehouse.API.Refs do
       An archived catalogue can be read, not written.
 
   Answers `{:ok, catalogue_uuid}` (always a UUID) or a `validation_failed`
-  error at `catalogue_id`.
+  error at `catalogue_id`. The refusal for a missing `catalogue_id` carries
+  the UUIDs to choose from as `allowed`.
   """
   @spec catalogue_scope(term(), :read | :write) :: {:ok, String.t()} | {:error, scope_error()}
   def catalogue_scope(term, mode \\ :read) when mode in [:read, :write] do
@@ -130,15 +136,35 @@ defmodule PhoenixKitWarehouse.API.Refs do
 
   # The one place that knows the shape of the catalogue's answer:
   # {:ok, catalogue} | {:error, code, message, context}. Every refusal is a
-  # validation_failed at catalogue_id.
-  defp delegated_scope(term, mode) do
+  # validation_failed at catalogue_id. The resolver reads any 16-byte string
+  # as a raw UUID, so only `nil` and the text form of a UUID reach it.
+  defp delegated_scope(nil, mode), do: ask_for_catalogue(nil, mode)
+
+  defp delegated_scope(id, mode) when is_binary(id) do
+    case cast_uuid(id) do
+      {:ok, uuid} -> ask_for_catalogue(uuid, mode)
+      :error -> {:error, scope_error("No catalogue with this id.")}
+    end
+  end
+
+  defp delegated_scope(_other, _mode),
+    do: {:error, scope_error("catalogue_id must be a catalogue UUID.")}
+
+  defp ask_for_catalogue(term, mode) do
     resolver = @resolver
 
     case resolver.resolve_catalogue(term, writable: mode == :write) do
-      {:ok, %{uuid: uuid}} -> {:ok, uuid}
-      {:error, _code, message, _context} when is_binary(message) -> {:error, scope_error(message)}
+      {:ok, %{uuid: uuid}} ->
+        {:ok, uuid}
+
+      {:error, _code, message, context} when is_binary(message) ->
+        {:error, scope_error(message, allowed(context))}
     end
   end
+
+  # The values the resolver offers for the field (`errors[0].allowed`).
+  defp allowed(%{errors: [%{allowed: [_ | _] = allowed} | _]}), do: allowed
+  defp allowed(_context), do: nil
 
   # The same rule, for a catalogue release without `resolve_catalogue/2`.
   defp fallback_scope(nil, _mode) do
@@ -152,7 +178,8 @@ defmodule PhoenixKitWarehouse.API.Refs do
       many ->
         {:error,
          scope_error(
-           "catalogue_id is required: this install has #{length(many)} active catalogues."
+           "catalogue_id is required: this install has #{length(many)} active catalogues.",
+           Enum.map(many, & &1.uuid)
          )}
     end
   end
@@ -180,8 +207,10 @@ defmodule PhoenixKitWarehouse.API.Refs do
 
   defp fallback_check(%{uuid: uuid}, _mode), do: {:ok, uuid}
 
-  defp scope_error(message),
-    do: %{path: "catalogue_id", code: "validation_failed", message: message}
+  defp scope_error(message, allowed \\ nil) do
+    error = %{path: "catalogue_id", code: "validation_failed", message: message}
+    if allowed, do: Map.put(error, :allowed, allowed), else: error
+  end
 
   @doc false
   # `Ecto.UUID.cast/1` takes any 16-byte binary as a raw UUID, so a 16-character

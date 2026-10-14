@@ -280,6 +280,15 @@ defmodule PhoenixKitWarehouse.API.RefsTest do
       assert message =~ "catalogue_id"
     end
 
+    test "nil with two active catalogues lists the catalogues to choose from", %{
+      catalogue: catalogue
+    } do
+      second = catalogue!()
+
+      assert {:error, %{allowed: allowed}} = Refs.catalogue_scope(nil)
+      assert Enum.sort(allowed) == Enum.sort([catalogue.uuid, second.uuid])
+    end
+
     test "nil with no active catalogue is refused" do
       archive_all_catalogues!()
 
@@ -300,6 +309,16 @@ defmodule PhoenixKitWarehouse.API.RefsTest do
                  Refs.catalogue_scope(bad)
 
         assert is_binary(message)
+      end
+    end
+
+    test "the 16 raw bytes of a catalogue's UUID are not that catalogue", %{catalogue: catalogue} do
+      raw = Ecto.UUID.dump!(catalogue.uuid)
+      assert byte_size(raw) == 16
+
+      for mode <- [:read, :write] do
+        assert {:error, %{path: "catalogue_id", code: "validation_failed"}} =
+                 Refs.catalogue_scope(raw, mode)
       end
     end
 
