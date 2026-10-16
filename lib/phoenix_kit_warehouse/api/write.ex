@@ -249,11 +249,26 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp execute(request, ctx) do
     user_uuid = ctx |> Map.get(:actor, %{}) |> Map.get(:user_uuid)
 
-    case post(request, user_uuid) do
+    case guarded_post(request, user_uuid) do
       {:ok, doc} -> finish(:posted, doc, request, ctx)
       {:ok, :already_posted, doc} -> finish(:skipped, doc, request, ctx)
       {:error, reason} -> refuse(reason, request)
     end
+  end
+
+  # Only the posting transaction is guarded: once it committed, a failure
+  # must not be reported as "nothing was changed".
+  defp guarded_post(request, user_uuid) do
+    post(request, user_uuid)
+  rescue
+    error in Postgrex.Error ->
+      case error do
+        %{postgres: %{code: code}} when code in [:deadlock_detected, :serialization_failure] ->
+          {:error, {:database_conflict, code}}
+
+        _other ->
+          reraise(error, __STACKTRACE__)
+      end
   end
 
   defp post(%{kind: :receipt} = request, user_uuid),
@@ -835,6 +850,20 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp refuse({:invalid_quantity, uuids}, request),
     do: refuse_lines("validation_failed", "quantity is not valid.", uuids, request)
+
+  # Postgres aborted the transaction to break a lock cycle with another
+  # document: everything was rolled back, so the same call can be sent again.
+  # `retry_after` makes core answer a `retry-after` header.
+  defp refuse({:database_conflict, code}, _request) do
+    Logger.warning("[PhoenixKitWarehouse.API] posting aborted by the database: #{code}")
+
+    fail(
+      :internal_error,
+      "The document could not be posted because another stock change was in progress. " <>
+        "Nothing was changed; send the same call again.",
+      %{posted: false, retry_after: 1}
+    )
+  end
 
   defp refuse(reason, _request) when reason in [:no_lines, :invalid_lines] do
     refuse_request([
