@@ -34,7 +34,10 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
   defp line(item, quantity), do: %{"ref" => %{"id" => item.uuid}, "quantity" => quantity}
 
-  defp sku_line(item, quantity), do: %{"ref" => %{"sku" => item.sku}, "quantity" => quantity}
+  if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
+       function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
+    defp sku_line(item, quantity), do: %{"ref" => %{"sku" => item.sku}, "quantity" => quantity}
+  end
 
   defp effects({:ok, _body}), do: []
   defp effects({:ok, _body, effects}), do: effects
@@ -478,12 +481,15 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
                Write.receive_stock(input, dry)
     end
 
-    test "a trashed product addressed by sku is the same", %{a: a, b: b, ctx: ctx, input: input} do
-      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
-      retry = Map.put(input, "lines", [sku_line(a, "5"), line(b, "2")])
+    if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
+         function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
+      test "a trashed product addressed by sku is the same", %{a: a, b: b, ctx: ctx, input: input} do
+        {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+        retry = Map.put(input, "lines", [sku_line(a, "5"), line(b, "2")])
 
-      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
-               Write.receive_stock(retry, ctx)
+        assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
+                 Write.receive_stock(retry, ctx)
+      end
     end
 
     test "a product that was never on the document is refused even when another is trashed", %{
