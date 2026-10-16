@@ -175,10 +175,18 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     end
   rescue
     e ->
-      # Only the kind of the exception: its message can quote the metadata, which
-      # carries values of an API request.
-      Logger.warning("[Warehouse.ActivityLog] log error: #{inspect(e.__struct__)}")
+      Logger.warning("[Warehouse.ActivityLog] log error: #{log_error(e, opts)}")
       :ok
+  end
+
+  # An entry with API metadata logs only the kind of the exception: its message
+  # can quote the metadata, which carries values of an API request. Every other
+  # entry keeps the message.
+  defp log_error(e, opts) do
+    case Keyword.get(opts, :metadata) do
+      metadata when metadata in [nil, %{}] -> Exception.message(e)
+      _metadata -> inspect(e.__struct__)
+    end
   end
 
   defp do_log(attrs, opts) do

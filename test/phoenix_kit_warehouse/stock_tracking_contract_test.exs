@@ -71,10 +71,10 @@ defmodule PhoenixKitWarehouse.StockTrackingContractTest do
   end
 
   test "no module of this package reads the switch" do
-    readers =
-      "lib/**/*.ex"
-      |> Path.wildcard()
-      |> Enum.filter(&(File.read!(&1) =~ "shop_stock_tracking_enabled"))
+    files = Path.wildcard("lib/**/*.ex")
+    assert files != [], "no source file found: the test would pass without reading anything"
+
+    readers = Enum.filter(files, &(File.read!(&1) =~ "shop_stock_tracking_enabled"))
 
     assert readers == []
   end

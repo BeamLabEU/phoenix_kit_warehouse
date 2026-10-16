@@ -192,5 +192,15 @@ defmodule PhoenixKitWarehouse.API.ActivityLogPostedTest do
       assert entry("warehouse.goods_receipt.posted", receipt.uuid) == nil
       assert Repo.get!(GoodsReceipt, receipt.uuid).status == "posted"
     end
+
+    test "an entry without API metadata keeps the message of the error in the log" do
+      receipt = posted_receipt()
+
+      # An actor that is not a map raises in `actor_uuid/1`: the module's own rescue.
+      log =
+        capture_log(fn -> assert :ok = ActivityLog.log_posted(receipt, actor: "not-an-actor") end)
+
+      assert log =~ "[Warehouse.ActivityLog] log error: no case clause matching"
+    end
   end
 end
