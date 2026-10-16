@@ -218,7 +218,8 @@ defmodule PhoenixKitWarehouse.API.DryRunTest do
     assert one != fresh
   end
 
-  test "a would_skip preview carries the effects of the retry", %{a: a, b: b, ctx: ctx, dry: dry} do
+  test "a would_skip preview carries the effects of the retry; a different one is the error",
+       %{a: a, b: b, ctx: ctx, dry: dry} do
     input = %{"external_ref" => "DRY-FX-1", "lines" => [line(a, "1")]}
     {:ok, _} = Write.receive_stock(input, ctx)
 
@@ -226,11 +227,17 @@ defmodule PhoenixKitWarehouse.API.DryRunTest do
     refute Map.has_key?(preview, "effects")
 
     other = Map.put(input, "lines", [line(a, "2")])
-    assert {:preview, %{"effects" => [%{"code" => code}]}, _} = Write.receive_stock(other, dry)
+
+    assert {:error, :validation_failed, _, %{errors: [%{code: code}], posted: false}} =
+             Write.receive_stock(other, dry)
+
     assert code == "external_ref_lines_differ"
 
     third = Map.put(input, "lines", [line(a, "1"), line(b, "1")])
-    assert {:preview, %{"effects" => [%{"code" => code}]}, _} = Write.receive_stock(third, dry)
+
+    assert {:error, :validation_failed, _, %{errors: [%{code: code}], posted: false}} =
+             Write.receive_stock(third, dry)
+
     assert code == "external_ref_lines_differ"
 
     {:ok, _} = PhoenixKitCatalogue.Catalogue.trash_item(a)

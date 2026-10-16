@@ -189,22 +189,27 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(4))
     end
 
-    test "a reference reused with other lines is skipped, says so, and moves no stock", %{
-      first: first,
-      a: a,
-      b: b,
-      ctx: ctx
-    } do
-      receive!(%{"external_ref" => "ACC-81", "lines" => [line(a, "4")]}, ctx)
+    test "a reference reused with other lines is refused, naming the posted document, and moves no stock",
+         %{
+           first: first,
+           a: a,
+           b: b,
+           ctx: ctx
+         } do
+      posted = receive!(%{"external_ref" => "ACC-81", "lines" => [line(a, "4")]}, ctx)
       before = counters()
 
       for other <- [[line(a, "5")], [line(b, "4")], [line(a, "4"), line(b, "1")]] do
-        assert {:ok, body, [effect]} =
+        assert {:error, :validation_failed, _message, context} =
                  Write.receive_stock(%{"external_ref" => "ACC-81", "lines" => other}, ctx)
 
-        assert body["status"] == "skipped"
-        assert effect["code"] == "external_ref_lines_differ"
-        assert effect["message"] =~ "new external_ref"
+        assert context.posted == false
+        assert context.document["number"] == posted["document"]["number"]
+
+        assert [%{path: "external_ref", code: "external_ref_lines_differ"} = error] =
+                 context.errors
+
+        assert error.message =~ "new external_ref"
       end
 
       assert counters() == before
@@ -212,21 +217,21 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
       assert Decimal.equal?(quantity(b.uuid, first.uuid), Decimal.new(0))
     end
 
-    test "a reference reused with another unit_value is skipped, says so, and keeps the stored one",
+    test "a reference reused with another unit_value is refused and keeps the stored one",
          %{first: first, a: a, ctx: ctx} do
       priced = fn unit_value -> [line(a, "3", %{"unit_value" => unit_value})] end
       receive!(%{"external_ref" => "ACC-82", "lines" => priced.("5")}, ctx)
 
-      effects = fn lines ->
-        assert {:ok, %{"status" => "skipped"}, effects} =
+      refused = fn lines ->
+        assert {:error, :validation_failed, _message, %{errors: errors, posted: false}} =
                  Write.receive_stock(%{"external_ref" => "ACC-82", "lines" => lines}, ctx)
 
-        Enum.map(effects, & &1["code"])
+        Enum.map(errors, & &1.code)
       end
 
-      assert effects.(priced.("9")) == ["external_ref_lines_differ"]
+      assert refused.(priced.("9")) == ["external_ref_lines_differ"]
       # a retry that leaves the unit value out is not the posted request either
-      assert effects.([line(a, "3")]) == ["external_ref_lines_differ"]
+      assert refused.([line(a, "3")]) == ["external_ref_lines_differ"]
 
       stock = Repo.get_by!(Stock, item_uuid: a.uuid, location_uuid: first.uuid)
       assert Decimal.equal?(stock.unit_value, Decimal.new(5))
@@ -254,7 +259,8 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
       # a unit value where the posted line had none
       priced_b = [line(a, "3", %{"unit_value" => "5"}), line(b, "1", %{"unit_value" => "2"})]
 
-      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_differ"}]} =
+      assert {:error, :validation_failed, _message,
+              %{errors: [%{code: "external_ref_lines_differ"}], posted: false}} =
                Write.receive_stock(%{"external_ref" => "ACC-83", "lines" => priced_b}, ctx)
     end
   end

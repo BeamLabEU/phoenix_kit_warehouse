@@ -2,8 +2,9 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
   @moduledoc """
   A repeated `external_ref` is answered `skipped` from the posted document.
   Only a request that matches that document passes for a plain retry: a
-  warehouse, catalogue, reason or order that differs is reported in the
-  answer, and a malformed source is refused as in a first call.
+  warehouse, catalogue, reason or order that differs is refused as a
+  `validation_failed` that names the posted document, and a malformed source is
+  refused as in a first call.
   """
   use PhoenixKitWarehouse.DataCase, async: false
 
@@ -40,16 +41,15 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
   defp codes(result), do: result |> effects() |> Enum.map(& &1["code"])
 
-  defp body({:ok, body}), do: body
-  defp body({:ok, body, _effects}), do: body
-  defp body({:preview, body, _fingerprint}), do: body
+  # A retry that is not the posted request is an error, never `skipped`.
+  defp conflict({:error, :validation_failed, _message, %{posted: false} = context}),
+    do: context
 
-  # A document posted long enough ago for its first call to have finished.
-  defp age!(id) do
-    at = DateTime.utc_now() |> DateTime.add(-3600, :second) |> DateTime.truncate(:second)
-    {1, _} = Repo.update_all(from(i in GoodsIssue, where: i.uuid == ^id), set: [posted_at: at])
-    :ok
-  end
+  defp conflict_codes(result),
+    do: result |> conflict() |> Map.fetch!(:errors) |> Enum.map(& &1.code)
+
+  defp conflict_message(result),
+    do: result |> conflict() |> Map.fetch!(:errors) |> Enum.map_join(" ", & &1.message)
 
   defp register_orders(uuid) do
     Orders.put(uuid, "Order #1001")
@@ -108,12 +108,11 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
       result = Write.receive_stock(Map.put(input, "location_id", second.uuid), ctx)
 
-      assert {:ok, %{"status" => "skipped", "document" => %{"location_id" => location}}, [effect]} =
-               result
-
+      assert %{document: %{"location_id" => location, "number" => number}} = conflict(result)
       assert location == first.uuid
-      assert effect["code"] == "external_ref_basis_differs"
-      assert effect["message"] =~ "location_id"
+      assert is_integer(number)
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
+      assert conflict_message(result) =~ "location_id"
       assert Decimal.equal?(quantity(a.uuid, second.uuid), Decimal.new(0))
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
     end
@@ -128,11 +127,11 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
       result = Write.set_stock(Map.put(input, "location_id", second.uuid), ctx)
 
-      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_basis_differs"}]} = result
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
       assert Decimal.equal?(quantity(a.uuid, second.uuid), Decimal.new(0))
     end
 
-    test "a location that does not exist is reported, not refused, on a retry", %{
+    test "a location that does not exist is a basis difference, not a refusal of the location", %{
       a: a,
       ctx: ctx
     } do
@@ -141,8 +140,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
       for bad <- [Ecto.UUID.generate(), "nope", 5] do
         result = Write.receive_stock(Map.put(input, "location_id", bad), ctx)
-        assert {:ok, %{"status" => "skipped"}, [_effect]} = result
-        assert codes(result) == ["external_ref_basis_differs"]
+        assert conflict_codes(result) == ["external_ref_basis_differs"]
       end
     end
 
@@ -161,7 +159,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert {:ok, %{"status" => "skipped"}} = Write.receive_stock(input, ctx)
     end
 
-    test "a preview of the retry carries the same effect", %{
+    test "a preview of the retry is the same error", %{
       second: second,
       a: a,
       ctx: ctx,
@@ -172,8 +170,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
       result = Write.receive_stock(Map.put(input, "location_id", second.uuid), dry)
 
-      assert %{"status" => "would_skip"} = body(result)
-      assert codes(result) == ["external_ref_basis_differs"]
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
     end
   end
 
@@ -187,11 +184,11 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
                Write.receive_stock(Map.put(input, "catalogue_id", a.catalogue_uuid), ctx)
 
       result = Write.receive_stock(Map.put(input, "catalogue_id", other.uuid), ctx)
-      assert "external_ref_basis_differs" in codes(result)
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
 
       for garbage <- [Ecto.UUID.generate(), "not-a-uuid", "0123456789abcdef", 5] do
         result = Write.receive_stock(Map.put(input, "catalogue_id", garbage), ctx)
-        assert "external_ref_basis_differs" in codes(result), inspect(garbage)
+        assert conflict_codes(result) == ["external_ref_basis_differs"], inspect(garbage)
       end
     end
 
@@ -230,11 +227,9 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
       result = Write.issue_stock(Map.put(input, "reason", "damage"), ctx)
 
-      assert {:ok, %{"status" => "skipped", "document" => %{"reason" => "sale"}}, [effect]} =
-               result
-
-      assert effect["code"] == "external_ref_basis_differs"
-      assert effect["message"] =~ "reason"
+      assert %{document: %{"reason" => "sale"}} = conflict(result)
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
+      assert conflict_message(result) =~ "reason"
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(8))
     end
   end
@@ -245,8 +240,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       %{order: register_orders(Ecto.UUID.generate())}
     end
 
-    defp crashed_issue(a, ctx) do
-      # The state after a crash between the posting and the link to the order.
+    defp plain_issue(a, ctx) do
       input = %{"external_ref" => "RB-ORDER-1", "reason" => "sale", "lines" => [line(a, "1")]}
 
       assert {:ok, %{"status" => "posted", "document" => %{"id" => id}}} =
@@ -255,52 +249,66 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       {input, id}
     end
 
-    test "a retry that names an order the document is not linked to says so", %{
-      a: a,
-      ctx: ctx,
-      order: order
-    } do
-      {input, id} = crashed_issue(a, ctx)
-      age!(id)
-      retry = Map.put(input, "source", %{"kind" => "shop_order", "id" => order})
-
-      result = Write.issue_stock(retry, ctx)
-
-      assert {:ok, %{"status" => "skipped"}, [effect]} = result
-      assert effect["code"] == "source_ref_not_attached"
-      assert Repo.get!(GoodsIssue, id).source_refs == []
-    end
-
-    test "a retry right behind the first call, before it linked the order, is not told the link is missing",
-         %{a: a, ctx: ctx, dry: dry, order: order} do
-      # The first call links the order after its posting committed; a retry
-      # that reads the document in between sees no link yet.
-      {input, id} = crashed_issue(a, ctx)
-      retry = Map.put(input, "source", %{"kind" => "shop_order", "id" => order})
-
-      assert {:ok, %{"status" => "skipped"}} = Write.issue_stock(retry, ctx)
-      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:issue, retry, ctx)
-      assert codes(Write.issue_stock(retry, dry)) == []
-      assert Repo.get!(GoodsIssue, id).source_refs == []
-
-      age!(id)
-      assert codes(Write.issue_stock(retry, ctx)) == ["source_ref_not_attached"]
-      assert codes(Write.run_new(:issue, retry, ctx)) == ["source_ref_not_attached"]
-      assert codes(Write.issue_stock(retry, dry)) == ["source_ref_not_attached"]
-    end
-
-    test "a retry that names another order than the linked one says so", %{
-      a: a,
-      first: first,
-      ctx: ctx,
-      order: order
-    } do
-      input = %{
+    defp order_issue(a, order) do
+      %{
         "external_ref" => "RB-ORDER-2",
         "reason" => "sale",
         "source" => %{"kind" => "shop_order", "id" => order},
         "lines" => [line(a, "1")]
       }
+    end
+
+    test "a retry that names an order the document is not linked to is refused", %{
+      a: a,
+      ctx: ctx,
+      dry: dry,
+      order: order
+    } do
+      {input, id} = plain_issue(a, ctx)
+      retry = Map.put(input, "source", %{"kind" => "shop_order", "id" => order})
+
+      for result <- [
+            Write.issue_stock(retry, ctx),
+            Write.run_new(:issue, retry, ctx),
+            Write.issue_stock(retry, dry)
+          ] do
+        assert conflict_codes(result) == ["external_ref_basis_differs"]
+        assert conflict_message(result) =~ "source"
+        assert %{document: %{"id" => ^id}} = conflict(result)
+      end
+
+      assert Repo.get!(GoodsIssue, id).source_refs == []
+    end
+
+    test "the order is linked by the posting itself: a retry right behind it passes", %{
+      a: a,
+      first: first,
+      ctx: ctx,
+      dry: dry,
+      order: order
+    } do
+      input = order_issue(a, order)
+
+      assert {:ok, %{"status" => "posted", "document" => %{"id" => id}}} =
+               Write.issue_stock(input, ctx)
+
+      # Read straight after the answer, no waiting: the link was committed with
+      # the document.
+      assert Repo.get!(GoodsIssue, id).source_refs == [%{"type" => "shop_order", "uuid" => order}]
+
+      assert {:ok, %{"status" => "skipped"}} = Write.issue_stock(input, ctx)
+      assert {:ok, %{"status" => "skipped"}} = Write.run_new(:issue, input, ctx)
+      assert codes(Write.issue_stock(input, dry)) == []
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(9))
+    end
+
+    test "a retry that names another order than the linked one is refused", %{
+      a: a,
+      first: first,
+      ctx: ctx,
+      order: order
+    } do
+      input = order_issue(a, order)
 
       assert {:ok, %{"status" => "posted"}} = Write.issue_stock(input, ctx)
       assert {:ok, %{"status" => "skipped"}} = Write.issue_stock(input, ctx)
@@ -308,14 +316,14 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       other = register_orders(Ecto.UUID.generate())
       retry = put_in(input, ["source", "id"], other)
 
-      assert {:ok, %{"status" => "skipped"}, [%{"code" => "source_ref_not_attached"}]} =
-               Write.issue_stock(retry, ctx)
+      assert conflict_codes(Write.issue_stock(retry, ctx)) == ["external_ref_basis_differs"]
+      assert conflict_codes(Write.run_new(:issue, retry, ctx)) == ["external_ref_basis_differs"]
 
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(9))
     end
 
     test "a retry of an issue with no order needs no effect", %{a: a, ctx: ctx} do
-      {input, _id} = crashed_issue(a, ctx)
+      {input, _id} = plain_issue(a, ctx)
       assert {:ok, %{"status" => "skipped"}} = Write.issue_stock(input, ctx)
     end
   end
@@ -413,14 +421,14 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
     end
 
-    test "other lines are reported", %{a: a, ctx: ctx} do
+    test "other lines are refused", %{a: a, ctx: ctx} do
       {input, _id} = posted_receipt(a, ctx, "RB-RACE-2")
       other = Map.put(input, "lines", [line(a, "6")])
 
-      assert codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
+      assert conflict_codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
     end
 
-    test "another unit_value on a receipt line is reported; the same one written differently is not",
+    test "another unit_value on a receipt line is refused; the same one written differently is not",
          %{a: a, ctx: ctx} do
       priced = fn unit_value -> [line(a, "5") |> Map.put("unit_value", unit_value)] end
       input = %{"external_ref" => "RB-RACE-UV", "lines" => priced.("5")}
@@ -432,9 +440,9 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, same, ctx)
 
       other = %{input | "lines" => priced.("9")}
-      assert codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
+      assert conflict_codes(Write.run_new(:receipt, other, ctx)) == ["external_ref_lines_differ"]
 
-      assert codes(Write.run_new(:receipt, %{input | "lines" => [line(a, "5")]}, ctx)) ==
+      assert conflict_codes(Write.run_new(:receipt, %{input | "lines" => [line(a, "5")]}, ctx)) ==
                ["external_ref_lines_differ"]
     end
 
@@ -459,7 +467,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
                Write.run_new(:inventory, %{count | "lines" => noisy.(count["lines"])}, ctx)
     end
 
-    test "both retry paths answer with the stored lines, whatever the request lists", %{
+    test "both retry paths answer a request that lists other lines with the same error", %{
       catalogue: catalogue,
       a: a,
       ctx: ctx
@@ -471,12 +479,8 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       early = Write.receive_stock(more, ctx)
       raced = Write.run_new(:receipt, more, ctx)
 
-      assert codes(early) == ["external_ref_lines_differ"]
-      assert codes(raced) == codes(early)
-      assert body(raced) == body(early)
-      assert [%{"id" => id}] = body(raced)["results"]
-      assert id == a.uuid
-      assert body(raced)["summary"] == %{"skipped" => 1}
+      assert conflict_codes(early) == ["external_ref_lines_differ"]
+      assert raced == early
     end
 
     test "a stocktake is compared too", %{a: a, ctx: ctx} do
@@ -486,10 +490,13 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert {:ok, %{"status" => "skipped"}} = Write.run_new(:inventory, input, ctx)
 
       other = Map.put(input, "lines", [line(a, "7")])
-      assert codes(Write.run_new(:inventory, other, ctx)) == ["external_ref_lines_differ"]
+
+      assert conflict_codes(Write.run_new(:inventory, other, ctx)) == [
+               "external_ref_lines_differ"
+             ]
     end
 
-    test "another warehouse that is stated is reported; the default, moved since, is not", %{
+    test "another warehouse that is stated is refused; the default, moved since, is not", %{
       second: second,
       a: a,
       ctx: ctx
@@ -497,15 +504,14 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       {input, _id} = posted_receipt(a, ctx, "RB-RACE-4")
 
       result = Write.run_new(:receipt, Map.put(input, "location_id", second.uuid), ctx)
-      assert codes(result) == ["external_ref_basis_differs"]
-      assert [%{"message" => message}] = effects(result)
-      assert message =~ "location_id"
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
+      assert conflict_message(result) =~ "location_id"
 
       PhoenixKitWarehouse.StockLedger.set_default_location_uuid(second.uuid)
       assert {:ok, %{"status" => "skipped"}} = Write.run_new(:receipt, input, ctx)
     end
 
-    test "another catalogue that is stated is reported; the same one is not", %{a: a, ctx: ctx} do
+    test "another catalogue that is stated is refused; the same one is not", %{a: a, ctx: ctx} do
       {input, _id} = posted_receipt(a, ctx, "RB-RACE-4C")
 
       same = Map.put(input, "catalogue_id", a.catalogue_uuid)
@@ -522,15 +528,11 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
         |> Map.put("lines", [line(other_item, "5")])
 
       result = Write.run_new(:receipt, other, ctx)
-      assert "external_ref_basis_differs" in codes(result)
-
-      assert %{"message" => message} =
-               Enum.find(effects(result), &(&1["code"] == "external_ref_basis_differs"))
-
-      assert message =~ "catalogue_id"
+      assert "external_ref_basis_differs" in conflict_codes(result)
+      assert conflict_message(result) =~ "catalogue_id"
     end
 
-    test "another reason is reported", %{first: first, a: a, ctx: ctx} do
+    test "another reason is refused", %{first: first, a: a, ctx: ctx} do
       seed!(a.uuid, "10", first.uuid)
       input = %{"external_ref" => "RB-RACE-5", "reason" => "sale", "lines" => [line(a, "2")]}
       assert {:ok, %{"status" => "posted"}} = Write.issue_stock(input, ctx)
@@ -538,7 +540,7 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert {:ok, %{"status" => "skipped"}} = Write.run_new(:issue, input, ctx)
 
       result = Write.run_new(:issue, Map.put(input, "reason", "damage"), ctx)
-      assert codes(result) == ["external_ref_basis_differs"]
+      assert conflict_codes(result) == ["external_ref_basis_differs"]
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(8))
     end
   end

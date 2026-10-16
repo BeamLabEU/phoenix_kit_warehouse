@@ -20,22 +20,20 @@ defmodule PhoenixKitWarehouse.API.Write do
   `external_ref`: such a request is a retry and is answered from that
   document (`answer_retry/3`), so a product trashed or a default warehouse
   changed since the first call cannot turn it into a 422. The posting layer
-  compares nothing, so the answer also says when the request is not the one
-  that was posted: other lines, or for a receipt another unit value on a line
-  (`external_ref_lines_differ`), lines that cannot be compared
-  (`external_ref_lines_unverified`), another warehouse, catalogue or reason
-  that the request states (`external_ref_basis_differs`), or a shop order the
-  document is not linked to (`source_ref_not_attached`).
-  A retry that raced past the lookup is answered by the posting layer and gets
-  the same comparison.
+  compares nothing, so the retry is compared with the document here. A request
+  that is not the one that was posted is refused as `422 validation_failed`
+  with `posted: false`, the posted `document` and `context.errors` naming what
+  differs, so that a client cannot take it for a retry that went through:
+  other lines, or for a receipt another unit value on a line
+  (`external_ref_lines_differ`), or another warehouse, catalogue, reason or
+  shop order that the request states (`external_ref_basis_differs`). Lines that
+  cannot be compared any more (a product trashed since) are not a difference:
+  the retry is answered `skipped` with an `external_ref_lines_unverified`
+  effect. A retry that raced past the lookup is answered by the posting layer
+  and gets the same comparison.
 
-  An issue for a shop order links the order after its posting committed, so a
-  retry can read the document before the link. For `@link_grace_seconds` (10)
-  after the posting, a document with no shop order linked yet is not reported as
-  unlinked: a retry inside that window is not told that the order link is
-  missing, whichever order the retry names (the window is effectively 9 to 10
-  seconds, as `posted_at` is kept to the second). After it,
-  `source_ref_not_attached` is reported.
+  A shop order is linked to the issue inside the posting transaction
+  (`source_refs` of the draft), so a document that exists carries its link.
 
   Handlers are called as `f.(input, ctx)` with a string-keyed `input` already
   validated against the closed schema of the tool.
@@ -59,12 +57,6 @@ defmodule PhoenixKitWarehouse.API.Write do
   alias PhoenixKitWarehouse.StockLedger
 
   @max_note 1000
-
-  # The first call of an issue with a shop order links the order after its
-  # posting committed, so a retry that reads the document in between sees no
-  # link yet. A document posted this recently, with no order linked at all, is
-  # not reported as unlinked.
-  @link_grace_seconds 10
 
   @kinds %{
     receipt: %{
@@ -90,6 +82,7 @@ defmodule PhoenixKitWarehouse.API.Write do
   @type result ::
           {:ok, map()}
           | {:ok, map(), [map()]}
+          | {:preview, map(), String.t()}
           | {:error, atom(), String.t(), map()}
 
   @doc "`warehouse.receive_stock`: a goods receipt with many lines."
@@ -147,6 +140,17 @@ defmodule PhoenixKitWarehouse.API.Write do
       :validation_failed,
       "Nothing was posted: #{length(errors)} problem(s) found in the request.",
       %{errors: errors, posted: false}
+    )
+  end
+
+  # A repeated `external_ref` whose request is not the posted document's: an
+  # error, so that a client cannot take it for a retry that went through.
+  defp retry_conflict(kind, doc, errors) do
+    fail(
+      :validation_failed,
+      "Nothing was posted: this external_ref belongs to document ##{doc.number}, " <>
+        "and this request is not the one that was posted.",
+      %{errors: errors, document: document(kind, doc), posted: false}
     )
   end
 
@@ -288,8 +292,18 @@ defmodule PhoenixKitWarehouse.API.Write do
       note: request.note
     }
 
-    if request.kind == :issue, do: Map.put(base, :reason, request.reason), else: base
+    if request.kind == :issue,
+      do: Map.merge(base, %{reason: request.reason, source_refs: source_refs(request)}),
+      else: base
   end
+
+  # A shop order is linked inside the posting transaction, as the admin form
+  # stores it: `%{"type" => "shop_order", "uuid" => id}` (the key is "type",
+  # never "kind").
+  defp source_refs(%{order_uuid: order_uuid}) when is_binary(order_uuid),
+    do: [%{"type" => "shop_order", "uuid" => order_uuid}]
+
+  defp source_refs(_request), do: []
 
   # What the Warehouse pages print for a line (name, SKU, unit) and the
   # catalogue it came from. Lines made in the admin carry them, so lines made
@@ -329,60 +343,35 @@ defmodule PhoenixKitWarehouse.API.Write do
     })
   end
 
-  defp finish(status, doc, request, ctx) do
-    {doc, effects} = after_post(status, request, doc)
-    if status == :posted, do: Audit.posted(request, doc, ctx)
+  # A repeated reference that got past the early lookup of `run/3` (a retry
+  # racing the first call) is answered by the posting layer: compare it with
+  # the document too.
+  defp finish(:skipped, doc, request, _ctx) do
+    requested = {:ok, Enum.map(request.lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
 
-    results = results(status, request, doc)
+    case comparison(doc, request.kind, requested, request.stated) do
+      {[], effects} -> reply(skipped_body(request.kind, doc, request.raw_lines), effects)
+      {errors, _effects} -> retry_conflict(request.kind, doc, errors)
+    end
+  end
 
-    body = %{
-      "status" => Atom.to_string(status),
-      "document" => document(request.kind, doc),
-      "results" => results,
-      "summary" => Enum.frequencies_by(results, & &1["action"])
-    }
+  defp finish(:posted, doc, request, ctx) do
+    Audit.posted(request, doc, ctx)
+    results = posted_results(request, doc)
 
-    reply(body, effects)
+    reply(
+      %{
+        "status" => "posted",
+        "document" => document(request.kind, doc),
+        "results" => results,
+        "summary" => Enum.frequencies_by(results, & &1["action"])
+      },
+      []
+    )
   end
 
   defp reply(body, []), do: {:ok, body}
   defp reply(body, effects), do: {:ok, body, effects}
-
-  # Work that follows a posting and may add effects to the answer.
-  #
-  # A repeated reference that got past the early lookup of `run/3` (a retry
-  # racing the first call) is answered by the posting layer: compare its
-  # lines too.
-  defp after_post(:skipped, request, doc) do
-    requested = {:ok, Enum.map(request.lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
-    {doc, comparison_effects(doc, request.kind, requested, request.stated)}
-  end
-
-  # A shop-order basis is attached with `GoodsIssues.add_source_ref/3`, which
-  # stores `%{"type" => "shop_order", "uuid" => id}` (the key is "type", never
-  # "kind"). It is a second write: if it fails the document is already posted
-  # and immutable, so the call still succeeds and carries an effect.
-  defp after_post(:posted, %{kind: :issue, order_uuid: order_uuid}, doc)
-       when is_binary(order_uuid) do
-    case GoodsIssues.add_source_ref(doc, "shop_order", order_uuid) do
-      {:ok, updated} ->
-        {updated, []}
-
-      {:error, reason} ->
-        Logger.warning("[PhoenixKitWarehouse.API] could not link order: #{reason_kind(reason)}")
-
-        {doc,
-         [
-           %{
-             "code" => "source_ref_not_attached",
-             "message" =>
-               "The goods issue was posted, but linking it to the order failed. Link it from the admin UI."
-           }
-         ]}
-    end
-  end
-
-  defp after_post(_status, _request, doc), do: {doc, []}
 
   defp document(kind, doc) do
     spec = Map.fetch!(@kinds, kind)
@@ -404,10 +393,7 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp iso(nil), do: nil
   defp iso(%DateTime{} = at), do: DateTime.to_iso8601(at)
 
-  # The stored lines, as the early lookup answers a retry.
-  defp results(:skipped, request, doc), do: retry_results(doc, request.raw_lines)
-
-  defp results(:posted, request, doc) do
+  defp posted_results(request, doc) do
     Enum.map(request.lines, fn line ->
       {from, to} = change(request.kind, line, doc)
 
@@ -485,26 +471,28 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
   defp answer_retry(kind, input, doc) do
-    {body, effects} = retry_body(kind, input, doc)
-    reply(Map.put(body, "status", "skipped"), effects)
+    case retry_comparison(kind, input, doc) do
+      {[], effects} -> reply(skipped_body(kind, doc, input["lines"]), effects)
+      {errors, _effects} -> retry_conflict(kind, doc, errors)
+    end
   end
 
   # The answer built from the stored document (its number, its lines in the
-  # order they were posted), and what this request asks for, compared with it.
-  defp retry_body(kind, input, doc) do
-    results = retry_results(doc, input["lines"])
+  # order they were posted).
+  defp skipped_body(kind, doc, raw_lines) do
+    results = retry_results(doc, raw_lines)
 
-    body = %{
+    %{
+      "status" => "skipped",
       "document" => document(kind, doc),
       "results" => results,
       "summary" => Enum.frequencies_by(results, & &1["action"])
     }
-
-    effects =
-      comparison_effects(doc, kind, requested_lines(kind, input), requested_basis(kind, input))
-
-    {body, effects}
   end
+
+  # What this request asks for, compared with the stored document.
+  defp retry_comparison(kind, input, doc),
+    do: comparison(doc, kind, requested_lines(kind, input), requested_basis(kind, input))
 
   defp retry_results(doc, raw_lines) do
     raw = if is_list(raw_lines), do: raw_lines, else: []
@@ -553,18 +541,21 @@ defmodule PhoenixKitWarehouse.API.Write do
     end
   end
 
-  defp comparison_effects(doc, kind, requested, stated),
-    do: reference_effects(doc, kind, requested) ++ basis_effects(doc, kind, stated)
-
   # The posting layer answers a repeated reference with the existing document
   # and compares nothing. A reference reused by another system, another key
-  # or a changed body must not pass for a harmless retry: the answer says so
-  # (stock did not move either way).
-  defp reference_effects(doc, kind, {:ok, requested}) do
-    if same_lines?(doc, kind, requested), do: [], else: [lines_differ_effect(doc)]
+  # or a changed body must not pass for a harmless retry: the differences are
+  # errors (stock did not move either way). Lines that cannot be read any more
+  # are not a difference, only a warning effect. `{errors, effects}`.
+  defp comparison(doc, kind, requested, stated) do
+    {line_errors, effects} = reference_result(doc, kind, requested)
+    {line_errors ++ basis_errors(doc, kind, stated), effects}
   end
 
-  defp reference_effects(doc, _kind, :unknown), do: [lines_unverified_effect(doc)]
+  defp reference_result(doc, kind, {:ok, requested}) do
+    if same_lines?(doc, kind, requested), do: {[], []}, else: {[lines_differ_error(doc)], []}
+  end
+
+  defp reference_result(doc, _kind, :unknown), do: {[], [lines_unverified_effect(doc)]}
 
   defp same_lines?(doc, kind, requested) do
     key = quantity_key(kind)
@@ -628,20 +619,21 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp order_of(_source), do: nil
 
-  # The same warning for the rest of the basis: a reference reused for another
+  # The same for the rest of the basis: a reference reused for another
   # warehouse, catalogue, reason or order is not a retry either, and the stock
   # did not move.
-  defp basis_effects(doc, kind, wanted) do
+  defp basis_errors(doc, kind, wanted) do
     differing =
       for {name, differs?} <- [
             {"location_id", location_differs?(doc, wanted.location)},
             {"catalogue_id", catalogue_differs?(doc, wanted.catalogue)},
-            {"reason", reason_differs?(doc, kind, wanted.reason)}
+            {"reason", reason_differs?(doc, kind, wanted.reason)},
+            {"source", order_differs?(doc, kind, wanted.order)}
           ],
           differs?,
           do: name
 
-    List.wrap(basis_differs_effect(doc, differing)) ++ order_effects(doc, kind, wanted.order)
+    List.wrap(basis_differs_error(doc, differing))
   end
 
   defp location_differs?(_doc, nil), do: false
@@ -666,46 +658,24 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp reason_differs?(_doc, _kind, _reason), do: false
 
-  defp basis_differs_effect(_doc, []), do: nil
+  # The shop order of the request is not among the document's links.
+  defp order_differs?(%GoodsIssue{source_refs: refs}, :issue, order_uuid)
+       when is_binary(order_uuid) do
+    not Enum.any?(refs || [], &(&1["type"] == "shop_order" and &1["uuid"] == order_uuid))
+  end
 
-  defp basis_differs_effect(doc, differing) do
+  defp order_differs?(_doc, _kind, _order_uuid), do: false
+
+  defp basis_differs_error(_doc, []), do: nil
+
+  defp basis_differs_error(doc, differing) do
     %{
-      "code" => "external_ref_basis_differs",
-      "message" =>
+      path: "external_ref",
+      code: "external_ref_basis_differs",
+      message:
         "This external_ref belongs to document ##{doc.number}, which was posted with a different " <>
           "#{Enum.join(differing, ", ")}. Nothing was posted now. " <>
           "If this is a new document, send a new external_ref."
-    }
-  end
-
-  defp order_effects(%GoodsIssue{} = doc, :issue, order_uuid) when is_binary(order_uuid) do
-    if linked?(doc, order_uuid) or link_pending?(doc),
-      do: [],
-      else: [order_not_linked_effect(doc)]
-  end
-
-  defp order_effects(_doc, _kind, _order_uuid), do: []
-
-  defp linked?(%GoodsIssue{source_refs: refs}, order_uuid) do
-    Enum.any?(refs || [], &(&1["type"] == "shop_order" and &1["uuid"] == order_uuid))
-  end
-
-  # The first call may still be linking its order: the document is new and no
-  # shop order is linked to it yet. An order linked to it already (another
-  # one than the request's) is not pending.
-  defp link_pending?(%GoodsIssue{source_refs: refs, posted_at: %DateTime{} = posted_at}) do
-    not Enum.any?(refs || [], &(&1["type"] == "shop_order")) and
-      DateTime.diff(DateTime.utc_now(), posted_at) < @link_grace_seconds
-  end
-
-  defp link_pending?(_doc), do: false
-
-  defp order_not_linked_effect(doc) do
-    %{
-      "code" => "source_ref_not_attached",
-      "message" =>
-        "This external_ref belongs to document ##{doc.number}, which is not linked to this order. " <>
-          "Nothing was posted now. Link it from the admin UI."
     }
   end
 
@@ -713,10 +683,11 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp quantity_key(:inventory), do: "counted_quantity"
   defp quantity_key(:issue), do: "issued_quantity"
 
-  defp lines_differ_effect(doc) do
+  defp lines_differ_error(doc) do
     %{
-      "code" => "external_ref_lines_differ",
-      "message" =>
+      path: "external_ref",
+      code: "external_ref_lines_differ",
+      message:
         "This external_ref belongs to document ##{doc.number}, which was posted with different lines. " <>
           "Nothing was posted now. If these lines are a new document, send a new external_ref."
     }
@@ -735,11 +706,16 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   # A repeated reference: the answer a real call gives, as a preview (reads only).
   defp preview_retry(kind, input, doc) do
-    {body, effects} = retry_body(kind, input, doc)
-    body = Map.put(body, "status", "would_skip")
-    body = if effects == [], do: body, else: Map.put(body, "effects", effects)
+    case retry_comparison(kind, input, doc) do
+      {[], effects} ->
+        body = Map.put(skipped_body(kind, doc, input["lines"]), "status", "would_skip")
+        body = if effects == [], do: body, else: Map.put(body, "effects", effects)
 
-    {:preview, body, fingerprint({kind, doc.uuid})}
+        {:preview, body, fingerprint({kind, doc.uuid})}
+
+      {errors, _effects} ->
+        retry_conflict(kind, doc, errors)
+    end
   end
 
   # Reads the current stock; writes nothing (no draft, no stock row, no
@@ -896,7 +872,7 @@ defmodule PhoenixKitWarehouse.API.Write do
         line = Enum.find(request.lines, &(&1.item.uuid == item_uuid))
 
         %{
-          product: item_uuid,
+          id: item_uuid,
           ref: line && line.ref,
           sku: line && line.item.sku,
           requested: Quantity.format(requested),

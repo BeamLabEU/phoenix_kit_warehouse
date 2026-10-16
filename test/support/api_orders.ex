@@ -2,7 +2,7 @@ defmodule PhoenixKitWarehouse.Test.ApiOrders do
   @moduledoc false
   # Stand-in for the callbacks the E-commerce module registers for the
   # "shop_order" source kind. `resolve/1` answers for the orders a test has
-  # registered and, when asked, withdraws the kind (see the failure test).
+  # registered.
 
   def put(uuid, label), do: :persistent_term.put({__MODULE__, uuid}, label)
 
@@ -14,9 +14,6 @@ defmodule PhoenixKitWarehouse.Test.ApiOrders do
         :error
 
       label ->
-        if :persistent_term.get({__MODULE__, :withdraw_kind}, false),
-          do: Application.put_env(:phoenix_kit_warehouse, :source_kinds, [])
-
         %{label: label, path: "/admin/orders/#{uuid}"}
     end
   end

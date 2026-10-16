@@ -390,7 +390,7 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
               }, _} =
                call_tool(user, "warehouse.issue_stock", %{"reason" => "sale", "lines" => lines})
 
-      assert Enum.sort(Enum.map(short, & &1["product"])) == Enum.sort([a.uuid, b.uuid])
+      assert Enum.sort(Enum.map(short, & &1["id"])) == Enum.sort([a.uuid, b.uuid])
       assert Enum.all?(short, &(is_binary(&1["requested"]) and is_binary(&1["available"])))
     end
   end

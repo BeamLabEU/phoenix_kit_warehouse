@@ -25,7 +25,6 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
 
     on_exit(fn ->
       Application.delete_env(:phoenix_kit_warehouse, :source_kinds)
-      :persistent_term.erase({Orders, :withdraw_kind})
       ApiOrderModule.reset()
     end)
 
@@ -129,25 +128,25 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
 
       assert is_binary(message)
 
-      assert Enum.sort_by(lines, & &1.product) ==
+      assert Enum.sort_by(lines, & &1.id) ==
                Enum.sort_by(
                  [
                    %{
-                     product: a.uuid,
+                     id: a.uuid,
                      ref: %{"id" => a.uuid},
                      sku: a.sku,
                      requested: "3",
                      available: "1"
                    },
                    %{
-                     product: c.uuid,
+                     id: c.uuid,
                      ref: %{"id" => c.uuid},
                      sku: c.sku,
                      requested: "1.5",
                      available: "0"
                    }
                  ],
-                 & &1.product
+                 & &1.id
                )
 
       assert counters() == before
@@ -262,7 +261,7 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
       assert %{"status" => "skipped"} = issue!(input, ctx)
     end
 
-    test "a reference reused for other lines is skipped and says so", %{
+    test "a reference reused for other lines is refused", %{
       first: first,
       a: a,
       ctx: ctx
@@ -271,13 +270,13 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
       source = %{"kind" => "external", "ref" => "ACC-OUT-10"}
       issue!(%{"source" => source, "lines" => [line(a, "4")]}, ctx)
 
-      assert {:ok, %{"status" => "skipped"}, [effect]} =
+      assert {:error, :validation_failed, _message,
+              %{errors: [%{code: "external_ref_lines_differ"}], posted: false}} =
                Write.issue_stock(
                  %{"reason" => "sale", "source" => source, "lines" => [line(a, "7")]},
                  ctx
                )
 
-      assert effect["code"] == "external_ref_lines_differ"
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(6))
     end
 
@@ -379,40 +378,6 @@ defmodule PhoenixKitWarehouse.API.IssueStockTest do
                }
              ] =
                DocRefs.refs_for(issue.source_refs)
-    end
-
-    test "if linking the order fails after the posting, the call still succeeds and says so", %{
-      first: first,
-      a: a,
-      ctx: ctx
-    } do
-      seed!(a.uuid, "3", first.uuid)
-      order = register_orders()
-      # `resolve/1` withdraws the kind as a side effect, so `add_source_ref/3`
-      # (which runs after the posting) finds no registered kind.
-      :persistent_term.put({Orders, :withdraw_kind}, true)
-
-      {result, log} =
-        ExUnit.CaptureLog.with_log(fn ->
-          Write.issue_stock(
-            %{
-              "reason" => "sale",
-              "source" => %{"kind" => "shop_order", "id" => order},
-              "lines" => [line(a, "1")]
-            },
-            ctx
-          )
-        end)
-
-      assert {:ok, body, [effect]} = result
-      assert body["status"] == "posted"
-      assert effect["code"] == "source_ref_not_attached"
-
-      # Only the shape of the reason is logged.
-      assert log =~ "could not link order: invalid_ref_type"
-      refute log =~ order
-      assert Repo.get!(GoodsIssue, body["document"]["id"]).source_refs == []
-      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(2))
     end
 
     test "while the module that declares the kind is disabled the answer says so; enabled, it works",

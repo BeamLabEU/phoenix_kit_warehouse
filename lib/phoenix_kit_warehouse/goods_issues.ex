@@ -300,7 +300,9 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   (each `%{"item_uuid" => uuid, "issued_quantity" => qty}`, plus the optional
   descriptive keys the form uses), `:reason` (default `"production"`),
   `:external_ref`, `:note` and `:created_by_uuid` (defaults to
-  `performed_by_uuid`). Atom or string keys. Source references are attached
+  `performed_by_uuid`). Atom or string keys. Source references are either
+  given as `:source_refs` (`[%{"type" => kind, "uuid" => id}]`, stored with the
+  document in the same transaction; the kinds are not checked here) or attached
   afterwards with `add_source_ref/3`, which validates the kind.
 
   Everything that can be checked is checked BEFORE the document row is

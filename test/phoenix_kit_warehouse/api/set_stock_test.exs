@@ -119,18 +119,19 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
     assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(50))
   end
 
-  test "a reference reused with another count is skipped and says so; stock does not move", %{
+  test "a reference reused with another count is refused; stock does not move", %{
     first: first,
     a: a,
     ctx: ctx
   } do
     set!(%{"external_ref" => "COUNT-2027", "lines" => [line(a, "6")]}, ctx)
 
-    assert {:ok, body, [effect]} =
+    assert {:error, :validation_failed, _message, context} =
              Write.set_stock(%{"external_ref" => "COUNT-2027", "lines" => [line(a, "60")]}, ctx)
 
-    assert body["status"] == "skipped"
-    assert effect["code"] == "external_ref_lines_differ"
+    assert [%{path: "external_ref", code: "external_ref_lines_differ"}] = context.errors
+    assert context.posted == false
+    assert context.document["type"] == "inventory"
     assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(6))
   end
 
