@@ -34,12 +34,18 @@ defmodule PhoenixKitWarehouse.API do
   @markers [{PhoenixKit.API.Keys, :active?, 1}, {PhoenixKit.API.Flow, :gate, 1}]
 
   @permission "warehouse"
-  @max_lines 500
-  @max_refs 50
+  @max_lines Schemas.max_lines()
+  @max_refs Schemas.max_refs()
 
-  @held_for_confirmation "More than 50 lines (core's api_confirm_batch_over) are held for " <>
-                           "confirmation: the first call answers a preview and a confirm_token, " <>
-                           "the same call with the token posts it."
+  @held_for_confirmation "A call with more lines than the confirmation threshold (core's " <>
+                           "api_confirm_batch_over setting) is held for confirmation: the first " <>
+                           "call answers a preview and a confirm_token, the same call with the " <>
+                           "token posts it."
+
+  @retry_conflict "If the reference belongs to a posted document and this request differs from " <>
+                    "it (other lines, or another warehouse, catalogue, reason or order that " <>
+                    "you state), the call is refused as validation_failed with posted false and " <>
+                    "the posted document in the context: it is never answered skipped."
 
   @doc """
   The tools for `PhoenixKitWarehouse.api_tools/0`: `[]` on a core without the
@@ -100,7 +106,8 @@ defmodule PhoenixKitWarehouse.API do
           "Reads the stock of up to #{@max_refs} products: the quantity and unit value at each location " <>
             "that holds the product (or at one location_id), and the total. A product that cannot be " <>
             "found is reported in its own row; the other rows are still answered. Quantities are " <>
-            "decimal strings. unit_value has no currency: the warehouse keeps none.",
+            "decimal strings, in the product's own unit (the unit field). unit_value has no currency: the " <>
+            "warehouse keeps none.",
         input_schema: Schemas.get_stock_input(),
         output_schema: Schemas.get_stock_output(),
         handler: {PhoenixKitWarehouse.API.Stock, :get_stock},
@@ -119,7 +126,8 @@ defmodule PhoenixKitWarehouse.API do
             "number and, per line, the stock before (from) and after (to). Atomic: if any line is " <>
             "wrong nothing is posted and every problem is reported. Send external_ref (your own " <>
             "document number) so that a retry is harmless: a repeated reference answers status " <>
-            "\"skipped\" with the existing document. " <> @held_for_confirmation,
+            "\"skipped\" with the existing document. " <>
+            @retry_conflict <> " " <> @held_for_confirmation,
         input_schema: Schemas.receive_stock_input(),
         output_schema: Schemas.write_output(),
         handler: {PhoenixKitWarehouse.API.Write, :receive_stock},
@@ -138,7 +146,7 @@ defmodule PhoenixKitWarehouse.API do
             "document number and, per line, the exact previous quantity (from) and the new one (to). " <>
             "Atomic. Send external_ref so that a retry is harmless: a repeated reference answers " <>
             "status \"skipped\" and does not reset stock that has moved since. " <>
-            @held_for_confirmation,
+            @retry_conflict <> " " <> @held_for_confirmation,
         input_schema: Schemas.set_stock_input(),
         output_schema: Schemas.write_output(),
         handler: {PhoenixKitWarehouse.API.Write, :set_stock},
@@ -157,6 +165,8 @@ defmodule PhoenixKitWarehouse.API do
             "first; if any is short the call answers insufficient_stock listing every short line and " <>
             "posts nothing. Send external_ref (your own document number) so that a retry is harmless: " <>
             "a repeated reference answers status \"skipped\" and writes nothing off a second time. " <>
+            @retry_conflict <>
+            " " <>
             ~S|The basis is source: {"kind": "external", "ref": ...} (stored as the | <>
             ~S|document's external reference, so external_ref is not given beside it) or {"kind": "shop_order", | <>
             "\"id\": ...} (links the write-off to a shop order; needs the E-commerce module; " <>

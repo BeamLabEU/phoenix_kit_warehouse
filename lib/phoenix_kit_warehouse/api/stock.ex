@@ -83,6 +83,7 @@ defmodule PhoenixKitWarehouse.API.Stock do
       "id" => item.uuid,
       "sku" => item.sku,
       "name" => item.name,
+      "unit" => item.unit,
       "locations" =>
         item_rows
         |> Enum.map(&location_entry(&1, names))

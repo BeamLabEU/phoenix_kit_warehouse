@@ -10,6 +10,13 @@ defmodule PhoenixKitWarehouse.API.Schemas do
 
   @max_lines 500
   @max_refs 50
+
+  @doc false
+  def max_lines, do: @max_lines
+
+  @doc false
+  def max_refs, do: @max_refs
+
   @decimal ~S|A decimal string such as "12" or "0.5" (or a JSON number): 0 to 1000000000, at most 6 decimal places.|
 
   # --- shared pieces ----------------------------------------------------------
@@ -25,7 +32,8 @@ defmodule PhoenixKitWarehouse.API.Schemas do
       "description" =>
         "The number of this document in the outside system. Unique per document type among posted " <>
           "documents: sending the same reference again changes nothing and answers status \"skipped\" " <>
-          "with the existing document number. Always send it when you can."
+          "with the existing document number; if the request differs from that document it is " <>
+          "refused as validation_failed instead. Always send it when you can."
     }
   end
 
@@ -247,6 +255,11 @@ defmodule PhoenixKitWarehouse.API.Schemas do
               "id" => %{"type" => "string"},
               "sku" => %{"type" => ["string", "null"]},
               "name" => %{"type" => ["string", "null"]},
+              "unit" => %{
+                "type" => ["string", "null"],
+                "description" =>
+                  "The unit of the product. Every quantity is in this unit; the warehouse converts nothing."
+              },
               "locations" => %{
                 "type" => "array",
                 "items" => %{

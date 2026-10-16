@@ -39,11 +39,12 @@ defmodule PhoenixKitWarehouse.API.GetStockTest do
              "id" => id,
              "sku" => sku,
              "name" => name,
+             "unit" => unit,
              "total" => "12.5",
              "locations" => locations
            } = result
 
-    assert {id, sku, name} == {item.uuid, item.sku, item.name}
+    assert {id, sku, name, unit} == {item.uuid, item.sku, item.name, item.unit}
 
     by_location = Map.new(locations, &{&1["location_id"], &1})
 

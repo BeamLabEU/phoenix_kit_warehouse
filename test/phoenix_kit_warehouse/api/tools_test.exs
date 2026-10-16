@@ -194,6 +194,14 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
       assert by_name["warehouse.list_locations"].max_items == nil
     end
 
+    test "the write descriptions name the confirmation setting, not a number, and the retry refusal" do
+      for tool <- PhoenixKitWarehouse.api_tools(), not tool.annotations.read_only do
+        assert tool.description =~ "api_confirm_batch_over", tool.name
+        refute tool.description =~ ~r/\b50 lines/, tool.name
+        assert tool.description =~ "never answered skipped", tool.name
+      end
+    end
+
     test "issue_stock requires reason and lines; receive_stock has unit_value on lines and no source" do
       by_name = Map.new(PhoenixKitWarehouse.api_tools(), &{&1.name, &1})
 

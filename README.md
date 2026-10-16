@@ -111,10 +111,20 @@ How they behave, in short:
 - Through the HTTP/MCP executor the closed input schema refuses malformed shapes
   first, with `context.errors[{path, message}]` and no row `code`; the row errors
   with a `code` are for what the schema lets through.
-- More than 50 lines (core's `api_confirm_batch_over`) are held for confirmation:
-  the first call answers a preview and a `confirm_token`, the same call with the
-  token posts it. This holds for a retry of a posted `external_ref` too.
-- Every posted line answers the stock before (`from`) and after (`to`).
+- A call with more lines than core's `api_confirm_batch_over` setting (50 unless the
+  host changed it) is held for confirmation: the first call answers a preview and a
+  `confirm_token`, the same call with the token posts it. This holds for a retry of a
+  posted `external_ref` too.
+- `dry_run: true` (a control field every write tool takes) answers what the call would
+  do (`would_post`, `would_skip`, or the same refusal a real call gives) and writes
+  nothing. A stocktake is worth previewing: the `from` of each line is the current stock.
+- Every posted line answers the stock before (`from`) and after (`to`). A confirmation
+  code is bound to what the preview showed, including the current stock of every
+  line: any other document that moves one of those products before the code is used
+  invalidates it (`409`), and the call is previewed again.
+- A posting that Postgres aborts to break a lock cycle with another document (a
+  deadlock) is answered `500 internal_error` with `posted: false` and a `retry-after`
+  of 1 second; nothing was changed and the same call can be sent again.
 - `external_ref` carries your own document number: sending it again answers
   `skipped` with the existing document and moves no stock. On `issue_stock`
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
@@ -124,18 +134,16 @@ How they behave, in short:
   the `unit_value` of each), an explicit `location_id`, an explicit `catalogue_id`, an
   explicit `reason`, and the shop order of the `source`. A `location_id` or
   `catalogue_id` left out is not compared (the default warehouse may have moved), and
-  neither is `note`. The answer carries an effect for each difference and posts
-  nothing:
-  - `external_ref_lines_differ`: the lines are not the posted ones
-    (`external_ref_lines_unverified` when they can no longer be compared).
-  - `external_ref_basis_differs`: a stated `location_id`, `catalogue_id` or `reason`
-    is not the posted document's (the message names which).
-  - `source_ref_not_attached`, with two meanings. On the first call of an issue for a
-    shop order: the document was posted, but linking it to the order failed; link it
-    from the admin UI. On a retry: the document is not linked to the order the retry
-    names. A document posted within the last 10 seconds (9 to 10 in practice, as the
-    posting time is kept to the second) that has no order linked yet is not
-    reported, because the first call may still be linking it.
+  neither is `note`. A request that differs is refused as `422 validation_failed` with
+  `posted: false`, the posted `document` and `context.errors[{path, code, message}]`;
+  it is never answered `skipped`, so a client that reads only the status cannot take a
+  different request for one that went through. Nothing is posted. The codes:
+  - `external_ref_lines_differ`: the lines are not the posted ones.
+  - `external_ref_basis_differs`: a stated `location_id`, `catalogue_id`, `reason` or
+    shop order (`source`) is not the posted document's (the message names which).
+
+  Lines that can no longer be read (a product trashed since) cannot be compared; the
+  retry is answered `skipped` with an `external_ref_lines_unverified` effect.
 - `issue_stock` takes a required `reason` (`sale`, `damage`, `production`, `other`) and
   may link the write-off to a shop order with `source: {"kind": "shop_order", "id": ...}`
   (needs the E-commerce module, enabled, which registers that source kind). An issue
@@ -152,8 +160,10 @@ How they behave, in short:
   key prefix, the request id and, for an operation released from the approval queue,
   the approver. These entries follow the module's `:inventory_activity_logging`
   switch: a host that switched that log off gets no module entry for API documents
-  either (core's own `api.request` entry is separate), and a failed write of an
-  entry never fails a document.
+  either (core's own `api.request` entry is separate and does not name the document),
+  and a failed write of an entry never fails a document. The document itself still
+  records its number, its `external_ref`, its posting time and the key owner as its
+  creator.
 - The tools follow this module's own enabled state, not the shop's "Stock tracking"
   switch.
 
