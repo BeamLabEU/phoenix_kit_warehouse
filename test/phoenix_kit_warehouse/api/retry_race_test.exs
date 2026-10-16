@@ -1,9 +1,10 @@
 defmodule PhoenixKitWarehouse.API.RetryRaceTest do
   @moduledoc """
-  An issue for a shop order links the order to the document after the posting
-  committed. A retry fired right behind the first call (same `external_ref`,
-  same order) can read the document in that gap, before the link: it must not
-  be told that the link is missing, and it must not post a second document.
+  An issue for a shop order carries its order link in the posting itself. A
+  retry fired right behind the first call (same `external_ref`, same order),
+  at any moment of it, ends as one posting and one `skipped`: no second
+  document, no effect on either answer, the link on the document and the stock
+  moved once.
 
   Each call runs on its own real connection (`Sandbox.unboxed_run/2`): the
   rows are committed and removed again in `on_exit`.
@@ -27,9 +28,8 @@ defmodule PhoenixKitWarehouse.API.RetryRaceTest do
 
   @moduletag :integration
 
-  # Milliseconds between the first call and its retry: the first call reads
-  # and checks the request for a few milliseconds before it posts, and the
-  # retry has to land after the posting and before the link.
+  # Milliseconds between the first call and its retry: spread over the few
+  # milliseconds in which the first call reads, checks and posts.
   @delays [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32]
 
   defp unboxed(fun), do: Sandbox.unboxed_run(Repo, fun)
@@ -101,7 +101,7 @@ defmodule PhoenixKitWarehouse.API.RetryRaceTest do
   defp effect_codes({:ok, _body}), do: []
   defp effect_codes({:ok, _body, effects}), do: Enum.map(effects, & &1["code"])
 
-  test "a retry fired right behind the first call is neither double posted nor told the link is missing",
+  test "a retry fired right behind the first call is skipped, whichever moment it lands on",
        %{refs: refs, order: order} = world do
     rounds =
       for {ref, delay} <- Enum.zip(refs, @delays) do
@@ -112,8 +112,7 @@ defmodule PhoenixKitWarehouse.API.RetryRaceTest do
         {ref, Task.await(first, 30_000), Task.await(retry, 30_000)}
       end
 
-    # At a delay of 0 either call may win; one posts, the other is skipped,
-    # and neither is told that the link is missing.
+    # At a delay of 0 either call may win; one posts, the other is skipped.
     for {ref, first, retry} <- rounds do
       assert Enum.sort([status(first), status(retry)]) == ["posted", "skipped"], ref
       assert effect_codes(first) ++ effect_codes(retry) == [], ref

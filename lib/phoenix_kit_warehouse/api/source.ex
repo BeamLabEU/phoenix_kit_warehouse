@@ -24,7 +24,7 @@ defmodule PhoenixKitWarehouse.API.Source do
 
   A goods issue reads its `"source"`: `{"kind": "external", "ref": ...}` is
   the document's external reference, `{"kind": "shop_order", "id": ...}` links
-  the issue to a shop order (checked here, linked after the posting). Beside
+  the issue to a shop order (checked here, linked by the posting itself). Beside
   a shop order, or with no source, the issue may also carry an
   `"external_ref"` of its own; beside an external source it may not, because
   the source's `ref` is already that reference.
