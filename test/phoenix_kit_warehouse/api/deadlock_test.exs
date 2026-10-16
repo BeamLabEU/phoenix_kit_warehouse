@@ -89,13 +89,19 @@ defmodule PhoenixKitWarehouse.API.DeadlockTest do
     )
   end
 
-  # Whether some backend waits for a lock; polled with a bounded number of
-  # messages to ourselves instead of a sleep.
-  defp wait_for_a_waiter(0), do: flunk("the issue never waited for a lock")
+  # Whether some backend waits for a lock held by the backend `holder_pid`
+  # (not any waiter of the cluster: other suites share the server); polled
+  # with a bounded number of messages to ourselves instead of a sleep.
+  defp wait_for_a_waiter(_holder_pid, 0), do: flunk("the issue never waited for a lock")
 
-  defp wait_for_a_waiter(tries) do
+  defp wait_for_a_waiter(holder_pid, tries) do
     %{rows: [[waiting]]} =
-      unboxed(fn -> Repo.query!("SELECT count(*) FROM pg_locks WHERE NOT granted") end)
+      unboxed(fn ->
+        Repo.query!(
+          "SELECT count(*) FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid))",
+          [holder_pid]
+        )
+      end)
 
     if waiting > 0 do
       :ok
@@ -103,7 +109,7 @@ defmodule PhoenixKitWarehouse.API.DeadlockTest do
       Process.send_after(self(), :poll, 20)
 
       receive do
-        :poll -> wait_for_a_waiter(tries - 1)
+        :poll -> wait_for_a_waiter(holder_pid, tries - 1)
       end
     end
   end
@@ -129,7 +135,8 @@ defmodule PhoenixKitWarehouse.API.DeadlockTest do
         unboxed(fn ->
           Repo.transaction(fn ->
             lock_row(second, location)
-            send(parent, :holding)
+            %{rows: [[pid]]} = Repo.query!("SELECT pg_backend_pid()")
+            send(parent, {:holding, pid})
 
             receive do
               :ask_for_the_first -> lock_row(first, location)
@@ -140,11 +147,11 @@ defmodule PhoenixKitWarehouse.API.DeadlockTest do
         end)
       end)
 
-    assert_receive :holding, 10_000
+    assert_receive {:holding, holder_pid}, 10_000
 
     issue = Task.async(fn -> unboxed(fn -> Write.issue_stock(input, ctx) end) end)
 
-    wait_for_a_waiter(250)
+    wait_for_a_waiter(holder_pid, 250)
     send(other.pid, :ask_for_the_first)
 
     assert {:error, :internal_error, message, %{posted: false, retry_after: 1}} =
