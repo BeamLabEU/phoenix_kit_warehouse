@@ -122,8 +122,9 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   `attrs` takes `:location_uuid` (default warehouse when absent), `:lines`
   (each `%{"item_uuid" => uuid, "received_quantity" => qty}` with optional
-  `"unit_value"`), `:external_ref`, `:note` and `:created_by_uuid` (defaults
-  to `performed_by_uuid`). Atom or string keys.
+  `"unit_value"`), `:external_ref`, `:note`, `:source_refs` (stored with the
+  document as given, in the same transaction) and `:created_by_uuid`
+  (defaults to `performed_by_uuid`). Atom or string keys.
 
   Lines are validated before the document row is inserted, so a refused call
   leaves no draft behind and consumes no document number.
