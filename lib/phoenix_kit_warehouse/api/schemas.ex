@@ -32,8 +32,9 @@ defmodule PhoenixKitWarehouse.API.Schemas do
       "description" =>
         "The number of this document in the outside system. Unique per document type among posted " <>
           "documents: sending the same reference again changes nothing and answers status \"skipped\" " <>
-          "with the existing document number; if the request differs from that document it is " <>
-          "refused as validation_failed instead. Always send it when you can."
+          "with the existing document number; if the request differs from that document, or has a " <>
+          "line a first call would refuse, it is refused as validation_failed instead. Always send " <>
+          "it when you can."
     }
   end
 

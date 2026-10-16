@@ -206,7 +206,7 @@ defmodule PhoenixKitWarehouse.API.ReceiveStockTest do
         assert context.posted == false
         assert context.document["number"] == posted["document"]["number"]
 
-        assert [%{path: "external_ref", code: "external_ref_lines_differ"} = error] =
+        assert [%{path: "lines", code: "external_ref_lines_differ"} = error] =
                  context.errors
 
         assert error.message =~ "new external_ref"

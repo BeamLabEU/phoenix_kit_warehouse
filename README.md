@@ -88,7 +88,7 @@ only the two read tools are.
 | Tool | Scope | What it does |
 |---|---|---|
 | `warehouse.list_locations` | `warehouse.stock:read` | warehouse locations, the default one, and how far setup has got |
-| `warehouse.get_stock` | `warehouse.stock:read` | quantity and unit value per location and the total, for up to 50 products |
+| `warehouse.get_stock` | `warehouse.stock:read` | quantity and unit value per location and the total, with the product's `unit`, for up to 50 products |
 | `warehouse.receive_stock` | `warehouse.stock:receive` | one goods receipt with up to 500 lines |
 | `warehouse.set_stock` | `warehouse.stock:adjust` | one stocktake that sets the listed products to counted quantities |
 | `warehouse.issue_stock` | `warehouse.stock:issue` | one goods issue (write-off) with up to 500 lines |
@@ -107,7 +107,10 @@ How they behave, in short:
 - Each write tool creates and posts **one document in one transaction**. If any line
   is wrong nothing is posted and every problem is reported at once; a product on two
   lines is refused (`duplicate_line`); `issue_stock` reports every short line
-  (`insufficient_stock`) and posts nothing.
+  (`insufficient_stock`) and posts nothing. The answer is `422 insufficient_stock` with
+  `posted: false` and `context.lines[{id, ref, sku, requested, available}]`: `id` is the
+  product, `ref` the one you sent, `requested` and `available` decimal strings in the
+  product's unit (the `unit` that `get_stock` answers).
 - Through the HTTP/MCP executor the closed input schema refuses malformed shapes
   first, with `context.errors[{path, message}]` and no row `code`; the row errors
   with a `code` are for what the schema lets through.
@@ -124,7 +127,9 @@ How they behave, in short:
   invalidates it (`409`), and the call is previewed again.
 - A posting that Postgres aborts to break a lock cycle with another document (a
   deadlock) is answered `500 internal_error` with `posted: false` and a `retry-after`
-  of 1 second; nothing was changed and the same call can be sent again.
+  of 1 second; nothing was changed and the same call can be sent again. A call that
+  carried a confirmation code (above the confirmation threshold) has spent it: send it
+  again without the code.
 - `external_ref` carries your own document number: sending it again answers
   `skipped` with the existing document and moves no stock. On `issue_stock`
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
@@ -137,13 +142,17 @@ How they behave, in short:
   neither is `note`. A request that differs is refused as `422 validation_failed` with
   `posted: false`, the posted `document` and `context.errors[{path, code, message}]`;
   it is never answered `skipped`, so a client that reads only the status cannot take a
-  different request for one that went through. Nothing is posted. The codes:
+  different request for one that went through. Nothing is posted. The lines of a retry are
+  checked as in a first call: a line that a first call would refuse (a wrong quantity,
+  an id that names no product, a product twice) is refused with the same errors, not
+  answered `skipped`. The codes:
   - `external_ref_lines_differ`: the lines are not the posted ones.
   - `external_ref_basis_differs`: a stated `location_id`, `catalogue_id`, `reason` or
     shop order (`source`) is not the posted document's (the message names which).
 
-  Lines that can no longer be read (a product trashed since) cannot be compared; the
-  retry is answered `skipped` with an `external_ref_lines_unverified` effect.
+  Only when every problem of the lines is a product of the posted document that no longer
+  resolves (trashed since) can the lines not be compared; the retry is then answered
+  `skipped` with an `external_ref_lines_unverified` effect, which a client must check.
 - `issue_stock` takes a required `reason` (`sale`, `damage`, `production`, `other`) and
   may link the write-off to a shop order with `source: {"kind": "shop_order", "id": ...}`
   (needs the E-commerce module, enabled, which registers that source kind). An issue

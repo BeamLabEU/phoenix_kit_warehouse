@@ -42,10 +42,23 @@ defmodule PhoenixKitWarehouse.API do
                            "call answers a preview and a confirm_token, the same call with the " <>
                            "token posts it."
 
-  @retry_conflict "If the reference belongs to a posted document and this request differs from " <>
-                    "it (other lines, or another warehouse, catalogue, reason or order that " <>
-                    "you state), the call is refused as validation_failed with posted false and " <>
-                    "the posted document in the context: it is never answered skipped."
+  @retry_conflict_tail "or has a line that a first call would refuse, the call is refused as " <>
+                         "validation_failed with posted false and the posted document in the " <>
+                         "context. It is not answered skipped, except when a product of the " <>
+                         "document is gone since (trashed): then it is skipped with an " <>
+                         "external_ref_lines_unverified effect, which you must check."
+
+  @retry_conflict_receipt "If the reference belongs to a posted document and this request differs " <>
+                            "from it (other lines or unit values, or another warehouse or " <>
+                            "catalogue that you state) " <> @retry_conflict_tail
+
+  @retry_conflict_stocktake "If the reference belongs to a posted document and this request " <>
+                              "differs from it (other lines, or another warehouse or catalogue " <>
+                              "that you state) " <> @retry_conflict_tail
+
+  @retry_conflict_issue "If the reference belongs to a posted document and this request differs " <>
+                          "from it (other lines, or another warehouse, catalogue, reason or order " <>
+                          "that you state) " <> @retry_conflict_tail
 
   @doc """
   The tools for `PhoenixKitWarehouse.api_tools/0`: `[]` on a core without the
@@ -127,7 +140,7 @@ defmodule PhoenixKitWarehouse.API do
             "wrong nothing is posted and every problem is reported. Send external_ref (your own " <>
             "document number) so that a retry is harmless: a repeated reference answers status " <>
             "\"skipped\" with the existing document. " <>
-            @retry_conflict <> " " <> @held_for_confirmation,
+            @retry_conflict_receipt <> " " <> @held_for_confirmation,
         input_schema: Schemas.receive_stock_input(),
         output_schema: Schemas.write_output(),
         handler: {PhoenixKitWarehouse.API.Write, :receive_stock},
@@ -146,7 +159,7 @@ defmodule PhoenixKitWarehouse.API do
             "document number and, per line, the exact previous quantity (from) and the new one (to). " <>
             "Atomic. Send external_ref so that a retry is harmless: a repeated reference answers " <>
             "status \"skipped\" and does not reset stock that has moved since. " <>
-            @retry_conflict <> " " <> @held_for_confirmation,
+            @retry_conflict_stocktake <> " " <> @held_for_confirmation,
         input_schema: Schemas.set_stock_input(),
         output_schema: Schemas.write_output(),
         handler: {PhoenixKitWarehouse.API.Write, :set_stock},
@@ -165,7 +178,7 @@ defmodule PhoenixKitWarehouse.API do
             "first; if any is short the call answers insufficient_stock listing every short line and " <>
             "posts nothing. Send external_ref (your own document number) so that a retry is harmless: " <>
             "a repeated reference answers status \"skipped\" and writes nothing off a second time. " <>
-            @retry_conflict <>
+            @retry_conflict_issue <>
             " " <>
             ~S|The basis is source: {"kind": "external", "ref": ...} (stored as the | <>
             ~S|document's external reference, so external_ref is not given beside it) or {"kind": "shop_order", | <>

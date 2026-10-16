@@ -26,11 +26,14 @@ defmodule PhoenixKitWarehouse.API.Write do
   differs, so that a client cannot take it for a retry that went through:
   other lines, or for a receipt another unit value on a line
   (`external_ref_lines_differ`), or another warehouse, catalogue, reason or
-  shop order that the request states (`external_ref_basis_differs`). Lines that
-  cannot be compared any more (a product trashed since) are not a difference:
-  the retry is answered `skipped` with an `external_ref_lines_unverified`
-  effect. A retry that raced past the lookup is answered by the posting layer
-  and gets the same comparison.
+  shop order that the request states (`external_ref_basis_differs`). The
+  lines of a retry are read as a first call reads them: one that a first call
+  would refuse (a quantity that is wrong, an id that names no product, a
+  product twice) is refused with the same errors. Only when every problem is a
+  product of the document that no longer resolves (trashed since) can the
+  lines not be compared; the retry is then answered `skipped` with an
+  `external_ref_lines_unverified` effect. A retry that raced past the lookup
+  is answered by the posting layer and gets the same comparison.
 
   A shop order is linked to the issue inside the posting transaction
   (`source_refs` of the draft), so a document that exists carries its link.
@@ -492,7 +495,7 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   # What this request asks for, compared with the stored document.
   defp retry_comparison(kind, input, doc),
-    do: comparison(doc, kind, requested_lines(kind, input), requested_basis(kind, input))
+    do: comparison(doc, kind, requested_lines(kind, input, doc), requested_basis(kind, input))
 
   defp retry_results(doc, raw_lines) do
     raw = if is_list(raw_lines), do: raw_lines, else: []
@@ -519,33 +522,73 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp echo_ref(_raw, item_uuid), do: %{"id" => item_uuid}
 
   # What this request asks for as `[{item_uuid, quantity, unit_value}]` (the
-  # unit value is `nil` unless the kind of document stores one), or `:unknown`
-  # when it can no longer be read (a product no longer resolves, a quantity
-  # is wrong, the catalogue is closed).
-  defp requested_lines(kind, input) do
+  # unit value is `nil` unless the kind of document stores one). The lines are
+  # read as a first call reads them: a line that could not be posted is
+  # `{:invalid, errors}`, the errors of a first call. `:unknown` is only for
+  # a request whose every problem is a product that the document names but
+  # that no longer resolves (trashed, or its catalogue closed since); it
+  # cannot be compared. `:differs` is such a request with another number of
+  # lines than the document has.
+  defp requested_lines(kind, input, doc) do
+    spec = Map.fetch!(@kinds, kind)
+
     catalogue_uuid =
       case Refs.catalogue_scope(input["catalogue_id"], :write) do
         {:ok, uuid} -> uuid
         {:error, _error} -> nil
       end
 
-    opts = [
-      minimum: :zero,
-      unit_value: Map.fetch!(@kinds, kind).unit_value,
-      catalogue_uuid: catalogue_uuid
-    ]
+    opts = [minimum: spec.minimum, unit_value: spec.unit_value, catalogue_uuid: catalogue_uuid]
 
     case Lines.prepare(input["lines"], opts) do
       {:ok, lines} -> {:ok, Enum.map(lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
-      {:error, _errors} -> :unknown
+      {:error, errors} -> unreadable_lines(errors, input["lines"], doc)
     end
   end
+
+  defp unreadable_lines(errors, raw_lines, doc) do
+    cond do
+      not Enum.all?(errors, &gone_product?(&1, raw_lines, doc)) -> {:invalid, errors}
+      length(raw_lines) != length(doc.lines) -> :differs
+      true -> :unknown
+    end
+  end
+
+  # A `not_found` ref error for a product the posted document has: the
+  # request may well be the posted one, whose product is gone since. A ref
+  # that names nothing of the document cannot be.
+  defp gone_product?(%{code: "not_found", path: path}, raw_lines, doc) do
+    with [_whole, index] <- Regex.run(~r/\Alines\[(\d+)\]\.ref\z/, path),
+         %{"ref" => ref} <- Enum.at(raw_lines, String.to_integer(index)) do
+      names_posted_product?(ref, doc)
+    else
+      _other -> false
+    end
+  end
+
+  defp gone_product?(_error, _raw_lines, _doc), do: false
+
+  defp names_posted_product?(%{"id" => id}, doc) when is_binary(id) do
+    case Refs.cast_uuid(id) do
+      {:ok, uuid} -> Enum.any?(doc.lines, &(&1["item_uuid"] == uuid))
+      :error -> false
+    end
+  end
+
+  defp names_posted_product?(%{"sku" => sku}, doc) when is_binary(sku),
+    do: Enum.any?(doc.lines, &(&1["sku"] == String.trim(sku)))
+
+  # The document stores no `external_id` of a product, so one that no longer
+  # resolves is not judged here; the number of lines still is.
+  defp names_posted_product?(%{"external_id" => id}, _doc) when is_binary(id), do: true
+  defp names_posted_product?(_ref, _doc), do: false
 
   # The posting layer answers a repeated reference with the existing document
   # and compares nothing. A reference reused by another system, another key
   # or a changed body must not pass for a harmless retry: the differences are
-  # errors (stock did not move either way). Lines that cannot be read any more
-  # are not a difference, only a warning effect. `{errors, effects}`.
+  # errors (stock did not move either way), and so are lines that a first call
+  # would refuse. Lines whose product is gone since cannot be compared: only a
+  # warning effect. `{errors, effects}`.
   defp comparison(doc, kind, requested, stated) do
     {line_errors, effects} = reference_result(doc, kind, requested)
     {line_errors ++ basis_errors(doc, kind, stated), effects}
@@ -555,6 +598,8 @@ defmodule PhoenixKitWarehouse.API.Write do
     if same_lines?(doc, kind, requested), do: {[], []}, else: {[lines_differ_error(doc)], []}
   end
 
+  defp reference_result(doc, _kind, :differs), do: {[lines_differ_error(doc)], []}
+  defp reference_result(_doc, _kind, {:invalid, errors}), do: {errors, []}
   defp reference_result(doc, _kind, :unknown), do: {[], [lines_unverified_effect(doc)]}
 
   defp same_lines?(doc, kind, requested) do
@@ -633,7 +678,7 @@ defmodule PhoenixKitWarehouse.API.Write do
           differs?,
           do: name
 
-    List.wrap(basis_differs_error(doc, differing))
+    Enum.map(differing, &basis_differs_error(doc, &1))
   end
 
   defp location_differs?(_doc, nil), do: false
@@ -666,16 +711,13 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp order_differs?(_doc, _kind, _order_uuid), do: false
 
-  defp basis_differs_error(_doc, []), do: nil
-
-  defp basis_differs_error(doc, differing) do
+  defp basis_differs_error(doc, name) do
     %{
-      path: "external_ref",
+      path: name,
       code: "external_ref_basis_differs",
       message:
         "This external_ref belongs to document ##{doc.number}, which was posted with a different " <>
-          "#{Enum.join(differing, ", ")}. Nothing was posted now. " <>
-          "If this is a new document, send a new external_ref."
+          "#{name}. Nothing was posted now. If this is a new document, send a new external_ref."
     }
   end
 
@@ -685,7 +727,7 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp lines_differ_error(doc) do
     %{
-      path: "external_ref",
+      path: "lines",
       code: "external_ref_lines_differ",
       message:
         "This external_ref belongs to document ##{doc.number}, which was posted with different lines. " <>
@@ -698,7 +740,7 @@ defmodule PhoenixKitWarehouse.API.Write do
       "code" => "external_ref_lines_unverified",
       "message" =>
         "This external_ref belongs to document ##{doc.number}. The lines of this request could not be " <>
-          "compared with it (a product no longer resolves, or a line is invalid). Nothing was posted now."
+          "compared with it (a product of the document no longer resolves). Nothing was posted now."
     }
   end
 
@@ -836,7 +878,7 @@ defmodule PhoenixKitWarehouse.API.Write do
     fail(
       :internal_error,
       "The document could not be posted because another stock change was in progress. " <>
-        "Nothing was changed; send the same call again.",
+        "Nothing was changed; send the same call again (without the confirmation code, if it had one).",
       %{posted: false, retry_after: 1}
     )
   end

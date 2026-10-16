@@ -34,6 +34,8 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
   defp line(item, quantity), do: %{"ref" => %{"id" => item.uuid}, "quantity" => quantity}
 
+  defp sku_line(item, quantity), do: %{"ref" => %{"sku" => item.sku}, "quantity" => quantity}
+
   defp effects({:ok, _body}), do: []
   defp effects({:ok, _body, effects}), do: effects
   defp effects({:preview, %{"effects" => effects}, _fingerprint}), do: effects
@@ -115,6 +117,29 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       assert conflict_message(result) =~ "location_id"
       assert Decimal.equal?(quantity(a.uuid, second.uuid), Decimal.new(0))
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
+    end
+
+    test "every difference of the basis is an error at its own input", %{
+      second: second,
+      a: a,
+      ctx: ctx
+    } do
+      input = %{"external_ref" => "RB-LOC-0", "lines" => [line(a, "5")]}
+      assert {:ok, %{"status" => "posted"}} = Write.receive_stock(input, ctx)
+
+      retry =
+        Map.merge(input, %{"location_id" => second.uuid, "catalogue_id" => Ecto.UUID.generate()})
+
+      assert [%{path: "location_id"}, %{path: "catalogue_id"}] =
+               retry |> then(&Write.receive_stock(&1, ctx)) |> conflict() |> Map.fetch!(:errors)
+
+      other_lines = Map.put(input, "lines", [line(a, "6")])
+
+      assert [%{path: "lines", code: "external_ref_lines_differ"}] =
+               other_lines
+               |> then(&Write.receive_stock(&1, ctx))
+               |> conflict()
+               |> Map.fetch!(:errors)
     end
 
     test "a stocktake reference reused for another warehouse says so", %{
@@ -376,6 +401,128 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
         assert {:error, :validation_failed, _message, %{errors: [%{path: ^path}], posted: false}} =
                  Write.issue_stock(input, ctx)
       end
+    end
+  end
+
+  describe "lines that cannot be read" do
+    setup %{catalogue: catalogue, a: a, ctx: ctx} do
+      b = item!(catalogue)
+      input = %{"external_ref" => "RB-READ-1", "lines" => [line(a, "5"), line(b, "2")]}
+      assert {:ok, %{"status" => "posted"}} = Write.receive_stock(input, ctx)
+      %{b: b, input: input}
+    end
+
+    defp refusal(result) do
+      assert {:error, :validation_failed, _message, %{posted: false, errors: errors} = context} =
+               result
+
+      assert %{"number" => number} = context.document
+      assert is_integer(number)
+      errors
+    end
+
+    test "a line that a first call would refuse is refused, not answered skipped", %{
+      a: a,
+      b: b,
+      ctx: ctx,
+      dry: dry,
+      input: input
+    } do
+      cases = [
+        {[line(a, "-5"), line(b, "2")], "lines[0].quantity", "validation_failed"},
+        {[line(a, "abc"), line(b, "2")], "lines[0].quantity", "validation_failed"},
+        {[line(a, "5"), line(b, "0.0000001")], "lines[1].quantity", "validation_failed"},
+        {[line(a, "5"), %{"ref" => %{"id" => Ecto.UUID.generate()}, "quantity" => "2"}],
+         "lines[1].ref", "not_found"},
+        {[line(a, "5"), line(a, "2")], "lines[1]", "duplicate_line"}
+      ]
+
+      for {lines, path, code} <- cases, call <- [ctx, dry] do
+        retry = Map.put(input, "lines", lines)
+
+        assert [%{path: ^path, code: ^code}] = refusal(Write.receive_stock(retry, call))
+      end
+    end
+
+    test "the refusal is the one of a first call", %{a: a, b: b, ctx: ctx, input: input} do
+      retry = Map.put(input, "lines", [line(a, "abc"), line(b, "2")])
+
+      first_call = Map.delete(retry, "external_ref")
+
+      assert {:error, :validation_failed, _message, %{errors: expected}} =
+               Write.run_new(:receipt, first_call, ctx)
+
+      assert refusal(Write.receive_stock(retry, ctx)) == expected
+    end
+
+    test "a stocktake line that is wrong is refused too", %{a: a, ctx: ctx} do
+      input = %{"external_ref" => "RB-READ-2", "lines" => [line(a, "0")]}
+      assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
+
+      retry = Map.put(input, "lines", [line(a, "-1")])
+      assert [%{path: "lines[0].quantity"}] = refusal(Write.set_stock(retry, ctx))
+    end
+
+    test "a product trashed since cannot be compared: skipped, with an effect", %{
+      a: a,
+      ctx: ctx,
+      dry: dry,
+      input: input
+    } do
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+
+      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
+               Write.receive_stock(input, ctx)
+
+      assert {:preview, %{"status" => "would_skip"}, _fingerprint} =
+               Write.receive_stock(input, dry)
+    end
+
+    test "a trashed product addressed by sku is the same", %{a: a, b: b, ctx: ctx, input: input} do
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      retry = Map.put(input, "lines", [sku_line(a, "5"), line(b, "2")])
+
+      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
+               Write.receive_stock(retry, ctx)
+    end
+
+    test "a product that was never on the document is refused even when another is trashed", %{
+      a: a,
+      ctx: ctx,
+      input: input
+    } do
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      stranger = %{"ref" => %{"id" => Ecto.UUID.generate()}, "quantity" => "2"}
+      retry = Map.put(input, "lines", [line(a, "5"), stranger])
+
+      # As a first call would say: the trashed product no longer resolves either.
+      assert ["lines[0].ref", "lines[1].ref"] =
+               retry |> then(&Write.receive_stock(&1, ctx)) |> refusal() |> Enum.map(& &1.path)
+    end
+
+    test "a trashed product beside a line that is wrong is refused", %{
+      a: a,
+      b: b,
+      ctx: ctx,
+      input: input
+    } do
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      retry = Map.put(input, "lines", [line(a, "5"), line(b, "abc")])
+
+      assert ["lines[0].ref", "lines[1].quantity"] =
+               retry |> then(&Write.receive_stock(&1, ctx)) |> refusal() |> Enum.map(& &1.path)
+    end
+
+    test "a trashed product with another number of lines is a difference", %{
+      a: a,
+      ctx: ctx,
+      input: input
+    } do
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      retry = Map.put(input, "lines", [line(a, "5")])
+
+      assert ["external_ref_lines_differ"] =
+               Enum.map(refusal(Write.receive_stock(retry, ctx)), & &1.code)
     end
   end
 

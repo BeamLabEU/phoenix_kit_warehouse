@@ -198,7 +198,11 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
       for tool <- PhoenixKitWarehouse.api_tools(), not tool.annotations.read_only do
         assert tool.description =~ "api_confirm_batch_over", tool.name
         refute tool.description =~ ~r/\b50 lines/, tool.name
-        assert tool.description =~ "never answered skipped", tool.name
+
+        assert tool.description =~ "not answered skipped, except when a product of the document",
+               tool.name
+
+        assert tool.description =~ "external_ref_lines_unverified", tool.name
       end
     end
 
