@@ -162,12 +162,7 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp prepare(kind, input) do
     spec = Map.fetch!(@kinds, kind)
     catalogue = Refs.catalogue_scope(input["catalogue_id"], :write)
-
-    catalogue_uuid =
-      case catalogue do
-        {:ok, uuid} -> uuid
-        {:error, _error} -> nil
-      end
+    catalogue_uuid = scoped_uuid(catalogue)
 
     parts = [
       location: Warehouses.resolve(input["location_id"], :write),
@@ -194,6 +189,11 @@ defmodule PhoenixKitWarehouse.API.Write do
       errors -> {:error, errors}
     end
   end
+
+  # The catalogue the lines resolve in, or `nil` (any) when the scope is
+  # refused: the refusal itself is reported by the caller.
+  defp scoped_uuid({:ok, uuid}), do: uuid
+  defp scoped_uuid({:error, _error}), do: nil
 
   defp build(kind, parts, input) do
     {:ok, location_uuid} = parts[:location]
@@ -531,12 +531,7 @@ defmodule PhoenixKitWarehouse.API.Write do
   # lines than the document has.
   defp requested_lines(kind, input, doc) do
     spec = Map.fetch!(@kinds, kind)
-
-    catalogue_uuid =
-      case Refs.catalogue_scope(input["catalogue_id"], :write) do
-        {:ok, uuid} -> uuid
-        {:error, _error} -> nil
-      end
+    catalogue_uuid = scoped_uuid(Refs.catalogue_scope(input["catalogue_id"], :write))
 
     opts = [minimum: spec.minimum, unit_value: spec.unit_value, catalogue_uuid: catalogue_uuid]
 
