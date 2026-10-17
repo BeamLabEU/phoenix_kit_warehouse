@@ -100,3 +100,19 @@ without comparing lines; the comparison lives in `API.Write`. Another caller of
 `create_and_post/2` has to make the same comparison itself. Moving it into the
 posting layer would be a larger change to a shared path for no current caller,
 so it stays as is, on record.
+
+## Erratum (added after the Codex re-check, `22cbf2f`)
+
+The verdict above ("no runtime bug found") was wrong. Two retry bugs in
+`API.Write` were in code this review read and described as intended:
+
+- `unreadable_lines/3` answered `:unknown` (skipped) whenever every error was a
+  trashed product of the document and the line count matched, so a changed
+  quantity, unit value or duplicate on any other line was never compared.
+- `names_posted_product?/2` returned `true` for every `external_id`, so an ID
+  that never existed passed for a stored product.
+
+Both are fixed in `22cbf2f` (see `CODEX_REVIEW.md`). The "Checked and found
+sound" list should not be read as covering the retry comparison for trashed
+products. Re-verified here: `mix test` 1289 tests, 0 failures (25 `:core_api`
+excluded); `mix precommit` exit 0.
