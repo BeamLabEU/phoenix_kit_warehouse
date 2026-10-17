@@ -150,9 +150,13 @@ How they behave, in short:
   - `external_ref_basis_differs`: a stated `location_id`, `catalogue_id`, `reason` or
     shop order (`source`) is not the posted document's (the message names which).
 
-  Only when every problem of the lines is a product of the posted document that no longer
-  resolves (trashed since) can the lines not be compared; the retry is then answered
-  `skipped` with an `external_ref_lines_unverified` effect, which a client must check.
+  When a product no longer resolves (trashed since), its ref must match a stored
+  product identity. Quantities, receipt unit values and duplicate products are
+  still checked. A matching retry is answered `skipped` with an
+  `external_ref_lines_unverified` effect, which a client must check. New documents
+  retain product `external_id` refs in their lines for this comparison. For older
+  documents without that snapshot, use the product UUID if its external ID no
+  longer resolves; an unknown external ID is refused.
 - `issue_stock` takes a required `reason` (`sale`, `damage`, `production`, `other`) and
   may link the write-off to a shop order with `source: {"kind": "shop_order", "id": ...}`
   (needs the E-commerce module, enabled, which registers that source kind). An issue

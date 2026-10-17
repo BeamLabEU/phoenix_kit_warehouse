@@ -44,9 +44,10 @@ defmodule PhoenixKitWarehouse.API do
 
   @retry_conflict_tail "or has a line that a first call would refuse, the call is refused as " <>
                          "validation_failed with posted false and the posted document in the " <>
-                         "context. It is not answered skipped, except when a product of the " <>
-                         "document is gone since (trashed): then it is skipped with an " <>
-                         "external_ref_lines_unverified effect, which you must check."
+                         "context. When a product is gone since (trashed), its ref must match a " <>
+                         "stored identity; quantities, unit values and duplicates are still checked. " <>
+                         "A matching retry is skipped with an external_ref_lines_unverified effect, " <>
+                         "which you must check."
 
   @retry_conflict_receipt "If the reference belongs to a posted document and this request differs " <>
                             "from it (other lines or unit values, or another warehouse or " <>

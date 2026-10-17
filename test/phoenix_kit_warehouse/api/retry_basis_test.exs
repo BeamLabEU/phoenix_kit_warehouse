@@ -481,6 +481,93 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
                Write.receive_stock(input, dry)
     end
 
+    test "a trashed product does not hide changed quantities or duplicate lines", %{
+      first: first,
+      a: a,
+      b: b,
+      ctx: ctx,
+      dry: dry,
+      input: input
+    } do
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+
+      for {lines, code} <- [
+            {[line(a, "6"), line(b, "2")], "external_ref_lines_differ"},
+            {[line(a, "5"), line(b, "3")], "external_ref_lines_differ"},
+            {[line(a, "5"), line(a, "2")], "duplicate_line"}
+          ],
+          call <- [ctx, dry] do
+        retry = Map.put(input, "lines", lines)
+
+        assert conflict_codes(Write.receive_stock(retry, call)) == [code]
+      end
+
+      assert Decimal.eq?(quantity(a.uuid, first.uuid), 5)
+      assert Repo.aggregate(GoodsReceipt, :count) == 1
+    end
+
+    test "a trashed product does not hide a replacement by another live product", %{
+      a: a,
+      catalogue: catalogue,
+      ctx: ctx,
+      dry: dry,
+      input: input
+    } do
+      other = item!(catalogue)
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      retry = Map.put(input, "lines", [line(a, "5"), line(other, "2")])
+
+      for call <- [ctx, dry] do
+        assert conflict_codes(Write.receive_stock(retry, call)) == ["external_ref_lines_differ"]
+      end
+    end
+
+    test "unit values are compared even when the receipt product was trashed", %{
+      b: b,
+      ctx: ctx,
+      dry: dry
+    } do
+      priced = Map.put(line(b, "2"), "unit_value", "3")
+      input = %{"external_ref" => "RB-GONE-PRICE", "lines" => [priced]}
+      assert {:ok, %{"status" => "posted"}} = Write.receive_stock(input, ctx)
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(b)
+
+      for changed <- [Map.put(priced, "unit_value", "4"), Map.delete(priced, "unit_value")],
+          call <- [ctx, dry] do
+        assert conflict_codes(Write.receive_stock(%{input | "lines" => [changed]}, call)) ==
+                 ["external_ref_lines_differ"]
+      end
+    end
+
+    test "issues and stocktakes compare quantities of trashed products", %{
+      a: a,
+      ctx: ctx,
+      dry: dry
+    } do
+      for {call, extra} <- [
+            {&Write.issue_stock/2, %{"reason" => "sale"}},
+            {&Write.set_stock/2, %{}}
+          ] do
+        input =
+          Map.merge(extra, %{"external_ref" => "RB-GONE-QUANTITY", "lines" => [line(a, "1")]})
+
+        assert {:ok, %{"status" => "posted"}} = call.(input, ctx)
+      end
+
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+
+      for {call, extra} <- [
+            {&Write.issue_stock/2, %{"reason" => "sale"}},
+            {&Write.set_stock/2, %{}}
+          ],
+          context <- [ctx, dry] do
+        retry =
+          Map.merge(extra, %{"external_ref" => "RB-GONE-QUANTITY", "lines" => [line(a, "2")]})
+
+        assert conflict_codes(call.(retry, context)) == ["external_ref_lines_differ"]
+      end
+    end
+
     if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
          function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
       test "a trashed product addressed by sku is the same", %{a: a, b: b, ctx: ctx, input: input} do
@@ -489,6 +576,96 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
 
         assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
                  Write.receive_stock(retry, ctx)
+      end
+
+      test "stored skus still check quantities and duplicates after trashing", %{
+        a: a,
+        b: b,
+        ctx: ctx,
+        dry: dry,
+        input: input
+      } do
+        {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+
+        for lines <- [
+              [sku_line(a, "6"), line(b, "2")],
+              [sku_line(a, "5"), line(a, "2")]
+            ],
+            call <- [ctx, dry] do
+          assert {:error, :validation_failed, _, %{posted: false}} =
+                   Write.receive_stock(%{input | "lines" => lines}, call)
+        end
+      end
+
+      test "an unknown external ID is refused rather than treated as a trashed product", %{
+        a: a,
+        ctx: ctx,
+        dry: dry,
+        input: input
+      } do
+        retry =
+          Map.put(input, "lines", [
+            line(a, "5"),
+            %{"ref" => %{"external_id" => "NEVER-POSTED"}, "quantity" => "2"}
+          ])
+
+        for call <- [ctx, dry] do
+          assert [%{path: "lines[1].ref", code: "not_found"}] =
+                   refusal(Write.receive_stock(retry, call))
+        end
+      end
+
+      test "external ID snapshots allow unchanged retries after trashing", %{
+        catalogue: catalogue,
+        ctx: ctx,
+        dry: dry
+      } do
+        item = item!(catalogue, %{data: %{"api" => %{"external_id" => "GONE-EXT"}}})
+        line = %{"ref" => %{"external_id" => " GONE-EXT "}, "quantity" => "2"}
+        input = %{"external_ref" => "RB-GONE-EXT", "lines" => [line]}
+
+        assert {:ok, %{"status" => "posted", "document" => %{"id" => id}}} =
+                 Write.receive_stock(input, ctx)
+
+        assert [%{"external_id" => "GONE-EXT"}] = Repo.get!(GoodsReceipt, id).lines
+        {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(item)
+
+        assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
+                 Write.receive_stock(input, ctx)
+
+        assert {:preview, %{"status" => "would_skip"}, _fingerprint} =
+                 Write.receive_stock(input, dry)
+
+        changed = %{input | "lines" => [Map.put(line, "quantity", "3")]}
+
+        for call <- [ctx, dry] do
+          assert conflict_codes(Write.receive_stock(changed, call)) == [
+                   "external_ref_lines_differ"
+                 ]
+        end
+      end
+
+      test "a missing external ID without a snapshot requires a stored product ref", %{
+        catalogue: catalogue,
+        ctx: ctx,
+        dry: dry
+      } do
+        item = item!(catalogue, %{data: %{"api" => %{"external_id" => "OLD-EXT"}}})
+        input = %{"external_ref" => "RB-OLD-EXT", "lines" => [line(item, "2")]}
+        assert {:ok, %{"status" => "posted"}} = Write.receive_stock(input, ctx)
+        {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(item)
+
+        retry = %{
+          input
+          | "lines" => [%{"ref" => %{"external_id" => "OLD-EXT"}, "quantity" => "2"}]
+        }
+
+        for call <- [ctx, dry] do
+          assert [%{path: "lines[0].ref", code: "not_found"}] =
+                   refusal(Write.receive_stock(retry, call))
+        end
+
+        assert {:ok, %{"status" => "skipped"}, _effects} = Write.receive_stock(input, ctx)
       end
     end
 

@@ -29,9 +29,10 @@ defmodule PhoenixKitWarehouse.API.Write do
   shop order that the request states (`external_ref_basis_differs`). The
   lines of a retry are read as a first call reads them: one that a first call
   would refuse (a quantity that is wrong, an id that names no product, a
-  product twice) is refused with the same errors. Only when every problem is a
-  product of the document that no longer resolves (trashed since) can the
-  lines not be compared; the retry is then answered `skipped` with an
+  product twice) is refused with the same errors. When the only problems are
+  products of the document that no longer resolve (trashed since), their
+  stored identities are used to compare quantities, unit values and duplicates.
+  An unchanged retry is then answered `skipped` with an
   `external_ref_lines_unverified` effect. A retry that raced past the lookup
   is answered by the posting layer and gets the same comparison.
 
@@ -311,13 +312,18 @@ defmodule PhoenixKitWarehouse.API.Write do
   # What the Warehouse pages print for a line (name, SKU, unit) and the
   # catalogue it came from. Lines made in the admin carry them, so lines made
   # here must too, or the pages show nameless lines (`line["name"] || "—"`).
-  defp identity(%{item: item}) do
-    %{
+  defp identity(%{item: item, ref: ref}) do
+    identity = %{
       "name" => item.name,
       "sku" => item.sku,
       "unit" => item.unit,
       "catalogue_uuid" => item.catalogue_uuid
     }
+
+    case ref do
+      %{"external_id" => id} -> Map.put(identity, "external_id", String.trim(id))
+      _other -> identity
+    end
   end
 
   defp line_attrs(:receipt, line) do
@@ -524,11 +530,10 @@ defmodule PhoenixKitWarehouse.API.Write do
   # What this request asks for as `[{item_uuid, quantity, unit_value}]` (the
   # unit value is `nil` unless the kind of document stores one). The lines are
   # read as a first call reads them: a line that could not be posted is
-  # `{:invalid, errors}`, the errors of a first call. `:unknown` is only for
+  # `{:invalid, errors}`, the errors of a first call. `{:unverified, lines}` is for
   # a request whose every problem is a product that the document names but
-  # that no longer resolves (trashed, or its catalogue closed since); it
-  # cannot be compared. `:differs` is such a request with another number of
-  # lines than the document has.
+  # that no longer resolves (trashed, or its catalogue closed since). Such a
+  # request is compared using the stored identities, with a warning effect.
   defp requested_lines(kind, input, doc) do
     spec = Map.fetch!(@kinds, kind)
     catalogue_uuid = scoped_uuid(Refs.catalogue_scope(input["catalogue_id"], :write))
@@ -537,15 +542,38 @@ defmodule PhoenixKitWarehouse.API.Write do
 
     case Lines.prepare(input["lines"], opts) do
       {:ok, lines} -> {:ok, Enum.map(lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
-      {:error, errors} -> unreadable_lines(errors, input["lines"], doc)
+      {:error, errors} -> unreadable_lines(errors, input["lines"], doc, opts)
     end
   end
 
-  defp unreadable_lines(errors, raw_lines, doc) do
+  defp unreadable_lines(errors, raw_lines, doc, opts) do
     cond do
       not Enum.all?(errors, &gone_product?(&1, raw_lines, doc)) -> {:invalid, errors}
       length(raw_lines) != length(doc.lines) -> :differs
-      true -> :unknown
+      true -> recover_lines(raw_lines, doc, opts)
+    end
+  end
+
+  defp recover_lines(raw_lines, doc, opts) do
+    resolved =
+      raw_lines
+      |> Enum.map(& &1["ref"])
+      |> Refs.resolve(catalogue_uuid: opts[:catalogue_uuid], write: true)
+      |> Enum.zip(raw_lines)
+      |> Enum.map(fn
+        {{:error, %{code: "not_found"}} = error, raw} ->
+          case stored_product(raw["ref"], doc) do
+            nil -> error
+            stored -> {:ok, %{uuid: stored["item_uuid"]}}
+          end
+
+        {resolution, _raw} ->
+          resolution
+      end)
+
+    case Lines.prepare_resolved(raw_lines, resolved, opts) do
+      {:ok, lines} -> {:unverified, Enum.map(lines, &{&1.item.uuid, &1.quantity, &1.unit_value})}
+      {:error, errors} -> {:invalid, errors}
     end
   end
 
@@ -555,7 +583,7 @@ defmodule PhoenixKitWarehouse.API.Write do
   defp gone_product?(%{code: "not_found", path: path}, raw_lines, doc) do
     with [_whole, index] <- Regex.run(~r/\Alines\[(\d+)\]\.ref\z/, path),
          %{"ref" => ref} <- Enum.at(raw_lines, String.to_integer(index)) do
-      names_posted_product?(ref, doc)
+      stored_product(ref, doc) != nil
     else
       _other -> false
     end
@@ -563,27 +591,34 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp gone_product?(_error, _raw_lines, _doc), do: false
 
-  defp names_posted_product?(%{"id" => id}, doc) when is_binary(id) do
+  defp stored_product(%{"id" => id}, doc) when is_binary(id) do
     case Refs.cast_uuid(id) do
-      {:ok, uuid} -> Enum.any?(doc.lines, &(&1["item_uuid"] == uuid))
-      :error -> false
+      {:ok, uuid} -> Enum.find(doc.lines, &(&1["item_uuid"] == uuid))
+      :error -> nil
     end
   end
 
-  defp names_posted_product?(%{"sku" => sku}, doc) when is_binary(sku),
-    do: Enum.any?(doc.lines, &(&1["sku"] == String.trim(sku)))
+  defp stored_product(%{"sku" => sku}, doc) when is_binary(sku),
+    do: unique_stored_product(doc, "sku", String.trim(sku))
 
-  # The document stores no `external_id` of a product, so one that no longer
-  # resolves is not judged here; the number of lines still is.
-  defp names_posted_product?(%{"external_id" => id}, _doc) when is_binary(id), do: true
-  defp names_posted_product?(_ref, _doc), do: false
+  defp stored_product(%{"external_id" => id}, doc) when is_binary(id),
+    do: unique_stored_product(doc, "external_id", String.trim(id))
+
+  defp stored_product(_ref, _doc), do: nil
+
+  defp unique_stored_product(doc, key, value) do
+    case Enum.filter(doc.lines, &(&1[key] == value)) do
+      [line] -> line
+      _ambiguous_or_missing -> nil
+    end
+  end
 
   # The posting layer answers a repeated reference with the existing document
   # and compares nothing. A reference reused by another system, another key
   # or a changed body must not pass for a harmless retry: the differences are
   # errors (stock did not move either way), and so are lines that a first call
-  # would refuse. Lines whose product is gone since cannot be compared: only a
-  # warning effect. `{errors, effects}`.
+  # would refuse. Missing live products are compared using their stored
+  # identities, with a warning effect on matching retries. `{errors, effects}`.
   defp comparison(doc, kind, requested, stated) do
     {line_errors, effects} = reference_result(doc, kind, requested)
     {line_errors ++ basis_errors(doc, kind, stated), effects}
@@ -595,7 +630,13 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   defp reference_result(doc, _kind, :differs), do: {[lines_differ_error(doc)], []}
   defp reference_result(_doc, _kind, {:invalid, errors}), do: {errors, []}
-  defp reference_result(doc, _kind, :unknown), do: {[], [lines_unverified_effect(doc)]}
+
+  defp reference_result(doc, kind, {:unverified, requested}) do
+    case reference_result(doc, kind, {:ok, requested}) do
+      {[], []} -> {[], [lines_unverified_effect(doc)]}
+      conflict -> conflict
+    end
+  end
 
   defp same_lines?(doc, kind, requested) do
     key = quantity_key(kind)
@@ -734,8 +775,8 @@ defmodule PhoenixKitWarehouse.API.Write do
     %{
       "code" => "external_ref_lines_unverified",
       "message" =>
-        "This external_ref belongs to document ##{doc.number}. The lines of this request could not be " <>
-          "compared with it (a product of the document no longer resolves). Nothing was posted now."
+        "This external_ref belongs to document ##{doc.number}. Product identities were matched " <>
+          "using the posted document because a product no longer resolves. Nothing was posted now."
     }
   end
 
