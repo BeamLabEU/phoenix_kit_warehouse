@@ -199,8 +199,7 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
         assert tool.description =~ "api_confirm_batch_over", tool.name
         refute tool.description =~ ~r/\b50 lines/, tool.name
 
-        assert tool.description =~ "not answered skipped, except when a product of the document",
-               tool.name
+        assert tool.description =~ "its ref must match a stored identity", tool.name
 
         assert tool.description =~ "external_ref_lines_unverified", tool.name
       end
