@@ -138,6 +138,12 @@ defmodule PhoenixKitWarehouse do
   @impl PhoenixKit.Module
   def children, do: [{Task.Supervisor, name: PhoenixKitWarehouse.TaskSupervisor}]
 
+  # PhoenixKit.Module.api_tools/0, an optional callback of the shop API. No
+  # `@impl`, for the reason `media_reorganizer/0` above gives: on a core
+  # without the callback `@impl` would warn, and core collects the tools of
+  # enabled modules by function name.
+  def api_tools, do: PhoenixKitWarehouse.API.tools()
+
   @impl PhoenixKit.Module
   def permission_metadata do
     %{

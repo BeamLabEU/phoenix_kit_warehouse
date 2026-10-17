@@ -81,6 +81,36 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
       assert Decimal.equal?(by_item[b]["previous_quantity"], Decimal.new("5"))
     end
 
+    test "source_refs are stored with the document in the same transaction" do
+      a = item_uuid()
+      seed!(a, 3)
+      ref = %{"type" => "internal_order", "uuid" => Ecto.UUID.generate()}
+
+      assert {:ok, issue} =
+               GoodsIssues.create_and_post(
+                 issue_attrs([issue_line(a, 1)], %{source_refs: [ref]}),
+                 nil
+               )
+
+      assert issue.source_refs == [ref]
+      assert Repo.get!(GoodsIssue, issue.uuid).source_refs == [ref]
+    end
+
+    test "a posting refused for stock leaves no document behind" do
+      a = item_uuid()
+      seed!(a, 1)
+      before = row_count(GoodsIssue)
+      ref = %{"type" => "internal_order", "uuid" => Ecto.UUID.generate()}
+
+      assert {:error, {:insufficient_stock, [_short]}} =
+               GoodsIssues.create_and_post(
+                 issue_attrs([issue_line(a, 5)], %{source_refs: [ref]}),
+                 nil
+               )
+
+      assert row_count(GoodsIssue) == before
+    end
+
     test "reason defaults to production" do
       a = item_uuid()
       seed!(a, 3)
@@ -310,6 +340,20 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
       by_item = Map.new(Repo.get!(GoodsReceipt, receipt.uuid).lines, &{&1["item_uuid"], &1})
       assert Decimal.equal?(by_item[a]["previous_quantity"], Decimal.new("3"))
       assert Decimal.equal?(by_item[b]["previous_quantity"], Decimal.new("0"))
+    end
+
+    test "source_refs are stored with the receipt in the same transaction" do
+      a = item_uuid()
+      ref = %{"type" => "supplier_order", "uuid" => Ecto.UUID.generate()}
+
+      assert {:ok, receipt} =
+               GoodsReceipts.create_and_post(
+                 issue_attrs([receipt_line(a, 1)], %{source_refs: [ref]}),
+                 nil
+               )
+
+      assert receipt.source_refs == [ref]
+      assert Repo.get!(GoodsReceipt, receipt.uuid).source_refs == [ref]
     end
 
     test "refuses duplicate lines and negative quantities, leaving no draft and no number used" do

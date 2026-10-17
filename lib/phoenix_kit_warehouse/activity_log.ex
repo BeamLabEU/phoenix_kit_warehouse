@@ -7,6 +7,8 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   """
 
   require Logger
+  alias PhoenixKitWarehouse.GoodsIssue
+  alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.Transfer
 
@@ -41,12 +43,46 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     )
   end
 
-  @doc "Logs the posting of an inventory document."
+  @doc """
+  Logs the posting of an inventory document, a goods receipt or a goods
+  issue.
+
+  Options: `:actor` (a map with `:uuid`), `:actor_uuid`, `:mode` (with an
+  `:actor` and no `:mode` the entry is `"manual"`, a hand edit; the API
+  passes `"auto"`), and `:metadata` - a map merged into the entry's
+  metadata (the API passes `via`, `key_prefix`, `request_id`, `tool`, and
+  `approved_by_uuid` when there is one). Like every entry of this module it
+  follows the `:inventory_activity_logging` switch and swallows write errors.
+  """
   def log_posted(%InventoryDocument{} = doc, opts) do
     log(
       %{
         action: "warehouse.inventory.posted",
         resource_type: "inventory_document",
+        resource_uuid: doc.uuid,
+        metadata: base_metadata(doc)
+      },
+      opts
+    )
+  end
+
+  def log_posted(%GoodsReceipt{} = doc, opts) do
+    log(
+      %{
+        action: "warehouse.goods_receipt.posted",
+        resource_type: "goods_receipt",
+        resource_uuid: doc.uuid,
+        metadata: base_metadata(doc)
+      },
+      opts
+    )
+  end
+
+  def log_posted(%GoodsIssue{} = doc, opts) do
+    log(
+      %{
+        action: "warehouse.goods_issue.posted",
+        resource_type: "goods_issue",
         resource_uuid: doc.uuid,
         metadata: base_metadata(doc)
       },
@@ -139,8 +175,18 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     end
   rescue
     e ->
-      Logger.warning("[Warehouse.ActivityLog] log error: #{Exception.message(e)}")
+      Logger.warning("[Warehouse.ActivityLog] log error: #{log_error(e, opts)}")
       :ok
+  end
+
+  # An entry with API metadata logs only the kind of the exception: its message
+  # can quote the metadata, which carries values of an API request. Every other
+  # entry keeps the message.
+  defp log_error(e, opts) do
+    case Keyword.get(opts, :metadata) do
+      metadata when metadata in [nil, %{}] -> Exception.message(e)
+      _metadata -> inspect(e.__struct__)
+    end
   end
 
   defp do_log(attrs, opts) do
@@ -151,6 +197,9 @@ defmodule PhoenixKitWarehouse.ActivityLog do
       mode: Keyword.get(opts, :mode) || default_mode(actor),
       actor_uuid: actor_uuid(opts)
     }
+
+    extra = Keyword.get(opts, :metadata, %{})
+    attrs = Map.update(attrs, :metadata, extra, &Map.merge(&1, extra))
 
     PhoenixKit.Activity.log(Map.merge(base, attrs))
     :ok
@@ -175,6 +224,18 @@ defmodule PhoenixKitWarehouse.ActivityLog do
 
   defp base_metadata(%Transfer{number: number}) do
     %{"number" => stringify(number)}
+  end
+
+  defp base_metadata(%GoodsReceipt{number: number, external_ref: external_ref}) do
+    %{"number" => stringify(number), "external_ref" => stringify(external_ref)}
+  end
+
+  defp base_metadata(%GoodsIssue{number: number, external_ref: external_ref, reason: reason}) do
+    %{
+      "number" => stringify(number),
+      "external_ref" => stringify(external_ref),
+      "reason" => stringify(reason)
+    }
   end
 
   defp stringify_changes(changes) when is_map(changes) do

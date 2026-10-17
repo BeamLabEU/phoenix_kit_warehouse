@@ -194,6 +194,10 @@ if repo_available do
   {:ok, _} = PhoenixKitWarehouse.Test.Endpoint.start_link()
 end
 
-exclude = if repo_available, do: [], else: [:integration]
+# Core's API is optional for this package: the tests of the tools run only
+# against a core that has the executor.
+exclude =
+  if(repo_available, do: [], else: [:integration]) ++
+    if Code.ensure_loaded?(PhoenixKit.API.Executor), do: [], else: [:core_api]
 
 ExUnit.start(exclude: exclude)

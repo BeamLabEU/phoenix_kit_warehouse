@@ -14,7 +14,7 @@ defmodule PhoenixKitWarehouse.PostingSupport do
   alias PhoenixKit.Utils.Number
   alias PhoenixKitWarehouse.StockLedger
 
-  @attr_keys ~w(location_uuid lines note reason external_ref track_value created_by_uuid)a
+  @attr_keys ~w(location_uuid lines note reason external_ref track_value created_by_uuid source_refs)a
 
   @doc """
   Picks the known attributes out of an atom- or string-keyed map, atom-keys
@@ -213,7 +213,10 @@ defmodule PhoenixKitWarehouse.PostingSupport do
   `external_ref` (transaction-scoped advisory lock) and returns the posted,
   non-deleted document of `schema` already holding that reference, if any.
 
-  Must run inside the transaction. A `nil` ref is never deduplicated.
+  Must run inside the transaction: the lock is released with it. Outside one
+  it would last a single statement and wait for any posting in flight with the
+  same reference; use `posted_by_external_ref/3` for a read that must not wait.
+  A `nil` ref is never deduplicated.
   """
   @spec find_posted_by_external_ref(Ecto.Repo.t(), module(), String.t() | nil) ::
           {:ok, struct() | nil}
@@ -223,15 +226,25 @@ defmodule PhoenixKitWarehouse.PostingSupport do
     lock_key = "pkw:#{schema.__schema__(:source)}:#{external_ref}"
     repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", [lock_key])
 
-    existing =
-      repo.one(
-        from(d in schema,
-          where:
-            d.external_ref == ^external_ref and d.status == "posted" and is_nil(d.deleted_at),
-          limit: 1
-        )
-      )
+    {:ok, posted_by_external_ref(repo, schema, external_ref)}
+  end
 
-    {:ok, existing}
+  @doc """
+  The posted, non-deleted document of `schema` holding `external_ref`, or
+  `nil`, read without the advisory lock: it never waits for a posting in
+  flight (whose document is not visible yet), so a miss is not proof that
+  none is running. Safe outside a transaction; the transaction that posts
+  re-checks with `find_posted_by_external_ref/3`.
+  """
+  @spec posted_by_external_ref(Ecto.Repo.t(), module(), String.t() | nil) :: struct() | nil
+  def posted_by_external_ref(_repo, _schema, nil), do: nil
+
+  def posted_by_external_ref(repo, schema, external_ref) do
+    repo.one(
+      from(d in schema,
+        where: d.external_ref == ^external_ref and d.status == "posted" and is_nil(d.deleted_at),
+        limit: 1
+      )
+    )
   end
 end
