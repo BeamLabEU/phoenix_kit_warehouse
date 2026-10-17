@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.5.4 - 2026-10-17
+
+### Added
+
+- **Warehouse admin API tools** (#36) — five tools offered to API keys through
+  `api_tools/0`: `warehouse.list_locations` and `warehouse.get_stock` (read),
+  and `warehouse.receive_stock`, `warehouse.set_stock` and
+  `warehouse.issue_stock` (one document with up to 500 lines, created and
+  posted in one transaction). Atomic: every problem of a request is reported
+  and nothing is posted if any line is wrong; `issue_stock` lists every short
+  line. `dry_run` previews, an Activity entry per posted document
+  (`via: api`) and `external_ref` retries answered from the posted document are
+  included; see the README. The tools need a core that ships the tool registry;
+  the write tools also need its confirmation flow. On an older core
+  `api_tools/0` offers the read tools or none, and nothing else changes.
+- **`:source_refs` accepted by `create_and_post/2`** and a `resulting_quantity`
+  recorded on receipt lines that moved stock (#36).
+- **Activity entries for posted goods receipts and goods issues**
+  (`warehouse.goods_receipt.posted`, `warehouse.goods_issue.posted`) when posted
+  through the API (#36).
+
+### Fixed
+
+- **A retry of a posted `external_ref` with a trashed product could hide a
+  changed request** — a changed quantity, unit value or duplicate on another
+  line was answered `skipped`. The retry now recovers the missing product from
+  the posted document and compares every line; an unchanged retry is still
+  answered `skipped` with an `external_ref_lines_unverified` effect.
+- **An unknown `external_id` passed for a stored product** on such a retry. A
+  missing ref must now match a stored UUID, a unique stored SKU or a unique
+  stored external ID; documents posted through the API keep the external ID of
+  each line. For older documents retry with the product UUID.
+- **`mix precommit` was red against the published core** (dialyzer could not
+  find `PhoenixKit.API.Tool.new!/1`); a justified ignore for `api.ex` covers it.
+
 ## 0.5.3 - 2026-10-11
 
 ### Added
