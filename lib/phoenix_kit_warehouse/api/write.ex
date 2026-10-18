@@ -95,7 +95,9 @@ defmodule PhoenixKitWarehouse.API.Write do
 
   @doc """
   `warehouse.set_stock`: a stocktake document that sets the listed items to
-  absolute quantities (zero allowed); other stock rows are untouched.
+  absolute quantities (zero allowed); other stock rows are untouched. When every
+  line already holds the counted quantity no document is created and the answer
+  is `status: "unchanged"`.
   """
   @spec set_stock(map(), map()) :: result()
   def set_stock(input, ctx), do: run(:inventory, input, ctx)
@@ -260,6 +262,7 @@ defmodule PhoenixKitWarehouse.API.Write do
     case guarded_post(request, user_uuid) do
       {:ok, doc} -> finish(:posted, doc, request, ctx)
       {:ok, :already_posted, doc} -> finish(:skipped, doc, request, ctx)
+      {:error, :unchanged} -> unchanged_reply(request)
       {:error, reason} -> refuse(reason, request)
     end
   end
@@ -283,7 +286,7 @@ defmodule PhoenixKitWarehouse.API.Write do
     do: GoodsReceipts.create_and_post(attrs(request), user_uuid)
 
   defp post(%{kind: :inventory} = request, user_uuid),
-    do: Inventories.create_and_post(attrs(request), user_uuid)
+    do: Inventories.create_and_post(attrs(request), user_uuid, skip_unchanged: true)
 
   defp post(%{kind: :issue} = request, user_uuid),
     do: GoodsIssues.create_and_post(attrs(request), user_uuid)
@@ -377,6 +380,33 @@ defmodule PhoenixKitWarehouse.API.Write do
       },
       []
     )
+  end
+
+  # A stocktake that counts what is already held posts no document: the answer
+  # has no `document` and says what each line held.
+  defp unchanged_reply(request) do
+    results = unchanged_results(request)
+
+    reply(
+      %{
+        "status" => "unchanged",
+        "results" => results,
+        "summary" => Enum.frequencies_by(results, & &1["action"])
+      },
+      []
+    )
+  end
+
+  defp unchanged_results(request) do
+    Enum.map(request.lines, fn line ->
+      %{
+        "ref" => line.ref,
+        "action" => "unchanged",
+        "id" => line.item.uuid,
+        "from" => Quantity.format(line.quantity),
+        "to" => Quantity.format(line.quantity)
+      }
+    end)
   end
 
   defp reply(body, []), do: {:ok, body}
@@ -806,12 +836,19 @@ defmodule PhoenixKitWarehouse.API.Write do
       [] ->
         results = preview_results(request, current)
 
-        body = %{
-          "status" => "would_post",
-          "document" => preview_document(request, spec),
-          "results" => results,
-          "summary" => Enum.frequencies_by(results, & &1["action"])
-        }
+        body =
+          if request.kind == :inventory and Enum.all?(results, &(&1["action"] == "unchanged")),
+            do: %{
+              "status" => "unchanged",
+              "results" => results,
+              "summary" => %{"unchanged" => length(results)}
+            },
+            else: %{
+              "status" => "would_post",
+              "document" => preview_document(request, spec),
+              "results" => results,
+              "summary" => Enum.frequencies_by(results, & &1["action"])
+            }
 
         {:preview, body,
          fingerprint({request.kind, request.location_uuid, line_state(request, current)})}

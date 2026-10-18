@@ -294,7 +294,7 @@ defmodule PhoenixKitWarehouse.API.Schemas do
     %{
       "type" => "object",
       "properties" => %{
-        "status" => %{"type" => "string", "enum" => ["posted", "skipped"]},
+        "status" => %{"type" => "string", "enum" => ["posted", "skipped", "unchanged"]},
         "document" => %{
           "type" => "object",
           "properties" => %{

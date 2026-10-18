@@ -444,6 +444,69 @@ defmodule PhoenixKitWarehouse.CreateAndPostTest do
       assert Decimal.equal?(qty(a), Decimal.new("99"))
     end
 
+    test "skip_unchanged: counts equal to the stock create no document and burn no number" do
+      a = item_uuid()
+      b = item_uuid()
+      seed!(a, 9)
+      seed!(b, 2)
+      before = row_count(InventoryDocument)
+      seq_before = sequence_state("inventory_documents")
+
+      assert {:error, :unchanged} =
+               Inventories.create_and_post(
+                 issue_attrs([count_line(a, "9"), count_line(b, 2)], %{external_ref: "CNT-SAME"}),
+                 nil,
+                 skip_unchanged: true
+               )
+
+      assert row_count(InventoryDocument) == before
+      assert sequence_state("inventory_documents") == seq_before
+    end
+
+    test "skip_unchanged: one changed line posts the document" do
+      a = item_uuid()
+      b = item_uuid()
+      seed!(a, 9)
+      seed!(b, 2)
+
+      assert {:ok, %InventoryDocument{status: "posted"}} =
+               Inventories.create_and_post(
+                 issue_attrs([count_line(a, "9"), count_line(b, 3)]),
+                 nil,
+                 skip_unchanged: true
+               )
+
+      assert Decimal.equal?(qty(b), Decimal.new("3"))
+    end
+
+    test "skip_unchanged: another unit value on a valued document is a change" do
+      a = item_uuid()
+      line = %{"item_uuid" => a, "counted_quantity" => 2, "unit_value" => "3.50"}
+
+      assert {:ok, _} =
+               Inventories.create_and_post(issue_attrs([line], %{track_value: true}), nil)
+
+      assert {:error, :unchanged} =
+               Inventories.create_and_post(issue_attrs([line], %{track_value: true}), nil,
+                 skip_unchanged: true
+               )
+
+      other = %{line | "unit_value" => "4.00"}
+
+      assert {:ok, _} =
+               Inventories.create_and_post(issue_attrs([other], %{track_value: true}), nil,
+                 skip_unchanged: true
+               )
+    end
+
+    test "without skip_unchanged an unchanged count still posts a document" do
+      a = item_uuid()
+      seed!(a, 9)
+
+      assert {:ok, %InventoryDocument{status: "posted"}} =
+               Inventories.create_and_post(issue_attrs([count_line(a, "9")]), nil)
+    end
+
     test "track_value stores the line unit_value on the stock row" do
       a = item_uuid()
 

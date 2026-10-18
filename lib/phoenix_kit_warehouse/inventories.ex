@@ -298,11 +298,17 @@ defmodule PhoenixKitWarehouse.Inventories do
   `{:error, :no_lines | :invalid_lines}`; or `{:error, %Ecto.Changeset{}}`. A
   line's `"unit_value"` is passed through unchecked, as on the plain post
   path.
+
+  With `skip_unchanged: true` a call whose lines all equal the stock already
+  held creates no document: the answer is `{:error, :unchanged}` and nothing is
+  written (the check runs under the same row locks as the posting, before the
+  document number is drawn). A repeated `external_ref` is still answered first.
   """
-  def create_and_post(attrs, performed_by_uuid) when is_map(attrs) do
+  def create_and_post(attrs, performed_by_uuid, opts \\ []) when is_map(attrs) do
     PostingSupport.create_and_post(attrs, performed_by_uuid,
       schema: InventoryDocument,
       quantity_key: "counted_quantity",
+      guard: unchanged_guard(Keyword.get(opts, :skip_unchanged, false)),
       changeset: fn attrs, created_by_uuid ->
         %InventoryDocument{}
         |> InventoryDocument.draft_changeset(attrs)
@@ -314,6 +320,35 @@ defmodule PhoenixKitWarehouse.Inventories do
       end,
       post: &apply_counts_and_post(&2, performed_by_uuid, &1)
     )
+  end
+
+  defp unchanged_guard(false), do: fn _repo, _changeset -> {:ok, nil} end
+
+  defp unchanged_guard(true) do
+    fn repo, changeset ->
+      lines = Ecto.Changeset.get_field(changeset, :lines)
+      location_uuid = Ecto.Changeset.get_field(changeset, :location_uuid)
+      track_value? = Ecto.Changeset.get_field(changeset, :track_value)
+      prior_stock = locked_prior_stock(lines, location_uuid, repo)
+
+      if Enum.all?(lines, &unchanged_line?(&1, prior_stock, track_value?)),
+        do: {:error, :unchanged},
+        else: {:ok, nil}
+    end
+  end
+
+  # A line changes nothing when it counts the quantity already held and, on a
+  # valued document, does not state another unit value (a line without one
+  # leaves the stored value alone, see `upsert_counts/3`).
+  defp unchanged_line?(line, prior_stock, track_value?) do
+    prior =
+      Map.get(prior_stock, line["item_uuid"], %{quantity: Decimal.new("0"), unit_value: nil})
+
+    counted = StockLedger.to_decimal(line["counted_quantity"])
+    stated = if track_value?, do: StockLedger.to_decimal_or_nil(line["unit_value"])
+
+    Decimal.eq?(counted, prior.quantity) and
+      (is_nil(stated) or (not is_nil(prior.unit_value) and Decimal.eq?(stated, prior.unit_value)))
   end
 
   @doc """

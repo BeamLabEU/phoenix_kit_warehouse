@@ -10,6 +10,7 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
   alias PhoenixKit.Activity.Entry
   alias PhoenixKitWarehouse.API.Write
   alias PhoenixKitWarehouse.InventoryDocument
+  alias PhoenixKitWarehouse.StockLedger
 
   setup do
     %{locations: [first, second]} = warehouses!(2)
@@ -87,6 +88,94 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
 
     assert body["summary"] == %{"updated" => 1, "unchanged" => 1}
     assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(0))
+  end
+
+  defp number_sequence do
+    %{rows: [state]} =
+      Repo.query!(
+        "SELECT last_value, is_called FROM phoenix_kit_warehouse_inventory_documents_number_seq"
+      )
+
+    state
+  end
+
+  describe "a count that changes nothing" do
+    test "creates no document, burns no number and answers unchanged", %{
+      first: first,
+      a: a,
+      b: b,
+      ctx: ctx
+    } do
+      seed!(a.uuid, "5", first.uuid)
+      seed!(b.uuid, "3", first.uuid)
+      documents_before = Repo.aggregate(InventoryDocument, :count)
+      sequence_before = number_sequence()
+
+      body = set!(%{"external_ref" => "SAME-1", "lines" => [line(a, "5"), line(b, 3)]}, ctx)
+
+      assert body["status"] == "unchanged"
+      refute Map.has_key?(body, "document")
+
+      assert [
+               %{"action" => "unchanged", "from" => "5", "to" => "5"},
+               %{"action" => "unchanged", "from" => "3", "to" => "3"}
+             ] = body["results"]
+
+      assert body["summary"] == %{"unchanged" => 2}
+      assert Repo.aggregate(InventoryDocument, :count) == documents_before
+
+      assert number_sequence() == sequence_before
+
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
+    end
+
+    test "a missing stock row counted as zero is unchanged and is not created", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      body = set!(%{"lines" => [line(a, "0")]}, ctx)
+
+      assert body["status"] == "unchanged"
+      assert StockLedger.stock_for_items_at_location([a.uuid], first.uuid) == []
+    end
+
+    test "one changed line posts the whole document, unchanged lines included", %{
+      first: first,
+      a: a,
+      b: b,
+      ctx: ctx
+    } do
+      seed!(a.uuid, "5", first.uuid)
+      seed!(b.uuid, "3", first.uuid)
+
+      body = set!(%{"lines" => [line(a, "5"), line(b, "4")]}, ctx)
+
+      assert body["status"] == "posted"
+      assert body["summary"] == %{"unchanged" => 1, "updated" => 1}
+
+      document = Repo.get!(InventoryDocument, body["document"]["id"])
+      assert length(document.lines) == 2
+    end
+
+    test "a repeated reference of a posted count is still skipped", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      input = %{"external_ref" => "COUNT-SAME", "lines" => [line(a, "6")]}
+      set!(input, ctx)
+
+      assert set!(input, ctx)["status"] == "skipped"
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(6))
+    end
+
+    test "the preview says unchanged and writes nothing", %{first: first, a: a, ctx: ctx} do
+      seed!(a.uuid, "5", first.uuid)
+
+      assert {:preview, %{"status" => "unchanged", "results" => [%{"action" => "unchanged"}]}, _} =
+               Write.set_stock(%{"lines" => [line(a, "5")]}, Map.put(ctx, :dry_run?, true))
+    end
   end
 
   test "a different location is counted separately", %{

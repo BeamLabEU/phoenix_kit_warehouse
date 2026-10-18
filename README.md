@@ -130,6 +130,12 @@ How they behave, in short:
   of 1 second; nothing was changed and the same call can be sent again. A call that
   carried a confirmation code (above the confirmation threshold) has spent it: send it
   again without the code.
+- `set_stock` that changes nothing (every listed product already holds its counted
+  quantity) creates no document and burns no document number: it answers
+  `status: "unchanged"` with the `results` (`action: "unchanged"`) and no `document`.
+  A stocktake where at least one line changes is posted whole. After an `unchanged`
+  answer the `external_ref` is not recorded (there is no document), so a later call with
+  the same reference runs normally; use `Idempotency-Key` for replays.
 - `external_ref` carries your own document number: sending it again answers
   `skipped` with the existing document and moves no stock. On `issue_stock`
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
