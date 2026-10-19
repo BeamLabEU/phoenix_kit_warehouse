@@ -36,13 +36,21 @@ defmodule PhoenixKitWarehouse.InternalOrders do
 
   @doc """
   Lists non-deleted internal orders ordered by number descending (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed orders instead
+      (any status, same order), the content of the trash view.
   """
-  def list_internal_orders(_opts \\ []) do
+  def list_internal_orders(opts \\ []) do
     InternalOrder
-    |> where([o], is_nil(o.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([o], desc: o.number)
     |> repo().all()
   end
+
+  @doc "Counts the trashed internal orders (any status)."
+  @spec count_trashed_internal_orders() :: non_neg_integer()
+  def count_trashed_internal_orders, do: DraftTrash.count_trashed(InternalOrder)
 
   @doc """
   Lists non-deleted posted internal orders ordered by number descending.

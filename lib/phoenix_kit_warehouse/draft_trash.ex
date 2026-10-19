@@ -15,6 +15,19 @@ defmodule PhoenixKitWarehouse.DraftTrash do
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
   @doc """
+  Narrows a list query to the live rows, or to the trashed ones when `trashed?`
+  is `true` (any other value means the live rows, the default of every list).
+  """
+  def scope(query, true), do: where(query, [o], not is_nil(o.deleted_at))
+  def scope(query, _trashed?), do: where(query, [o], is_nil(o.deleted_at))
+
+  @doc "Counts the trashed rows of `schema`, whatever their status."
+  def count_trashed(schema) do
+    from(o in schema, where: not is_nil(o.deleted_at), select: count(o.uuid))
+    |> repo().one()
+  end
+
+  @doc """
   Takes a transaction-scoped advisory lock on `key` (released with the commit).
   Same technique as `PostingSupport.find_posted_by_external_ref/3`.
   """

@@ -43,12 +43,38 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   @doc """
   Lists non-deleted supplier orders ordered by number descending (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed orders instead
+      (any status, same order), the content of the trash view.
   """
-  def list_supplier_orders(_opts \\ []) do
+  def list_supplier_orders(opts \\ []) do
     SupplierOrder
-    |> where([o], is_nil(o.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([o], desc: o.number)
     |> repo().all()
+  end
+
+  @doc "Counts the trashed supplier orders (any status)."
+  @spec count_trashed_supplier_orders() :: non_neg_integer()
+  def count_trashed_supplier_orders, do: DraftTrash.count_trashed(SupplierOrder)
+
+  @doc """
+  Lists, by number, the live drafts of the internal order that
+  `generate_from_internal_order/3` with `supersede_drafts: true` could send to
+  the trash: drafts with a supplier that refer to no other internal order. It
+  only reads (nothing is locked), so it is a hint for a confirmation, not a
+  promise - the generation decides under its lock which of them really move.
+  """
+  @spec list_replaceable_drafts(Ecto.UUID.t()) :: [SupplierOrder.t()]
+  def list_replaceable_drafts(internal_order_uuid) when is_binary(internal_order_uuid) do
+    from(o in SupplierOrder,
+      where: o.status == "draft" and is_nil(o.deleted_at),
+      where: o.internal_order_uuid == ^internal_order_uuid and not is_nil(o.supplier_uuid),
+      order_by: [asc: o.number]
+    )
+    |> repo().all()
+    |> only_internal_order(internal_order_uuid)
   end
 
   @doc """
