@@ -244,6 +244,16 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
 
       issue_props = by_name["warehouse.issue_stock"].input_schema["properties"]
       assert issue_props["external_ref"]["description"] =~ "skipped"
+
+      set_stock_ref = by_name["warehouse.set_stock"].input_schema["properties"]["external_ref"]
+      assert set_stock_ref["description"] =~ "unchanged"
+      assert set_stock_ref["description"] =~ "not recorded"
+      assert set_stock_ref["description"] =~ "Idempotency-Key"
+
+      refute by_name["warehouse.receive_stock"].input_schema["properties"]["external_ref"][
+               "description"
+             ] =~ "unchanged"
+
       assert issue_props["source"]["description"] =~ "external_ref"
 
       for name <- [

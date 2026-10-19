@@ -66,6 +66,10 @@ posting) rolls the draft back too, but the number sequence has advanced.
   and a repeat returns `{:ok, :already_posted, existing_document}` without
   writing anything, so a retried delivery is harmless. The lines of the repeat
   are not compared with the existing document's.
+- `Inventories.create_and_post/3` takes `skip_unchanged: true`: a stocktake
+  where every counted line already holds its quantity returns
+  `{:error, :unchanged}` and writes nothing, so its `external_ref` is not
+  recorded either and a later call with it runs as a new stocktake.
 
 ### Linking documents to host records
 
@@ -139,7 +143,8 @@ How they behave, in short:
   answer the `external_ref` is not recorded (there is no document), so a later call with
   the same reference runs normally; use `Idempotency-Key` for replays.
 - `external_ref` carries your own document number: sending it again answers
-  `skipped` with the existing document and moves no stock. On `issue_stock`
+  `skipped` with the existing document and moves no stock (for a posted document;
+  an `unchanged` `set_stock` posts none, see above). On `issue_stock`
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
   The retry is answered from the posted document before the lines are checked (a
   product trashed or a default warehouse changed since does not matter). What a retry
