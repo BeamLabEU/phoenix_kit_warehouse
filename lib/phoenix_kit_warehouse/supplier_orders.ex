@@ -151,7 +151,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   supplier order.
 
   Pure metadata — does not touch `lines` and is not gated to draft status.
-  A duplicate `{type, uuid}` pair is a no-op.
+  A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
+  a document in the trash.
   """
   def add_source_ref(%SupplierOrder{} = order, type, uuid) when type in ["internal_order"] do
     new_ref = %{"type" => type, "uuid" => uuid}
@@ -160,21 +161,26 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       ((order.source_refs || []) ++ [new_ref])
       |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-    order
-    |> SupplierOrder.changeset(%{source_refs: refs})
-    |> repo().update()
+    update_source_refs(order, refs)
   end
 
   @doc """
   Detaches a traceability reference from a supplier order. No-op when the
-  `{type, uuid}` pair isn't present.
+  `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
+  document in the trash.
   """
   def remove_source_ref(%SupplierOrder{} = order, type, uuid) do
     refs = Enum.reject(order.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
+    update_source_refs(order, refs)
+  end
+
+  # The trash is read from the row (locked), not from the struct, which may be
+  # a tab behind.
+  defp update_source_refs(order, refs) do
     order
     |> SupplierOrder.changeset(%{source_refs: refs})
-    |> repo().update()
+    |> then(&DraftTrash.update_unless_trashed(SupplierOrder, &1))
   end
 
   # ---------------------------------------------------------------------------
@@ -274,6 +280,10 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       draft per pair" holds after the restore. A combined draft, or one
       without a supplier or an internal order, is restored without a swap
       whatever this is.
+
+  Call it outside a transaction of the same repo, otherwise the activity
+  entries are written inside the caller's transaction instead of after the
+  commit.
   """
   @spec restore_supplier_order(SupplierOrder.t(), Ecto.UUID.t() | nil, keyword()) ::
           {:ok, %{order: SupplierOrder.t(), superseded: [SupplierOrder.t()]}}
@@ -399,6 +409,10 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       who trashed them. Posted drafts, drafts that refer to another internal
       order (imported, combined) and drafts of suppliers the generation made
       nothing for are left alone.
+
+  Call it outside a transaction of the same repo, otherwise the activity
+  entries are written inside the caller's transaction instead of after the
+  commit.
   """
   def generate_from_internal_order(internal_order, actor_uuid, opts \\ []) do
     item_uuids =

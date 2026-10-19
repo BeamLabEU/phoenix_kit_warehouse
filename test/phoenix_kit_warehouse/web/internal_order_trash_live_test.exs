@@ -790,4 +790,139 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       assert so_reload(posted).status == "posted"
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # Review follow-ups
+  # ---------------------------------------------------------------------------
+
+  describe "restore buttons" do
+    test "the banner button and the row menu item wait for the answer", %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      trashed = trashed_draft!(admin)
+
+      {:ok, lv, _html} = live(conn, form_path(trashed))
+      assert has_element?(lv, "#io-restore[phx-disable-with]")
+
+      {:ok, lv, _html} = live(conn, trash_path())
+      assert has_element?(lv, "#io-restore-#{trashed.uuid}[phx-disable-with]")
+    end
+
+    test "a restore event with a uuid that is not one is refused, not a crash", %{conn: conn} do
+      conn = log_in(conn, admin!())
+      trashed_draft!(admin!())
+
+      {:ok, lv, _html} = live(conn, trash_path())
+
+      html = render_click(lv, "restore", %{"uuid" => "not-a-uuid"})
+
+      assert html =~ "Document not found"
+      assert Process.alive?(lv.pid)
+    end
+  end
+
+  describe "the Files tab of a document that went to the trash" do
+    test "does not keep the upload browser of the folder it had", %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      order = draft!()
+
+      {:ok, lv, _html} = live(conn, form_path(order) <> "/files")
+      send(lv.pid, {:files_folder_result, {:ok, %{uuid: Ecto.UUID.generate()}}})
+      assert has_element?(lv, "#media-browser-io-#{order.uuid}")
+
+      {:ok, _} = InternalOrders.soft_delete_internal_order(order, admin.uuid)
+      render_click(lv, "save_draft", %{})
+
+      assert has_element?(lv, "#io-trash-banner")
+      refute has_element?(lv, "#media-browser-io-#{order.uuid}")
+      assert render(lv) =~ "Files are not available"
+    end
+
+    test "ignores a folder that was found after the document went to the trash",
+         %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      trashed = trashed_draft!(admin)
+
+      {:ok, lv, _html} = live(conn, form_path(trashed) <> "/files")
+      send(lv.pid, {:files_folder_result, {:ok, %{uuid: Ecto.UUID.generate()}}})
+
+      refute has_element?(lv, "#media-browser-io-#{trashed.uuid}")
+      assert render(lv) =~ "Files are not available"
+    end
+  end
+
+  describe "a document restored in another tab" do
+    test "the form goes back to the live mode instead of refusing every event",
+         %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      trashed = trashed_draft!(admin)
+
+      {:ok, lv, _html} = live(conn, form_path(trashed))
+      assert has_element?(lv, "#io-trash-banner")
+
+      {:ok, _} = InternalOrders.restore_internal_order(trashed, admin.uuid)
+
+      html = render_click(lv, "save_draft", %{})
+
+      refute html =~ "Document moved to the trash"
+      refute has_element?(lv, "#io-trash-banner")
+      assert has_element?(lv, "button[phx-click=save_draft]")
+    end
+
+    test "a document that is still in the trash keeps answering that it is", %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      trashed = trashed_draft!(admin)
+
+      {:ok, lv, _html} = live(conn, form_path(trashed))
+
+      html = render_click(lv, "save_draft", %{})
+
+      assert html =~ "Document moved to the trash"
+      assert has_element?(lv, "#io-trash-banner")
+    end
+  end
+
+  describe "links of a document that went to the trash meanwhile" do
+    test "removing a link says so and redraws the form as a trashed document",
+         %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      source = Fixtures.insert_order!()
+      order = draft!(%{source_refs: [%{"type" => "order", "uuid" => source.uuid}]})
+
+      {:ok, lv, _html} = live(conn, form_path(order))
+      {:ok, _} = InternalOrders.soft_delete_internal_order(order, admin.uuid)
+
+      html = render_click(lv, "remove_source_ref", %{"type" => "order", "uuid" => source.uuid})
+
+      assert html =~ "Document moved to the trash"
+      refute html =~ "Failed to remove link"
+      assert has_element?(lv, "#io-trash-banner")
+      assert [%{"uuid" => uuid}] = reload(order).source_refs
+      assert uuid == source.uuid
+    end
+
+    test "adding a link says so and redraws the form as a trashed document", %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      source = Fixtures.insert_order!()
+      order = draft!()
+
+      {:ok, lv, _html} = live(conn, form_path(order))
+      render_click(lv, "open_link_picker", %{})
+      render_click(lv, "source_picker_toggle", %{"uuid" => source.uuid})
+      {:ok, _} = InternalOrders.soft_delete_internal_order(order, admin.uuid)
+
+      html = render_click(lv, "source_picker_confirm", %{})
+
+      assert html =~ "Document moved to the trash"
+      refute html =~ "Failed to add link"
+      assert has_element?(lv, "#io-trash-banner")
+      assert reload(order).source_refs == []
+    end
+  end
 end

@@ -1133,6 +1133,14 @@ msgstr ""
 msgid "Restore"
 msgstr ""
 
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:978
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:533
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:973
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:533
+#, elixir-autogen, elixir-format
+msgid "Restoring..."
+msgstr ""
+
 #: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:480
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:480
 #, elixir-autogen, elixir-format

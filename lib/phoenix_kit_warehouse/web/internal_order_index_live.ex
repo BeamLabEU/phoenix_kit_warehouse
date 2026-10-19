@@ -113,7 +113,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
     actor_uuid = socket.assigns.current_user_uuid
     swap? = PhoenixKitWarehouse.one_draft_per_source?()
 
-    with {:ok, order} <- InternalOrders.get_internal_order(uuid),
+    with {:ok, uuid} <- cast_uuid(uuid),
+         {:ok, order} <- InternalOrders.get_internal_order(uuid),
          {:ok, %{order: restored, superseded: superseded}} <-
            InternalOrders.restore_internal_order(order, actor_uuid, swap: swap?) do
       {:noreply,
@@ -156,6 +157,15 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
   @impl true
   def handle_event("flip_sort_dir", _params, socket) do
     {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
+  end
+
+  # The uuid comes from the browser; a malformed one is a document that is not
+  # there, not a query error.
+  defp cast_uuid(uuid) do
+    case Ecto.UUID.cast(uuid) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :not_found}
+    end
   end
 
   # ---------------------------------------------------------------------------
@@ -520,6 +530,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
                       :if={@view == "trash" and entry.status == "draft"}
                       id={"io-restore-#{entry.uuid}"}
                       phx-click="restore"
+                      phx-disable-with={dgettext("default", "Restoring...")}
                       phx-value-uuid={entry.uuid}
                       icon="hero-arrow-uturn-left"
                       label={dgettext("default", "Restore")}

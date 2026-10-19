@@ -330,7 +330,18 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
         %{assigns: %{order: %{deleted_at: %DateTime{}}}} = socket
       )
       when event in @trash_blocked do
-    {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
+    # The socket may be a tab behind: the document could have been restored
+    # meanwhile. Read it again; a live one is drawn as such and the event, which
+    # was meant for the form as it was, is not carried out.
+    socket = reload_order(socket)
+
+    case socket.assigns.order do
+      %{deleted_at: %DateTime{}} ->
+        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
+
+      _live ->
+        {:noreply, resume_files_tab(socket)}
+    end
   end
 
   def handle_event("restore", _params, %{assigns: %{order: nil}} = socket) do
@@ -721,6 +732,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
       {:error, _reason} ->
         {:noreply,
          socket
@@ -798,6 +812,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
           |> assign(:source_refs, DocRefs.refs_for(updated_order.source_refs || []))
 
         {:noreply, socket}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to remove link"))}
@@ -953,6 +970,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
           type="button"
           id="so-restore"
           phx-click="restore"
+          phx-disable-with={dgettext("default", "Restoring...")}
           class="btn btn-sm btn-primary"
         >
           <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
@@ -1198,7 +1216,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                   <span class="loading loading-spinner loading-md" />
                   <span class="ml-2">{dgettext("default", "Loading files...")}</span>
                 </div>
-              <% is_nil(@files_scope_folder_uuid) -> %>
+              <% @deleted? or is_nil(@files_scope_folder_uuid) -> %>
                 <div class="alert alert-warning">
                   {dgettext("default", "Files are not available for this supplier order yet.")}
                 </div>

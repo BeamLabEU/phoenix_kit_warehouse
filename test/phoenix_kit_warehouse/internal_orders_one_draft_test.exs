@@ -503,6 +503,49 @@ defmodule PhoenixKitWarehouse.InternalOrdersOneDraftTest do
                InternalOrders.import_from_sources(trashed, [ref("sub_order", uuid())], uuid())
     end
 
+    test "add_source_ref answers :deleted and writes nothing", %{trashed: trashed} do
+      assert {:error, :deleted} = InternalOrders.add_source_ref(trashed, "sub_order", uuid())
+      assert reload(trashed).source_refs == []
+    end
+
+    test "add_source_ref and remove_source_ref look at the row, not at the struct" do
+      source = ref("sub_order", uuid())
+      order = insert!(%{source_refs: [source]})
+      {:ok, _} = InternalOrders.soft_delete_internal_order(order, nil)
+
+      assert {:error, :deleted} = InternalOrders.add_source_ref(order, "sub_order", uuid())
+
+      assert {:error, :deleted} =
+               InternalOrders.remove_source_ref(order, "sub_order", source["uuid"])
+
+      assert reload(order).source_refs == [source]
+    end
+
+    test "remove_source_ref answers :deleted and keeps the ref" do
+      source = ref("sub_order", uuid())
+
+      {:ok, trashed} =
+        InternalOrders.soft_delete_internal_order(insert!(%{source_refs: [source]}), nil)
+
+      assert {:error, :deleted} =
+               InternalOrders.remove_source_ref(trashed, "sub_order", source["uuid"])
+
+      assert reload(trashed).source_refs == [source]
+    end
+
+    test "the links of a live order, posted ones included, still change" do
+      source = ref("sub_order", uuid())
+      posted = insert!(%{lines: lines()}) |> InternalOrders.post_internal_order(nil) |> elem(1)
+
+      assert {:ok, linked} = InternalOrders.add_source_ref(posted, "sub_order", source["uuid"])
+      assert linked.source_refs == [source]
+
+      assert {:ok, unlinked} =
+               InternalOrders.remove_source_ref(linked, "sub_order", source["uuid"])
+
+      assert unlinked.source_refs == []
+    end
+
     test "a posted live order still answers :not_draft" do
       draft = insert!(%{lines: lines()})
       {:ok, posted} = InternalOrders.post_internal_order(draft, nil)

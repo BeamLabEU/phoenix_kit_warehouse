@@ -48,6 +48,30 @@ defmodule PhoenixKitWarehouse.DraftTrash do
   end
 
   @doc """
+  Applies `changeset` to its row under the row lock, unless the row is in the
+  trash by then (`{:error, :deleted}`; `{:error, :not_found}` when it is gone).
+  For the writes that are not gated to drafts, which the status lock of the
+  documents does not cover.
+  """
+  def update_unless_trashed(schema, %Ecto.Changeset{data: %{uuid: uuid}} = changeset) do
+    repo().transaction(fn ->
+      case lock_rows(schema, [uuid]) do
+        [%{deleted_at: nil}] ->
+          case repo().update(changeset) do
+            {:ok, updated} -> updated
+            {:error, reason} -> repo().rollback(reason)
+          end
+
+        [_trashed] ->
+          repo().rollback(:deleted)
+
+        [] ->
+          repo().rollback(:not_found)
+      end
+    end)
+  end
+
+  @doc """
   Moves the rows with the given uuids to the trash, but only those that are
   still live drafts in the database. Returns the rows really updated (`select`
   plays the part of `returning`), sorted by number.

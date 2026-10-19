@@ -459,6 +459,52 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
       assert reloaded.note == nil
     end
 
+    test "add_source_ref answers :deleted and writes nothing" do
+      trashed = trashed!(%{supplier_uuid: uuid()})
+
+      assert {:error, :deleted} = SupplierOrders.add_source_ref(trashed, "internal_order", uuid())
+      assert reload(trashed).source_refs == []
+    end
+
+    test "add_source_ref and remove_source_ref look at the row, not at the struct" do
+      source = io_ref(io_uuid!())
+      so = insert!(%{supplier_uuid: uuid(), source_refs: [source]})
+      {:ok, _} = SupplierOrders.soft_delete_supplier_order(so, nil)
+
+      assert {:error, :deleted} = SupplierOrders.add_source_ref(so, "internal_order", uuid())
+
+      assert {:error, :deleted} =
+               SupplierOrders.remove_source_ref(so, "internal_order", source["uuid"])
+
+      assert reload(so).source_refs == [source]
+    end
+
+    test "remove_source_ref answers :deleted and keeps the ref" do
+      source = io_ref(io_uuid!())
+      trashed = trashed!(%{supplier_uuid: uuid(), source_refs: [source]})
+
+      assert {:error, :deleted} =
+               SupplierOrders.remove_source_ref(trashed, "internal_order", source["uuid"])
+
+      assert reload(trashed).source_refs == [source]
+    end
+
+    test "the links of a live order, posted ones included, still change" do
+      source = io_ref(io_uuid!())
+      so = insert!(%{supplier_uuid: uuid(), lines: [%{"item_uuid" => uuid()}]})
+      {:ok, posted} = SupplierOrders.post_supplier_order(so, nil)
+
+      assert {:ok, linked} =
+               SupplierOrders.add_source_ref(posted, "internal_order", source["uuid"])
+
+      assert linked.source_refs == [source]
+
+      assert {:ok, unlinked} =
+               SupplierOrders.remove_source_ref(linked, "internal_order", source["uuid"])
+
+      assert unlinked.source_refs == []
+    end
+
     test "a posted order still answers :not_draft" do
       so = insert!(%{supplier_uuid: uuid(), lines: [%{"item_uuid" => uuid()}]})
       {:ok, posted} = SupplierOrders.post_supplier_order(so, nil)

@@ -170,6 +170,10 @@ defmodule PhoenixKitWarehouse.InternalOrders do
   sources, or of another type with the same uuid, are never touched. Calls for
   the same source are serialised by an advisory lock, so two clicks cannot each
   miss the other's draft.
+
+  Call it outside a transaction of the same repo, otherwise the activity
+  entries are written inside the caller's transaction instead of after the
+  commit.
   """
   @spec replace_draft_for_source([map()], map() | nil, keyword()) ::
           {:ok, %{order: InternalOrder.t(), superseded: [InternalOrder.t()]}}
@@ -239,7 +243,8 @@ defmodule PhoenixKitWarehouse.InternalOrders do
 
   `type` must be a kind registered via `PhoenixKitWarehouse.SourceKinds`.
   Pure metadata — does not touch `lines` and is not gated to draft status.
-  A duplicate `{type, uuid}` pair is a no-op.
+  A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
+  a document in the trash.
   """
   def add_source_ref(%InternalOrder{} = order, type, uuid) do
     if registered_kind?(type) do
@@ -249,9 +254,7 @@ defmodule PhoenixKitWarehouse.InternalOrders do
         ((order.source_refs || []) ++ [new_ref])
         |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-      order
-      |> InternalOrder.changeset(%{source_refs: refs})
-      |> repo().update()
+      update_source_refs(order, refs)
     else
       {:error, :invalid_ref_type}
     end
@@ -261,14 +264,21 @@ defmodule PhoenixKitWarehouse.InternalOrders do
 
   @doc """
   Detaches a traceability reference from an internal order. No-op when the
-  `{type, uuid}` pair isn't present.
+  `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
+  document in the trash.
   """
   def remove_source_ref(%InternalOrder{} = order, type, uuid) do
     refs = Enum.reject(order.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
+    update_source_refs(order, refs)
+  end
+
+  # The trash is read from the row (locked), not from the struct, which may be
+  # a tab behind.
+  defp update_source_refs(order, refs) do
     order
     |> InternalOrder.changeset(%{source_refs: refs})
-    |> repo().update()
+    |> then(&DraftTrash.update_unless_trashed(InternalOrder, &1))
   end
 
   # ---------------------------------------------------------------------------
@@ -365,6 +375,10 @@ defmodule PhoenixKitWarehouse.InternalOrders do
       same transaction (same rules and lock as `replace_draft_for_source/3`), so
       "one draft per source" holds after the restore. A combined draft, or one
       without a source, is restored without a swap whatever this is.
+
+  Call it outside a transaction of the same repo, otherwise the activity
+  entries are written inside the caller's transaction instead of after the
+  commit.
   """
   @spec restore_internal_order(InternalOrder.t(), Ecto.UUID.t() | nil, keyword()) ::
           {:ok, %{order: InternalOrder.t(), superseded: [InternalOrder.t()]}}
