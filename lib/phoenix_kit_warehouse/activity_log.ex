@@ -9,6 +9,7 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   require Logger
   alias PhoenixKitWarehouse.GoodsIssue
   alias PhoenixKitWarehouse.GoodsReceipt
+  alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.Transfer
 
@@ -165,7 +166,56 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     )
   end
 
+  @doc """
+  Logs the move of an internal order to the trash.
+
+  Options: `:actor_uuid` (who pressed the button, not the author of the
+  order), `:reason` (`"superseded"`, `"manual"` or `"restore_swap"`) and
+  `:superseded_by_uuid` (the order that took its place; left out when `nil`).
+  Meant to be called after the transaction that did the move has committed.
+  """
+  def log_internal_order_trashed(%InternalOrder{} = order, opts) do
+    metadata =
+      %{"reason" => Keyword.get(opts, :reason)}
+      |> put_unless_nil("superseded_by_uuid", Keyword.get(opts, :superseded_by_uuid))
+
+    log(
+      %{
+        action: "warehouse.internal_order.trashed",
+        resource_type: "internal_order",
+        resource_uuid: order.uuid,
+        metadata: Map.merge(base_metadata(order), metadata)
+      },
+      trash_log_opts(opts)
+    )
+  end
+
+  @doc """
+  Logs the restore of an internal order from the trash. Options: `:actor_uuid`.
+  """
+  def log_internal_order_restored(%InternalOrder{} = order, opts) do
+    log(
+      %{
+        action: "warehouse.internal_order.restored",
+        resource_type: "internal_order",
+        resource_uuid: order.uuid,
+        metadata: base_metadata(order)
+      },
+      trash_log_opts(opts)
+    )
+  end
+
   ## Internals
+
+  # A move to the trash or back is always somebody's click; `:mode` follows
+  # the actor, the same way `default_mode/1` does for `:actor`.
+  defp trash_log_opts(opts) do
+    actor_uuid = Keyword.get(opts, :actor_uuid)
+    [actor_uuid: actor_uuid, mode: if(actor_uuid, do: "manual", else: "auto")]
+  end
+
+  defp put_unless_nil(map, _key, nil), do: map
+  defp put_unless_nil(map, key, value), do: Map.put(map, key, value)
 
   defp log(attrs, opts) do
     if enabled?() and Code.ensure_loaded?(PhoenixKit.Activity) do
@@ -219,6 +269,10 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   end
 
   defp base_metadata(%InventoryDocument{number: number}) do
+    %{"number" => stringify(number)}
+  end
+
+  defp base_metadata(%InternalOrder{number: number}) do
     %{"number" => stringify(number)}
   end
 
