@@ -262,6 +262,10 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   end
 
   @impl true
+  def handle_event("restore", _params, %{assigns: %{order: nil}} = socket) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
   def handle_event("restore", _params, socket) do
     order = socket.assigns.order
     user_uuid = socket.assigns.current_user && socket.assigns.current_user.uuid
@@ -272,13 +276,15 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
         {:noreply,
          socket
          |> put_flash(:info, TrashMessages.restored(restored, superseded))
-         |> reload_order()}
+         |> reload_order()
+         |> resume_files_tab()}
 
       {:error, reason} ->
         {:noreply,
          socket
          |> put_flash(:error, TrashMessages.restore_error(reason))
-         |> reload_order()}
+         |> reload_order()
+         |> resume_files_tab()}
     end
   end
 
@@ -445,6 +451,9 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
           |> put_flash(:info, dgettext("default", "Lines imported"))
 
         {:noreply, socket}
+
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
 
       {:error, _reason} ->
         {:noreply,
@@ -1310,6 +1319,13 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   # ---------------------------------------------------------------------------
   # File folder resolution
   # ---------------------------------------------------------------------------
+
+  # The Files tab skipped the folder lookup while the document was in the
+  # trash; a restore makes up for it, so the tab does not stay empty.
+  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
+    do: maybe_start_files_folder_resolution(socket)
+
+  defp resume_files_tab(socket), do: socket
 
   defp maybe_start_files_folder_resolution(socket) do
     cond do

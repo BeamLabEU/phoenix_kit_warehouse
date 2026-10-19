@@ -21,6 +21,7 @@ defmodule PhoenixKitWarehouse.Web.Components.TrashTabs do
       <button
         type="button"
         role="tab"
+        aria-selected={to_string(@view == "active")}
         id={"#{@prefix}-tab-active"}
         phx-click="set_view"
         phx-value-view="active"
@@ -32,6 +33,7 @@ defmodule PhoenixKitWarehouse.Web.Components.TrashTabs do
         :if={@trash_count > 0 or @view == "trash"}
         type="button"
         role="tab"
+        aria-selected={to_string(@view == "trash")}
         id={"#{@prefix}-tab-trash"}
         phx-click="set_view"
         phx-value-view="trash"

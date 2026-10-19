@@ -18,7 +18,9 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.SupplierOrder
   alias PhoenixKitWarehouse.SupplierOrders
+  alias PhoenixKitWarehouse.Test.Fixtures
   alias PhoenixKitWarehouse.Test.Repo
+  alias PhoenixKitWarehouse.Web.InternalOrderFormLive
 
   @location "00000000-0000-0000-0000-000000000001"
 
@@ -114,16 +116,17 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       refute has_element?(lv, "#io-tab-trash")
     end
 
-    test "the Trash tab shows the count when there is something in the trash", %{conn: conn} do
+    test "the Trash tab counts what is in the trash, posted documents included", %{conn: conn} do
       admin = admin!()
       conn = log_in(conn, admin)
       trashed_draft!(admin)
       trashed_draft!(admin)
+      trashed_posted!(admin)
       draft!()
 
       {:ok, lv, _html} = live(conn, index_path())
 
-      assert has_element?(lv, "#io-tab-trash", "(2)")
+      assert has_element?(lv, "#io-tab-trash", "(3)")
     end
 
     test "the Active view lists live documents only", %{conn: conn} do
@@ -147,11 +150,16 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
 
       {:ok, lv, _html} = live(conn, index_path())
 
+      assert has_element?(lv, "#io-tab-active[aria-selected=true]")
+      assert has_element?(lv, "#io-tab-trash[aria-selected=false]")
+
       lv |> element("#io-tab-trash") |> render_click()
       assert_patch(lv, trash_path())
 
       assert has_element?(lv, "#io-row-#{trashed.uuid}")
       refute has_element?(lv, "#io-row-#{live_order.uuid}")
+      assert has_element?(lv, "#io-tab-active[aria-selected=false]")
+      assert has_element?(lv, "#io-tab-trash[aria-selected=true]")
 
       lv |> element("#io-tab-active") |> render_click()
       assert_patch(lv, index_path())
@@ -416,6 +424,36 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       assert html =~ "restored"
     end
 
+    test "Restore on the Files tab starts looking for the storage folder", %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      trashed = trashed_draft!(admin)
+
+      {:ok, lv, _html} = live(conn, form_path(trashed) <> "/files")
+      assert render(lv) =~ "Files are not available"
+
+      html = lv |> element("#io-restore") |> render_click()
+
+      assert reload(trashed).deleted_at == nil
+      assert html =~ "Loading files"
+      refute html =~ "Files are not available"
+    end
+
+    test "a restore event without a document is refused, not a crash" do
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}, flash: %{}, order: nil, current_user: nil}
+      }
+
+      assert {:noreply, socket} =
+               InternalOrderFormLive.handle_event(
+                 "restore",
+                 %{},
+                 socket
+               )
+
+      assert socket.assigns.flash["error"] =~ "not found"
+    end
+
     test "Restore with the switch names the drafts that went to the trash", %{conn: conn} do
       enable!()
       admin = admin!()
@@ -517,6 +555,57 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       assert html =~ "Document moved to the trash"
       assert has_element?(lv, "#io-trash-banner")
       assert reload(order).status == "draft"
+    end
+
+    test "Save draft draws the stored lines, not the unsaved buffer", %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+
+      line = %{
+        "item_uuid" => Ecto.UUID.generate(),
+        "name" => "Plank",
+        "unit" => "piece",
+        "required_quantity" => "3"
+      }
+
+      order = draft!(%{lines: [line]})
+
+      {:ok, lv, _html} = live(conn, form_path(order) <> "/items")
+      assert has_element?(lv, "td", "Plank")
+
+      lv |> element("button[phx-click=remove_line]") |> render_click()
+      refute has_element?(lv, "td", "Plank")
+
+      {:ok, _} = InternalOrders.soft_delete_internal_order(order, admin.uuid)
+      lv |> element("button[phx-click=save_draft]") |> render_click()
+
+      assert has_element?(lv, "#io-trash-banner")
+      assert has_element?(lv, "td", "Plank")
+    end
+
+    test "importing from a source says so and redraws the form as a trashed document",
+         %{conn: conn} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      order = draft!()
+      source = Fixtures.insert_order!()
+
+      {:ok, lv, _html} = live(conn, form_path(order) <> "/items")
+
+      lv |> element("button[phx-click='open_source_picker']") |> render_click()
+
+      lv
+      |> element("input[phx-click='source_picker_toggle'][phx-value-uuid='#{source.uuid}']")
+      |> render_click()
+
+      {:ok, _} = InternalOrders.soft_delete_internal_order(order, admin.uuid)
+
+      html = lv |> element("button[phx-click='source_picker_confirm']") |> render_click()
+
+      assert html =~ "Document moved to the trash"
+      refute html =~ "Failed to import lines"
+      assert has_element?(lv, "#io-trash-banner")
+      refute has_element?(lv, "button[phx-click=source_picker_confirm]")
     end
   end
 

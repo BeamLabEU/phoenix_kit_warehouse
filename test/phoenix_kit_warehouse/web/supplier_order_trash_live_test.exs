@@ -18,6 +18,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderTrashLiveTest do
   alias PhoenixKitWarehouse.SupplierOrder
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Test.Repo
+  alias PhoenixKitWarehouse.Web.SupplierOrderFormLive
 
   @location "00000000-0000-0000-0000-000000000001"
 
@@ -128,17 +129,18 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderTrashLiveTest do
       refute has_element?(lv, "#so-tab-trash")
     end
 
-    test "the Trash tab shows the count when there is something in the trash",
+    test "the Trash tab counts what is in the trash, posted documents included",
          %{conn: conn, supplier: supplier} do
       admin = admin!()
       conn = log_in(conn, admin)
       trashed_draft!(supplier, admin)
       trashed_draft!(supplier, admin)
+      trashed_posted!(supplier, admin)
       draft!(supplier)
 
       {:ok, lv, _html} = live(conn, index_path())
 
-      assert has_element?(lv, "#so-tab-trash", "(2)")
+      assert has_element?(lv, "#so-tab-trash", "(3)")
     end
 
     test "clicking the tab shows the trash in the URL and lists the trashed documents",
@@ -152,11 +154,16 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderTrashLiveTest do
       assert has_element?(lv, "#so-row-#{live_order.uuid}")
       refute has_element?(lv, "#so-row-#{trashed.uuid}")
 
+      assert has_element?(lv, "#so-tab-active[aria-selected=true]")
+      assert has_element?(lv, "#so-tab-trash[aria-selected=false]")
+
       lv |> element("#so-tab-trash") |> render_click()
       assert_patch(lv, trash_path())
 
       assert has_element?(lv, "#so-row-#{trashed.uuid}")
       refute has_element?(lv, "#so-row-#{live_order.uuid}")
+      assert has_element?(lv, "#so-tab-active[aria-selected=false]")
+      assert has_element?(lv, "#so-tab-trash[aria-selected=true]")
 
       lv |> element("#so-tab-active") |> render_click()
       assert_patch(lv, index_path())
@@ -411,6 +418,37 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderTrashLiveTest do
       assert html =~ "restored"
     end
 
+    test "Restore on the Files tab starts looking for the storage folder",
+         %{conn: conn, supplier: supplier} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      trashed = trashed_draft!(supplier, admin)
+
+      {:ok, lv, _html} = live(conn, form_path(trashed) <> "/files")
+      assert render(lv) =~ "Files are not available"
+
+      html = lv |> element("#so-restore") |> render_click()
+
+      assert reload(trashed).deleted_at == nil
+      assert html =~ "Loading files"
+      refute html =~ "Files are not available"
+    end
+
+    test "a restore event without a document is refused, not a crash" do
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{__changed__: %{}, flash: %{}, order: nil, current_user: nil}
+      }
+
+      assert {:noreply, socket} =
+               SupplierOrderFormLive.handle_event(
+                 "restore",
+                 %{},
+                 socket
+               )
+
+      assert socket.assigns.flash["error"] =~ "not found"
+    end
+
     test "Restore with the switch names the draft that went to the trash",
          %{conn: conn, supplier: supplier} do
       enable!()
@@ -528,6 +566,81 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderTrashLiveTest do
 
       assert html =~ "Document moved to the trash"
       assert reload(order).supplier_uuid == supplier.uuid
+    end
+
+    test "Add 10% reserve says so and redraws the form as a trashed document",
+         %{conn: conn, supplier: supplier} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      order = draft!(supplier)
+
+      {:ok, lv, _html} = live(conn, form_path(order) <> "/lines")
+      {:ok, _} = SupplierOrders.soft_delete_supplier_order(order, admin.uuid)
+
+      html = lv |> element("button[phx-click=add_reserve]") |> render_click()
+
+      assert html =~ "Document moved to the trash"
+      refute html =~ "Failed to apply reserve"
+      assert has_element?(lv, "#so-trash-banner")
+      refute has_element?(lv, "button[phx-click=add_reserve]")
+    end
+
+    test "Save draft draws the stored lines, not the unsaved buffer",
+         %{conn: conn, supplier: supplier} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+
+      line = %{
+        "item_uuid" => Ecto.UUID.generate(),
+        "name" => "Plank",
+        "unit" => "piece",
+        "required_quantity" => "3",
+        "shortfall_quantity" => "3",
+        "ordered_quantity" => "3"
+      }
+
+      order = draft!(supplier, %{lines: [line]})
+
+      {:ok, lv, _html} = live(conn, form_path(order) <> "/lines")
+
+      lv
+      |> form("#so-qty-form-0", %{"ordered_quantity" => "47"})
+      |> render_change()
+
+      assert has_element?(lv, "#so-qty-0[value='47']")
+
+      {:ok, _} = SupplierOrders.soft_delete_supplier_order(order, admin.uuid)
+      lv |> element("button[phx-click=save_draft]") |> render_click()
+
+      assert has_element?(lv, "#so-trash-banner")
+      refute has_element?(lv, "span.tabular-nums", "47")
+      assert has_element?(lv, "span.tabular-nums", "3")
+    end
+
+    test "importing from an internal order says so and redraws the form as a trashed document",
+         %{conn: conn, supplier: supplier} do
+      admin = admin!()
+      conn = log_in(conn, admin)
+      order = draft!(supplier)
+      {:ok, io} = InternalOrders.create_internal_order(%{location_uuid: @location})
+      {:ok, io} = InternalOrders.post_internal_order(io, admin.uuid)
+
+      {:ok, lv, _html} = live(conn, form_path(order) <> "/lines")
+
+      lv |> element("button[phx-click='open_source_picker']") |> render_click()
+
+      lv
+      |> element("input[phx-click='source_picker_toggle'][phx-value-uuid='#{io.uuid}']")
+      |> render_click()
+
+      {:ok, _} = SupplierOrders.soft_delete_supplier_order(order, admin.uuid)
+
+      html = lv |> element("button[phx-click='source_picker_confirm']") |> render_click()
+
+      assert html =~ "Document moved to the trash"
+      refute html =~ "Failed to import lines"
+      assert has_element?(lv, "#so-trash-banner")
+      refute has_element?(lv, "button[phx-click=source_picker_confirm]")
     end
   end
 end

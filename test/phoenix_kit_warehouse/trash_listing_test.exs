@@ -10,6 +10,7 @@ defmodule PhoenixKitWarehouse.TrashListingTest do
 
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.InternalOrders
+  alias PhoenixKitWarehouse.SupplierOrder
   alias PhoenixKitWarehouse.SupplierOrders
 
   @location "00000000-0000-0000-0000-000000000001"
@@ -59,12 +60,19 @@ defmodule PhoenixKitWarehouse.TrashListingTest do
       refute posted.number in numbers(InternalOrders.list_internal_orders())
     end
 
-    test "count_trashed_internal_orders/0 counts the trashed ones only" do
+    test "count_trashed_internal_orders/0 counts the trashed ones, posted included" do
       before_count = InternalOrders.count_trashed_internal_orders()
       io!()
       {:ok, _} = InternalOrders.soft_delete_internal_order(io!(), uuid())
+      posted = io!() |> post_io!()
 
-      assert InternalOrders.count_trashed_internal_orders() == before_count + 1
+      {1, _} =
+        Repo.update_all(
+          from(o in InternalOrder, where: o.uuid == ^posted.uuid),
+          set: [deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        )
+
+      assert InternalOrders.count_trashed_internal_orders() == before_count + 2
     end
   end
 
@@ -81,12 +89,19 @@ defmodule PhoenixKitWarehouse.TrashListingTest do
       refute live.number in numbers(SupplierOrders.list_supplier_orders(trashed: true))
     end
 
-    test "count_trashed_supplier_orders/0 counts the trashed ones only" do
+    test "count_trashed_supplier_orders/0 counts the trashed ones, posted included" do
       before_count = SupplierOrders.count_trashed_supplier_orders()
       so!()
       {:ok, _} = SupplierOrders.soft_delete_supplier_order(so!(), uuid())
+      posted = so!(%{supplier_uuid: uuid()}) |> post_so!()
 
-      assert SupplierOrders.count_trashed_supplier_orders() == before_count + 1
+      {1, _} =
+        Repo.update_all(
+          from(o in SupplierOrder, where: o.uuid == ^posted.uuid),
+          set: [deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)]
+        )
+
+      assert SupplierOrders.count_trashed_supplier_orders() == before_count + 2
     end
   end
 
