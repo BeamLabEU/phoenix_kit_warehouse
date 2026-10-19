@@ -189,6 +189,19 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
     end
 
+    test "a replay while the stock still holds the count is unchanged again and writes nothing",
+         %{first: first, a: a, ctx: ctx} do
+      seed!(a.uuid, "5", first.uuid)
+      input = %{"external_ref" => "COUNT-REPLAY", "lines" => [line(a, "5")]}
+      documents_before = Repo.aggregate(InventoryDocument, :count)
+
+      assert set!(input, ctx)["status"] == "unchanged"
+      assert set!(input, ctx)["status"] == "unchanged"
+
+      assert Repo.aggregate(InventoryDocument, :count) == documents_before
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
+    end
+
     test "the preview says unchanged and writes nothing", %{first: first, a: a, ctx: ctx} do
       seed!(a.uuid, "5", first.uuid)
 
