@@ -23,6 +23,7 @@ defmodule PhoenixKitWarehouse.InternalOrders do
 
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.CommittedQuantities
+  alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.StockLedger
@@ -414,18 +415,7 @@ defmodule PhoenixKitWarehouse.InternalOrders do
     |> trash_drafts(actor_uuid)
   end
 
-  defp restore_row(uuid) do
-    now = now()
-
-    {_count, rows} =
-      from(o in InternalOrder,
-        where: o.uuid == ^uuid and o.status == "draft" and not is_nil(o.deleted_at),
-        select: o
-      )
-      |> repo().update_all(set: [deleted_at: nil, deleted_by_uuid: nil, updated_at: now])
-
-    List.first(rows)
-  end
+  defp restore_row(uuid), do: DraftTrash.restore_row(InternalOrder, uuid)
 
   # ---------------------------------------------------------------------------
   # Correction (note-only on posted)
@@ -585,15 +575,8 @@ defmodule PhoenixKitWarehouse.InternalOrders do
   # ---------------------------------------------------------------------------
 
   # Serialises everything that changes which drafts of one source are live.
-  # Transaction-scoped: released with the commit. Same technique as
-  # `PostingSupport.find_posted_by_external_ref/3`.
-  defp lock_source!(type, uuid) do
-    repo().query!("SELECT pg_advisory_xact_lock(hashtext($1))", [
-      "phoenix_kit_warehouse:io_source:#{type}:#{uuid}"
-    ])
-
-    :ok
-  end
+  defp lock_source!(type, uuid),
+    do: DraftTrash.advisory_lock!("phoenix_kit_warehouse:io_source:#{type}:#{uuid}")
 
   defp source_ref_json(type, uuid), do: [%{"type" => type, "uuid" => uuid}]
 
@@ -615,13 +598,9 @@ defmodule PhoenixKitWarehouse.InternalOrders do
     |> repo().all()
   end
 
-  defp lock_query(query), do: query |> order_by([o], asc: o.uuid) |> lock("FOR UPDATE")
+  defp lock_query(query), do: DraftTrash.lock_query(query)
 
-  defp lock_rows(uuids) do
-    from(o in InternalOrder, where: o.uuid in ^uuids)
-    |> lock_query()
-    |> repo().all()
-  end
+  defp lock_rows(uuids), do: DraftTrash.lock_rows(InternalOrder, uuids)
 
   # Documents whose every source ref is exactly this source. A combined draft,
   # or one with a ref of an unreadable shape, is kept: a wrongly trashed
@@ -644,27 +623,11 @@ defmodule PhoenixKitWarehouse.InternalOrders do
   defp source_key(%{"type" => type, "uuid" => uuid}), do: {type, uuid}
   defp source_key(_other), do: nil
 
-  # Moves the given (already locked) rows to the trash. The update repeats the
-  # conditions, so a row that is no longer a live draft is skipped, and the
-  # result is the rows really updated (`select` plays the part of `returning`),
-  # sorted by number. Nothing here writes activity: the caller does that after
-  # the commit.
+  # Moves the given (already locked) rows to the trash; see `DraftTrash`.
+  # Nothing here writes activity: the caller does that after the commit.
   defp trash_drafts(rows, actor_uuid), do: rows |> Enum.map(& &1.uuid) |> trash_ids(actor_uuid)
 
-  defp trash_ids([], _actor_uuid), do: []
-
-  defp trash_ids(ids, actor_uuid) do
-    now = now()
-
-    {_count, trashed} =
-      from(o in InternalOrder,
-        where: o.uuid in ^ids and o.status == "draft" and is_nil(o.deleted_at),
-        select: o
-      )
-      |> repo().update_all(set: [deleted_at: now, deleted_by_uuid: actor_uuid, updated_at: now])
-
-    Enum.sort_by(trashed, & &1.number)
-  end
+  defp trash_ids(ids, actor_uuid), do: DraftTrash.trash_ids(InternalOrder, ids, actor_uuid)
 
   defp log_trashed(orders, actor_uuid, reason, superseded_by_uuid) do
     Enum.each(orders, fn order ->
@@ -675,6 +638,4 @@ defmodule PhoenixKitWarehouse.InternalOrders do
       )
     end)
   end
-
-  defp now, do: DateTime.utc_now() |> DateTime.truncate(:second)
 end
