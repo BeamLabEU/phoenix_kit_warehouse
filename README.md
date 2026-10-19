@@ -48,6 +48,47 @@ Posting semantics worth knowing:
 - After posting, a goods receipt or goods issue keeps its lines; only the note
   and the storage folder can still be corrected.
 
+### Drafts, the trash and one draft per source
+
+A draft internal order or supplier order that is deleted goes to the **trash**
+(a soft delete, `deleted_at`). The lists have an *Active / Trash (N)* tab pair
+(`?view=trash`; the Trash tab shows while it holds something) with the deletion
+date and who deleted the document, and a *Restore* action for drafts. A trashed
+document opens read-only with a banner; editing, posting, links, correction,
+the storage folder and the documents made from it are unavailable. A posted
+document is never moved to the trash by the module and cannot be restored from
+it (legacy rows stay where they are). Saving or posting a document that was
+trashed meanwhile answers `{:error, :deleted}` (the forms show a flash).
+
+Hosts that want **one draft per source** use these functions:
+
+- `InternalOrders.replace_draft_for_source/3` creates a draft and sends the
+  live drafts whose only source is the same `{type, uuid}` to the trash in one
+  transaction. Posted documents, combined drafts (several sources) and other
+  sources are never touched. `InternalOrders.list_for_source/2` and
+  `multi_source?/1` help a host show what exists.
+- `SupplierOrders.generate_from_internal_order/3` takes `supersede_drafts: true`:
+  the live drafts of the same (internal order, supplier) pair, other than the
+  new ones, go to the trash. Drafts of suppliers the generation made nothing
+  for, posted ones and imported ones that refer to another internal order stay.
+- `restore_internal_order/3` and `restore_supplier_order/3` bring a trashed
+  draft back; with `swap: true` the live one-source drafts of its source (pair)
+  go to the trash, so the rule holds after the restore too.
+
+All of this is opt-in by call; without it the module behaves as before. The
+admin UI follows one switch, off by default:
+
+```elixir
+config :phoenix_kit_warehouse, one_draft_per_source: true
+```
+
+With it on, *Generate supplier orders* passes `supersede_drafts: true` (the
+button asks for confirmation when live drafts could be moved, and the flash
+names the ones that were), and *Restore* passes `swap: true`. Moves to the
+trash and back are logged as `warehouse.internal_order.trashed|restored` and
+`warehouse.supplier_order.trashed|restored` activities (after the transaction
+commits, subject to `:inventory_activity_logging`).
+
 ### Programmatic posting
 
 For callers that are not a person at a form (a shop, a POS, an integration),

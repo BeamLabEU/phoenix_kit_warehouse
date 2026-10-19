@@ -33,6 +33,11 @@ defmodule PhoenixKitWarehouse.Web.Components.RelatedDocuments do
   attr(:upstream_label, :string, required: true)
   attr(:downstream_label, :string, required: true)
 
+  attr(:read_only, :boolean,
+    default: false,
+    doc: "Hides the attach and remove controls (a document in the trash)"
+  )
+
   def related_documents(assigns) do
     ~H"""
     <div class="divider my-1"></div>
@@ -40,6 +45,7 @@ defmodule PhoenixKitWarehouse.Web.Components.RelatedDocuments do
       <p class="text-base-content/60 font-medium mb-2 flex items-center gap-1">
         {@upstream_label}
         <button
+          :if={!@read_only}
           type="button"
           phx-click="open_link_picker"
           class="btn btn-2xs btn-ghost btn-circle"
@@ -56,6 +62,7 @@ defmodule PhoenixKitWarehouse.Web.Components.RelatedDocuments do
               {ref.label}
             </.link>
             <button
+              :if={!@read_only}
               type="button"
               phx-click="remove_source_ref"
               phx-value-type={ref.kind}
