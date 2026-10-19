@@ -14,7 +14,10 @@ defmodule PhoenixKitWarehouse.API.Write do
        with `context.errors[{path, code, message}]`.
     2. `execute/2` posts, and answers the document, a per-line `{from, to}`
        and a summary. A repeated `external_ref` answers `status: "skipped"`
-       with the existing document and writes nothing.
+       with the existing document and writes nothing. A stocktake in which every
+       line already holds the counted quantity posts no document: it answers
+       `status: "unchanged"` with the per-line results and no `document`, and
+       its `external_ref` is not recorded.
 
   Before step 1, `run/3` looks for a posted document with the request's
   `external_ref`: such a request is a retry and is answered from that

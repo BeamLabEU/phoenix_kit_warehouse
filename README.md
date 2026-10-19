@@ -119,8 +119,10 @@ How they behave, in short:
   `confirm_token`, the same call with the token posts it. This holds for a retry of a
   posted `external_ref` too.
 - `dry_run: true` (a control field every write tool takes) answers what the call would
-  do (`would_post`, `would_skip`, or the same refusal a real call gives) and writes
-  nothing. A stocktake is worth previewing: the `from` of each line is the current stock.
+  do (`would_post`, `would_skip`, `unchanged` for a stocktake that changes nothing, or
+  the same refusal a real call gives) and writes nothing. A stocktake is worth
+  previewing: the `from` of each line is the current stock. A preview that answers
+  `unchanged` has nothing to confirm: the confirmed call would post no document either.
 - Every posted line answers the stock before (`from`) and after (`to`). A confirmation
   code is bound to what the preview showed, including the current stock of every
   line: any other document that moves one of those products before the code is used

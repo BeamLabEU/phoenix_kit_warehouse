@@ -170,6 +170,25 @@ defmodule PhoenixKitWarehouse.API.SetStockTest do
       assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(6))
     end
 
+    test "the reference is not recorded: after the stock moved, the same reference posts anew", %{
+      first: first,
+      a: a,
+      ctx: ctx
+    } do
+      seed!(a.uuid, "5", first.uuid)
+      input = %{"external_ref" => "COUNT-LATER", "lines" => [line(a, "5")]}
+
+      assert set!(input, ctx)["status"] == "unchanged"
+
+      seed!(a.uuid, "4", first.uuid)
+      again = set!(input, ctx)
+
+      assert again["status"] == "posted"
+      assert [%{"action" => "updated", "from" => "4", "to" => "5"}] = again["results"]
+      assert again["document"]["external_ref"] == "COUNT-LATER"
+      assert Decimal.equal?(quantity(a.uuid, first.uuid), Decimal.new(5))
+    end
+
     test "the preview says unchanged and writes nothing", %{first: first, a: a, ctx: ctx} do
       seed!(a.uuid, "5", first.uuid)
 
