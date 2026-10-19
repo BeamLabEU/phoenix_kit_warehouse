@@ -2122,7 +2122,7 @@ msgstr "Väline viide %{ref} on juba kasutusel sisestatud kauba väljastamisel."
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:29
 #, elixir-autogen, elixir-format
 msgid "Why"
-msgstr "Miks"
+msgstr "Põhjendus"
 
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:33
 #, elixir-autogen, elixir-format

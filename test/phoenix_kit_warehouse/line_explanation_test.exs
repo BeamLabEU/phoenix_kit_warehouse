@@ -121,6 +121,15 @@ defmodule PhoenixKitWarehouse.LineExplanationTest do
     end
   end
 
+  describe "merge_into/2" do
+    test "leaves the target untouched when the source has no explanation" do
+      target = %{"explanation" => "A\n\nA"}
+      assert LineExplanation.merge_into(target, %{}) == target
+      assert LineExplanation.merge_into(target, %{"explanation" => " "}) == target
+      assert LineExplanation.merge_into(%{}, %{}) == %{}
+    end
+  end
+
   describe "carry into supplier orders" do
     test "generate_from_internal_order carries the explanation to the supplier order" do
       actor = user_uuid()
@@ -172,6 +181,20 @@ defmodule PhoenixKitWarehouse.LineExplanationTest do
 
       assert [%{"explanation" => text}] = so.lines
       assert text == "Shared\n\nFrom one\n\nFrom two"
+    end
+
+    test "importing into an existing line appends a different explanation" do
+      actor = user_uuid()
+      {item, supplier} = supplied_item!()
+      io1 = posted_io!([line(item, "4", %{"explanation" => "First"})], actor)
+      io2 = posted_io!([line(item, "6", %{"explanation" => "Second"})], actor)
+
+      {:ok, so} =
+        SupplierOrders.import_from_internal_orders(draft_so!(supplier), [io1.uuid], actor)
+
+      {:ok, so} = SupplierOrders.import_from_internal_orders(so, [io2.uuid], actor)
+
+      assert [%{"explanation" => "First\n\nSecond"}] = so.lines
     end
 
     test "importing into an existing line merges with its explanation" do
@@ -235,6 +258,21 @@ defmodule PhoenixKitWarehouse.LineExplanationTest do
   end
 
   describe "forms" do
+    test "the item name from the catalogue wins over the name stored on the line", %{conn: conn} do
+      conn = admin_conn(conn)
+      {item, _} = supplied_item!()
+
+      {:ok, io} =
+        InternalOrders.create_internal_order(%{
+          location_uuid: @location,
+          lines: [line(item, "3", %{"name" => "Stale name", "explanation" => "why"})]
+        })
+
+      {:ok, lv, _} = live(conn, Routes.path("/admin/warehouse/internal-orders/#{io.uuid}/items"))
+      assert has_element?(lv, "#internal-order-explanations", item.name)
+      refute has_element?(lv, "#internal-order-explanations", "Stale name")
+    end
+
     test "internal order Items tab shows the block only with explanations", %{conn: conn} do
       conn = admin_conn(conn)
       item_uuid = Ecto.UUID.generate()
@@ -263,6 +301,7 @@ defmodule PhoenixKitWarehouse.LineExplanationTest do
       {:ok, lv, _} = live(conn, path.(with_expl.uuid))
       assert has_element?(lv, "#internal-order-explanations", "Spec of the table")
       assert has_element?(lv, "#internal-order-explanations", "Paint")
+      refute has_element?(lv, "#internal-order-explanations-quantity-logic")
 
       {:ok, lv, _} = live(conn, path.(without.uuid))
       refute has_element?(lv, "#internal-order-explanations")

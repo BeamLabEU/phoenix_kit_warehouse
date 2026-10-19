@@ -36,14 +36,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
-
-  alias PhoenixKitWarehouse.Web.Components.{
-    CommentsPanel,
-    LineExplanations,
-    RelatedDocuments,
-    WarehouseBrowser
-  }
-
+  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.Components.LineExplanations
   alias PhoenixKitWarehouse.Web.ItemSelectorScope
   alias PhoenixKitWarehouse.Web.TrashMessages
   alias PhoenixKitWarehouse.Web.UserNames

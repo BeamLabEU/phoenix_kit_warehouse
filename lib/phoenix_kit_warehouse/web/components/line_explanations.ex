@@ -45,7 +45,7 @@ defmodule PhoenixKitWarehouse.Web.Components.LineExplanations do
   end
 
   defp entries(lines, names) do
-    for line <- lines, text = LineExplanation.get(line), text != nil do
+    for line <- lines, text = LineExplanation.get(line) do
       {Map.get(names, line["item_uuid"]) || line["name"] || "—", text}
     end
   end

@@ -47,8 +47,16 @@ defmodule PhoenixKitWarehouse.LineExplanation do
   @doc "Copies the explanation of `source` into `line` (nothing when `source` has none)."
   def carry(line, source), do: put(line, get(source))
 
-  @doc "Merges the explanations of `target` and `source` into `target`."
-  def merge_into(target, source), do: put(target, merge(get(target), get(source)))
+  @doc """
+  Merges the explanations of `target` and `source` into `target`. A `source`
+  without one leaves `target` as it is.
+  """
+  def merge_into(target, source) do
+    case get(source) do
+      nil -> target
+      text -> put(target, merge(get(target), text))
+    end
+  end
 
   defp paragraphs(text) when is_binary(text) do
     text
