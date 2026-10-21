@@ -38,7 +38,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
   # Apply as a tab that has just loaded the document.
   defp apply!(doc, run, rows, user) do
     {:ok, loaded} = Inventories.get_document_with_fingerprint(doc.uuid)
-    {:ok, applied} = InventoryAI.apply_run(run, loaded.fingerprint, loaded.lines, rows, user)
+
+    {:ok, applied} =
+      InventoryAI.apply_run(run, loaded.fingerprint, loaded.lines, rows, user,
+        inventory_uuid: doc.uuid
+      )
+
     applied
   end
 
@@ -210,6 +215,37 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
       assert summary.new == 1
     end
 
+    test "a new line takes the item's name in the page's language, as Add item does", ctx do
+      bolt =
+        item!(ctx.catalogue, %{
+          name: "Bolt",
+          data: %{
+            "_primary_language" => "en",
+            "en" => %{"_name" => "Bolt"},
+            "et" => %{"_name" => "Polt"}
+          }
+        })
+
+      doc = draft!(ctx.location)
+      run = run!(doc, ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 3})])
+      {:ok, loaded} = Inventories.get_document_with_fingerprint(doc.uuid)
+      [proposed] = run.result["rows"]
+      number = proposed["row"]
+
+      {:ok, _} =
+        InventoryAI.apply_run(
+          run,
+          loaded.fingerprint,
+          loaded.lines,
+          [row(number, bolt, "3")],
+          ctx.user,
+          inventory_uuid: doc.uuid,
+          locale: "et"
+        )
+
+      assert line(doc, bolt)["name"] == "Polt"
+    end
+
     test "lines no photo saw are not touched", ctx do
       doc = draft!(ctx.location)
       before = line(doc, ctx.hinge)
@@ -245,7 +281,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
       run = run!(doc, ctx, "A", [object(%{"catalogue_no" => 2, "loose_units" => 9})])
 
       {:ok, _} =
-        InventoryAI.apply_run(run, loaded.fingerprint, edited, [row(1, ctx.screw, "9")], ctx.user)
+        InventoryAI.apply_run(run, loaded.fingerprint, edited, [row(1, ctx.screw, "9")], ctx.user,
+          inventory_uuid: doc.uuid
+        )
 
       assert eq?(line(doc, ctx.screw)["counted_quantity"], "12")
       assert line(doc, ctx.hinge)
@@ -344,10 +382,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
           base || ctx.loaded.fingerprint,
           lines || ctx.loaded.lines,
           rows,
-          ctx.user
+          ctx.user,
+          inventory_uuid: ctx.doc.uuid
         )
 
-      assert InventoryAI.get_run(ctx.run.uuid).status == "proposed"
+      assert InventoryAI.get_run(ctx.doc.uuid, ctx.run.uuid).status == "proposed"
       assert lines(ctx.doc) == ctx.loaded.lines
       result
     end
@@ -356,6 +395,25 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
       for bad <- ["", "  ", "abc", nil] do
         assert {:error, {:invalid_rows, [%{row: 1, field: "quantity", error: :invalid}]}} =
                  refused(ctx, [row(1, ctx.hinge, bad)])
+      end
+    end
+
+    test "a quantity that is not a finite number below 10^12 is an error, never written", ctx do
+      for bad <- [
+            Decimal.new("NaN"),
+            Decimal.new("Infinity"),
+            Decimal.new("-Infinity"),
+            "1000000000000"
+          ] do
+        assert {:error, {:invalid_rows, [%{row: 1, field: "quantity"}]}} =
+                 refused(ctx, [row(1, ctx.hinge, bad)])
+      end
+    end
+
+    test "a package size that is not a finite number above 0 is an error", ctx do
+      for bad <- [Decimal.new("NaN"), Decimal.new("Infinity"), "0", "-2", "abc"] do
+        assert {:error, {:invalid_rows, [%{row: 1, field: "package_size", error: :invalid}]}} =
+                 refused(ctx, [row(1, ctx.hinge, "480", %{"package_size" => bad})])
       end
     end
 
@@ -410,11 +468,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                ctx.loaded.fingerprint,
                ctx.loaded.lines,
                [row(1, ctx.hinge, "480")],
-               ctx.user
+               ctx.user,
+               inventory_uuid: ctx.doc.uuid
              ) ==
                {:error, :stale}
 
-      assert InventoryAI.get_run(ctx.run.uuid).status == "proposed"
+      assert InventoryAI.get_run(ctx.doc.uuid, ctx.run.uuid).status == "proposed"
       assert [%{"counted_quantity" => "1"}] = lines(ctx.doc)
     end
 
@@ -429,7 +488,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
           ctx.loaded.fingerprint,
           ctx.loaded.lines,
           [row(1, ctx.hinge, "480")],
-          ctx.user
+          ctx.user,
+          inventory_uuid: ctx.doc.uuid
         )
 
       assert InventoryAI.apply_run(
@@ -437,20 +497,22 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                written.fingerprint,
                written.lines,
                [row(1, ctx.hinge, "480")],
-               ctx.user
+               ctx.user,
+               inventory_uuid: ctx.doc.uuid
              ) ==
                {:error, :not_proposed}
     end
 
     test "a discarded run", ctx do
-      {:ok, _} = InventoryAI.discard_run(ctx.run, ctx.user)
+      {:ok, _} = InventoryAI.discard_run(ctx.run, ctx.user, inventory_uuid: ctx.doc.uuid)
 
       assert InventoryAI.apply_run(
                ctx.run,
                ctx.loaded.fingerprint,
                ctx.loaded.lines,
                [row(1, ctx.hinge, "480")],
-               ctx.user
+               ctx.user,
+               inventory_uuid: ctx.doc.uuid
              ) ==
                {:error, :not_proposed}
     end
@@ -463,7 +525,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                ctx.loaded.fingerprint,
                ctx.loaded.lines,
                [row(1, ctx.hinge, "480")],
-               ctx.user
+               ctx.user,
+               inventory_uuid: ctx.doc.uuid
              ) ==
                {:error, :deleted}
 
@@ -477,7 +540,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                loaded.fingerprint,
                loaded.lines,
                [row(1, ctx.hinge, "1")],
-               ctx.user
+               ctx.user,
+               inventory_uuid: other.uuid
              ) ==
                {:error, :not_draft}
     end
@@ -493,7 +557,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                moved.fingerprint,
                moved.lines,
                [row(1, ctx.hinge, "480")],
-               ctx.user
+               ctx.user,
+               inventory_uuid: ctx.doc.uuid
              ) ==
                {:error, :location_changed}
     end
@@ -512,9 +577,29 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                inventory_uuid: twin.uuid
              ) == {:error, :wrong_document}
 
-      assert InventoryAI.get_run(ctx.run.uuid).status == "proposed"
+      assert InventoryAI.get_run(ctx.doc.uuid, ctx.run.uuid).status == "proposed"
       assert lines(ctx.doc) == ctx.loaded.lines
       assert lines(twin) == twin_loaded.lines
+    end
+
+    test "without the caller's document nothing is applied", ctx do
+      assert InventoryAI.apply_run(
+               ctx.run,
+               ctx.loaded.fingerprint,
+               ctx.loaded.lines,
+               [row(1, ctx.hinge, "480")],
+               ctx.user,
+               []
+             ) == {:error, :wrong_document}
+
+      assert InventoryAI.get_run(ctx.doc.uuid, ctx.run.uuid).status == "proposed"
+      assert lines(ctx.doc) == ctx.loaded.lines
+    end
+
+    test "a run is not found through another document", ctx do
+      twin = draft!(ctx.location)
+      assert InventoryAI.get_run(twin.uuid, ctx.run.uuid) == nil
+      assert InventoryAI.get_run(ctx.doc.uuid, "nope") == nil
     end
 
     test "two lines of one item in the tab", ctx do

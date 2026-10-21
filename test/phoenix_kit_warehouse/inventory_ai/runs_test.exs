@@ -58,7 +58,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
   defp await(run) do
     uuid = run.uuid
     assert_receive {:inventory_ai_run, %{run_uuid: ^uuid, late: false} = message}, 5_000
-    InventoryAI.get_run(uuid) |> tap(fn reloaded -> assert reloaded.status == message.status end)
+
+    InventoryAI.get_run(run.inventory_uuid, uuid)
+    |> tap(fn reloaded -> assert reloaded.status == message.status end)
   end
 
   defp await_down(pid) do
@@ -291,7 +293,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       log = capture_log(fn -> assert Runner.run(context) == :ok end)
       assert log =~ "crashed"
 
-      reloaded = InventoryAI.get_run(crashing.uuid)
+      reloaded = InventoryAI.get_run(ctx.doc.uuid, crashing.uuid)
       assert reloaded.status == "error"
       assert reloaded.error == InventoryAI.error_message(:interrupted)
     end
@@ -374,7 +376,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
         InventoryAI.start_run(other, attrs(ctx), ctx.user, retrieve: retriever())
 
       await_down(pid)
-      assert InventoryAI.get_run(other_run.uuid).status == "proposed"
+      assert InventoryAI.get_run(other.uuid, other_run.uuid).status == "proposed"
     end
   end
 
@@ -384,13 +386,15 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       {run, pid} = start!(ctx)
       assert_receive {:ai_waiting, stub}, 5_000
 
-      assert {:ok, %{status: "discarded"}} = InventoryAI.discard_run(run, ctx.user)
+      assert {:ok, %{status: "discarded"}} =
+               InventoryAI.discard_run(run, ctx.user, inventory_uuid: ctx.doc.uuid)
+
       send(stub, :go)
       uuid = run.uuid
       assert_receive {:inventory_ai_run, %{run_uuid: ^uuid, late: true}}, 5_000
       await_down(pid)
 
-      reloaded = InventoryAI.get_run(run.uuid)
+      reloaded = InventoryAI.get_run(ctx.doc.uuid, run.uuid)
       assert reloaded.status == "discarded"
       assert [_row] = reloaded.late_result["result"]["rows"]
       assert reloaded.late_result["model"] == "test/vision-model"
@@ -406,7 +410,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       send(stub, :go)
       await_down(pid)
 
-      reloaded = InventoryAI.get_run(run.uuid)
+      reloaded = InventoryAI.get_run(ctx.doc.uuid, run.uuid)
       assert reloaded.status == "error"
       assert reloaded.error == InventoryAI.error_message(:interrupted)
       assert [_row] = reloaded.late_result["result"]["rows"]
@@ -418,7 +422,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       run = await(run)
 
       assert InventoryAI.interrupt_run(run.uuid) == :noop
-      assert InventoryAI.get_run(run.uuid).status == "proposed"
+      assert InventoryAI.get_run(ctx.doc.uuid, run.uuid).status == "proposed"
     end
   end
 
@@ -466,7 +470,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       {run, _pid} = start!(ctx)
       _ = await(run)
 
-      assert InventoryAI.get_run(old.uuid).status == "error"
+      assert InventoryAI.get_run(ctx.doc.uuid, old.uuid).status == "error"
     end
   end
 
@@ -478,7 +482,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       assert failed.status == "error"
 
       Stub.answer(answer([object()]))
-      {:ok, retried, _pid} = InventoryAI.retry_run(failed, ctx.user, retrieve: retriever())
+
+      {:ok, retried, _pid} =
+        InventoryAI.retry_run(failed, ctx.user,
+          inventory_uuid: ctx.doc.uuid,
+          retrieve: retriever()
+        )
 
       assert_receive {:inventory_ai_run, %{run_uuid: uuid, status: "discarded"}}
                      when uuid == failed.uuid
@@ -489,7 +498,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       assert retried.place_label == failed.place_label
       assert retried.result["catalogue_uuids"] == [ctx.catalogue.uuid]
 
-      closed = InventoryAI.get_run(failed.uuid)
+      closed = InventoryAI.get_run(ctx.doc.uuid, failed.uuid)
       assert closed.status == "discarded"
       assert closed.decisions["discarded"]["reason"] == "retried"
       assert closed.decisions["discarded"]["replaced_by_run_uuid"] == retried.uuid
@@ -501,9 +510,62 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       {run, _pid} = start!(ctx)
       run = await(run)
 
-      assert InventoryAI.retry_run(run, ctx.user, retrieve: retriever()) == {:error, :not_error}
+      assert InventoryAI.retry_run(run, ctx.user,
+               inventory_uuid: ctx.doc.uuid,
+               retrieve: retriever()
+             ) == {:error, :not_error}
+
       assert [%{uuid: uuid}] = InventoryAI.list_runs(ctx.doc.uuid)
       assert uuid == run.uuid
+    end
+
+    test "a run is discarded or retried only through its own document", ctx do
+      Stub.fail(401)
+      {failed, _pid} = start!(ctx)
+      failed = await(failed)
+      assert_received {:ai_request, _}
+      other = draft!(ctx.location)
+
+      for opts <- [[inventory_uuid: other.uuid], []] do
+        assert InventoryAI.discard_run(failed, ctx.user, opts) == {:error, :wrong_document}
+
+        assert InventoryAI.retry_run(failed, ctx.user, [retrieve: retriever()] ++ opts) ==
+                 {:error, :wrong_document}
+      end
+
+      # A struct that names this document is checked against the database.
+      forged = %{failed | inventory_uuid: other.uuid}
+
+      assert InventoryAI.discard_run(forged, ctx.user, inventory_uuid: other.uuid) ==
+               {:error, :wrong_document}
+
+      assert InventoryAI.retry_run(forged, ctx.user,
+               inventory_uuid: other.uuid,
+               retrieve: retriever()
+             ) == {:error, :wrong_document}
+
+      refute_received {:ai_request, _}
+      assert InventoryAI.get_run(ctx.doc.uuid, failed.uuid).status == "error"
+      assert InventoryAI.list_runs(other.uuid) == []
+    end
+
+    test "a retry asks again with the photos the run has in the database", ctx do
+      Stub.fail(401)
+      {failed, _pid} = start!(ctx)
+      failed = await(failed)
+
+      Stub.answer(answer([object()]))
+      tampered = %{failed | photo_file_uuids: [Ecto.UUID.generate()], place_label: "Elsewhere"}
+
+      {:ok, retried, _pid} =
+        InventoryAI.retry_run(tampered, ctx.user,
+          inventory_uuid: ctx.doc.uuid,
+          retrieve: retriever()
+        )
+
+      retried = await(retried)
+      assert retried.photo_file_uuids == failed.photo_file_uuids
+      assert retried.place_label == failed.place_label
     end
 
     test "a discarded or applied run cannot be discarded again", ctx do
@@ -511,8 +573,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       {run, _pid} = start!(ctx)
       run = await(run)
 
-      assert {:ok, %{status: "discarded"}} = InventoryAI.discard_run(run, ctx.user)
-      assert InventoryAI.discard_run(run, ctx.user) == {:error, :not_open}
+      assert {:ok, %{status: "discarded"}} =
+               InventoryAI.discard_run(run, ctx.user, inventory_uuid: ctx.doc.uuid)
+
+      assert InventoryAI.discard_run(run, ctx.user, inventory_uuid: ctx.doc.uuid) ==
+               {:error, :not_open}
     end
   end
 end

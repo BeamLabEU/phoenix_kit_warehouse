@@ -12,9 +12,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
        another);
     4. every row checked (`{:invalid_rows, errors}`, nothing written): a row
        of the run's own proposal, an item that exists and is active, a
-       quantity that is a number and not negative (`to_decimal_or_nil` -
-       a blank or unreadable quantity is an error, never 0), one row per
-       item, an action the line allows;
+       quantity that is a finite number, not negative and below 10^12
+       (`PhoenixKit.Utils.Number.parse_decimal/2` - a blank or unreadable
+       quantity is an error, never 0), one row per item, an action the
+       line allows;
     5. the rules of `PhoenixKitWarehouse.InventoryAI.Lines` applied to the
        tab's lines (the database's lines plus the tab's unsaved edits, the
        way "Save draft" writes them), the stock read in this transaction;
@@ -29,6 +30,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
 
   import Ecto.Query, only: [from: 2]
 
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.DraftTrash
@@ -39,6 +41,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
   alias PhoenixKitWarehouse.InventoryAIRun
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.Web.Components.WarehouseBrowser
 
   @replacing ~w(replace replace_part replace_all)
   @adding ~w(add add_part)
@@ -58,21 +61,33 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
 
   The lines are written into the run's own document. A fingerprint does not
   name a document - two drafts seeded from the same stock have the same
-  lines - so the caller passes the document its tab holds as
-  `inventory_uuid:`, and a run of another document is refused
-  (`:wrong_document`) before anything is locked.
+  lines - so the caller must pass the document its tab holds as
+  `inventory_uuid:`; a run of another document, or a call without it, is
+  refused (`:wrong_document`) before anything is locked.
+
+  Options: `:inventory_uuid` (required); `:locale` - the language of the
+  name of a new line, as "Add item" takes it (by default the language the
+  run was started in).
   """
   @spec apply_run(InventoryAIRun.t(), String.t() | nil, [map()], [map()], term(), keyword()) ::
           {:ok, %{document: InventoryDocument.t(), run: InventoryAIRun.t(), summary: map()}}
           | {:error, term()}
-  def apply_run(%InventoryAIRun{} = run, base_fingerprint, socket_lines, rows, actor, opts \\ []) do
+  def apply_run(%InventoryAIRun{} = run, base_fingerprint, socket_lines, rows, actor, opts) do
     case Keyword.fetch(opts, :inventory_uuid) do
-      {:ok, uuid} when uuid != run.inventory_uuid -> {:error, :wrong_document}
-      _ -> apply_to_document(run, base_fingerprint, socket_lines, rows, actor)
+      {:ok, uuid} when uuid == run.inventory_uuid ->
+        apply_to_document(run, base_fingerprint, socket_lines, rows, actor, locale(run, opts))
+
+      _ ->
+        {:error, :wrong_document}
     end
   end
 
-  defp apply_to_document(run, base_fingerprint, socket_lines, rows, actor) do
+  defp locale(run, opts) do
+    Keyword.get(opts, :locale) || (run.result || %{})["locale"] ||
+      Gettext.get_locale(PhoenixKitWarehouse.Gettext)
+  end
+
+  defp apply_to_document(run, base_fingerprint, socket_lines, rows, actor, locale) do
     actor_uuid = InventoryAI.actor_uuid(actor)
 
     InventoryDocument
@@ -90,7 +105,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
     end)
     |> Ecto.Multi.run(:claim, fn repo, _ -> claim(repo, run, actor_uuid) end)
     |> Ecto.Multi.run(:plan, fn repo, %{lock_status: doc, claim: claimed} ->
-      plan(repo, claimed, doc, socket_lines, rows)
+      plan(repo, claimed, doc, socket_lines, rows, locale)
     end)
     |> Ecto.Multi.update(:written, fn %{lock_status: doc, plan: plan} ->
       Ecto.Changeset.change(doc, lines: plan.lines)
@@ -140,14 +155,14 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
 
   # --- the plan: rows checked, lines computed -----------------------------------------
 
-  defp plan(repo, run, doc, socket_lines, rows) do
+  defp plan(repo, run, doc, socket_lines, rows, locale) do
     proposal = Map.new((run.result || %{})["rows"] || [], &{&1["row"], &1})
 
     with :ok <- check_lines(socket_lines),
          {:ok, rows} <- check_rows(rows, proposal),
          {:ok, items} <- check_items(rows),
          stock = stock(repo, Map.keys(items), doc.location_uuid),
-         {:ok, lines, applied} <- apply_rows(rows, items, stock, socket_lines, run) do
+         {:ok, lines, applied} <- apply_rows(rows, items, stock, socket_lines, run, locale) do
       {:ok, %{lines: lines, decisions: decisions(applied), summary: summary(applied)}}
     end
   end
@@ -180,13 +195,15 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
   defp check_row(row, proposal) when is_map(row) do
     number = whole(row["row"])
     proposed = number && proposal[number]
+    quantity = quantity(row["quantity"])
+    package_size = package_size(row["package_size"])
 
     errors =
       []
       |> add_error(is_nil(proposed), number, "row", :unknown)
       |> add_error(Ecto.UUID.cast(row["item_uuid"]) == :error, number, "item_uuid", :invalid)
-      |> add_error(quantity_error(row["quantity"]), number, "quantity")
-      |> add_error(package_size_error(row["package_size"]), number, "package_size")
+      |> add_error(field_error(quantity), number, "quantity")
+      |> add_error(field_error(package_size), number, "package_size")
 
     if errors == [] do
       {:ok,
@@ -194,8 +211,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
          row: number,
          proposed: proposed,
          item_uuid: row["item_uuid"],
-         quantity: StockLedger.to_decimal_or_nil(row["quantity"]),
-         package_size: StockLedger.to_decimal_or_nil(row["package_size"]),
+         quantity: elem(quantity, 1),
+         package_size: elem(package_size, 1),
          action: row["action"]
        }}
     else
@@ -216,22 +233,27 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
     do: errors ++ [%{row: row, field: field, error: error}]
 
   # Blank or unreadable is an error of the field, never 0; a negative is an
-  # error too, never cut to 0.
-  defp quantity_error(value) do
-    case StockLedger.to_decimal_or_nil(value) do
-      nil -> :invalid
-      qty -> if Decimal.negative?(qty), do: :negative, else: nil
+  # error too, never cut to 0. `parse_decimal/2` also refuses a NaN, an
+  # infinity and a magnitude of 10^12 or more, a Decimal given as is too.
+  defp quantity(value) do
+    case Number.parse_decimal(value, min: 0) do
+      {:ok, qty} -> {:ok, qty}
+      {:error, :below_min} -> {:error, :negative}
+      {:error, _reason} -> {:error, :invalid}
     end
   end
 
-  defp package_size_error(value) when value in [nil, ""], do: nil
+  defp package_size(value) when value in [nil, ""], do: {:ok, nil}
 
-  defp package_size_error(value) do
-    case StockLedger.to_decimal_or_nil(value) do
-      nil -> :invalid
-      size -> if Decimal.gt?(size, 0), do: nil, else: :invalid
+  defp package_size(value) do
+    case Number.parse_decimal(value, min: 0) do
+      {:ok, size} -> if Decimal.gt?(size, 0), do: {:ok, size}, else: {:error, :invalid}
+      {:error, _reason} -> {:error, :invalid}
     end
   end
+
+  defp field_error({:ok, _value}), do: nil
+  defp field_error({:error, error}), do: error
 
   defp whole(value) when is_integer(value), do: value
 
@@ -280,16 +302,16 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
     |> Map.new(&{&1.item_uuid, &1})
   end
 
-  defp apply_rows(rows, items, stock, socket_lines, run) do
+  defp apply_rows(rows, items, stock, socket_lines, run, locale) do
     Enum.reduce_while(rows, {:ok, socket_lines, []}, fn row, {:ok, lines, applied} ->
-      case apply_row(row, items[row.item_uuid], stock[row.item_uuid], lines, run) do
+      case apply_row(row, items[row.item_uuid], stock[row.item_uuid], lines, run, locale) do
         {:ok, lines, entry} -> {:cont, {:ok, lines, applied ++ [entry]}}
         {:error, _} = error -> {:halt, error}
       end
     end)
   end
 
-  defp apply_row(row, item, stock_row, lines, run) do
+  defp apply_row(row, item, stock_row, lines, run, locale) do
     stock_qty = stock_row && stock_row.quantity
 
     with {:ok, index, line} <- find_line(lines, row) do
@@ -311,7 +333,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
             "basis" => basis(row, item, run.place_label)
           }
 
-          updated = Lines.apply(line, action, part, new_line(item, stock_row), stock_qty)
+          updated = Lines.apply(line, action, part, new_line(item, stock_row, locale), stock_qty)
           lines = if index, do: List.replace_at(lines, index, updated), else: lines ++ [updated]
 
           {:ok, lines,
@@ -340,12 +362,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
     end
   end
 
-  # A new line, as "Add item" builds one: the stock's unit value, else the
-  # item's base price.
-  defp new_line(item, stock_row) do
+  # A new line, as "Add item" builds one: the name in the page's language,
+  # the stock's unit value, else the item's base price.
+  defp new_line(item, stock_row, locale) do
     %{
       "item_uuid" => item.uuid,
-      "name" => item.name,
+      "name" => WarehouseBrowser.localized_name(item, locale),
       "sku" => item.sku,
       "category_uuid" => item.category_uuid,
       "catalogue_uuid" => item.catalogue_uuid,

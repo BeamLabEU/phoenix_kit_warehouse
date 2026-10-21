@@ -15,7 +15,7 @@ defmodule PhoenixKitWarehouse.InventoryAI do
       `PhoenixKitWarehouse.TaskSupervisor`
       (`PhoenixKitWarehouse.InventoryAI.Runner`). The task writes the result
       itself, so a closed page loses nothing, and broadcasts on `topic/1`.
-    * `discard_run/2` closes a run (the task is not killed: the provider
+    * `discard_run/3` closes a run (the task is not killed: the provider
       bills the call anyway); an answer that arrives later is kept in
       `late_result` and changes no status.
     * `retry_run/3` starts the photos of a failed run again and closes the
@@ -24,8 +24,13 @@ defmodule PhoenixKitWarehouse.InventoryAI do
       before a result; `expire_stale_runs/1` - a run `running` for more than
       ten minutes (the page closed, the node restarted) is closed as
       interrupted, when the document's runs are listed and before a new run.
-    * `apply_run/5` writes the ticked rows into the document's lines
+    * `apply_run/6` writes the ticked rows into the document's lines
       (`PhoenixKitWarehouse.InventoryAI.Apply`).
+
+  A run is read and changed only through its document: `get_run/2` takes
+  the document, and `discard_run/3`, `retry_run/3` and `apply_run/6` take it
+  as `inventory_uuid:` (the document the caller's page holds) - a run of
+  another document, or a call without one, is `{:error, :wrong_document}`.
 
   An error of a run is kept as the text the person who started it reads, in
   their language (`error_message/1`).
@@ -89,12 +94,24 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
   # --- reading ------------------------------------------------------------------------
 
-  @doc "A run by uuid, or `nil`."
-  @spec get_run(Ecto.UUID.t()) :: InventoryAIRun.t() | nil
-  def get_run(uuid) do
-    case Ecto.UUID.cast(uuid) do
-      {:ok, uuid} -> repo().get(InventoryAIRun, uuid)
+  @doc "A run of the document `inventory_uuid` by its uuid, or `nil`."
+  @spec get_run(Ecto.UUID.t(), Ecto.UUID.t()) :: InventoryAIRun.t() | nil
+  def get_run(inventory_uuid, uuid) do
+    with {:ok, inventory_uuid} <- Ecto.UUID.cast(inventory_uuid),
+         {:ok, uuid} <- Ecto.UUID.cast(uuid) do
+      repo().get_by(InventoryAIRun, uuid: uuid, inventory_uuid: inventory_uuid)
+    else
       :error -> nil
+    end
+  end
+
+  # The document the caller holds, as `inventory_uuid:`, must be the run's.
+  defp own_run(%InventoryAIRun{} = run, opts) do
+    with {:ok, inventory_uuid} <- Keyword.fetch(opts, :inventory_uuid),
+         %InventoryAIRun{} = stored <- get_run(inventory_uuid, run.uuid) do
+      {:ok, stored}
+    else
+      _ -> {:error, :wrong_document}
     end
   end
 
@@ -286,29 +303,42 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
   @doc """
   Closes an open run (`running`, `proposed` or `error`) as `discarded`.
-  `{:error, :not_open}` for one that is applied or discarded already.
+  `{:error, :not_open}` for one that is applied or discarded already,
+  `{:error, :wrong_document}` unless `opts` names the run's document as
+  `inventory_uuid:`.
   """
-  @spec discard_run(InventoryAIRun.t(), term()) :: {:ok, InventoryAIRun.t()} | {:error, :not_open}
-  def discard_run(%InventoryAIRun{uuid: uuid}, actor) do
-    case close(uuid, @open_statuses, discarded(actor, "discarded", nil)) do
-      {:ok, run} ->
-        broadcast(run)
-        {:ok, run}
+  @spec discard_run(InventoryAIRun.t(), term(), keyword()) ::
+          {:ok, InventoryAIRun.t()} | {:error, :not_open | :wrong_document}
+  def discard_run(%InventoryAIRun{} = run, actor, opts) do
+    with {:ok, run} <- own_run(run, opts) do
+      case close(run, @open_statuses, discarded(actor, "discarded", nil)) do
+        {:ok, run} ->
+          broadcast(run)
+          {:ok, run}
 
-      :none ->
-        {:error, :not_open}
+        :none ->
+          {:error, :not_open}
+      end
     end
   end
 
   @doc """
   Starts the photos of a failed run again and closes the failed run as
   `discarded` (replaced by the retry) in the same transaction. Only a run in
-  `error` can be retried. `{:ok, new_run, task_pid}`, or the errors of
-  `start_run/4` and `:not_error`.
+  `error` can be retried; the photos, the place and the catalogues are the
+  run's as the database has them. `{:ok, new_run, task_pid}`, or the errors
+  of `start_run/4`, `:not_error` and `:wrong_document` (`opts` must name the
+  run's document as `inventory_uuid:`).
   """
   @spec retry_run(InventoryAIRun.t(), term(), keyword()) ::
           {:ok, InventoryAIRun.t(), pid()} | {:error, term()}
-  def retry_run(%InventoryAIRun{} = run, actor, opts \\ []) do
+  def retry_run(%InventoryAIRun{} = run, actor, opts) do
+    with {:ok, run} <- own_run(run, opts) do
+      retry_stored(run, actor, opts)
+    end
+  end
+
+  defp retry_stored(run, actor, opts) do
     scope = run.result || %{}
     catalogue_uuids = scope["catalogue_uuids"] || []
     opts = Keyword.put_new(opts, :locale, scope["locale"] || locale(opts))
@@ -328,15 +358,15 @@ defmodule PhoenixKitWarehouse.InventoryAI do
                created_by_uuid: actor_uuid(actor),
                result: scope(catalogue_uuids, opts)
              },
-             fn _repo -> close_failed(run.uuid, discarded(actor, "retried", new_uuid)) end
+             fn _repo -> close_failed(run, discarded(actor, "retried", new_uuid)) end
            ) do
       broadcast(%{run | status: "discarded"})
       launch(new_run, opts)
     end
   end
 
-  defp close_failed(uuid, decisions) do
-    case close(uuid, ["error"], decisions) do
+  defp close_failed(run, decisions) do
+    case close(run, ["error"], decisions) do
       {:ok, _run} -> :ok
       :none -> {:error, :not_error}
     end
@@ -350,9 +380,14 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     }
   end
 
-  defp close(uuid, statuses, decisions) do
+  defp close(run, statuses, decisions) do
     {count, runs} =
-      from(r in InventoryAIRun, where: r.uuid == ^uuid and r.status in ^statuses, select: r)
+      from(r in InventoryAIRun,
+        where:
+          r.uuid == ^run.uuid and r.inventory_uuid == ^run.inventory_uuid and
+            r.status in ^statuses,
+        select: r
+      )
       |> repo().update_all(set: [status: "discarded", decisions: decisions, updated_at: now()])
 
     if count == 1, do: {:ok, hd(runs)}, else: :none
@@ -423,17 +458,17 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   @doc """
   Applies the ticked rows of a proposed run to the document's lines, in one
   transaction - see `PhoenixKitWarehouse.InventoryAI.Apply.apply_run/6`
-  (`inventory_uuid:` - the document the caller's tab holds).
+  (`inventory_uuid:` - the document the caller's tab holds, required).
   """
   @spec apply_run(InventoryAIRun.t(), String.t() | nil, [map()], [map()], term(), keyword()) ::
           {:ok, map()} | {:error, term()}
-  defdelegate apply_run(run, base_fingerprint, socket_lines, rows, actor, opts \\ []), to: Apply
+  defdelegate apply_run(run, base_fingerprint, socket_lines, rows, actor, opts), to: Apply
 
   # --- texts --------------------------------------------------------------------------
 
   @doc """
   The text a person reads for a failure of the photo inventory - a run's
-  error, or a refusal of `start_run/4`, `retry_run/3`, `apply_run/5`. An
+  error, or a refusal of `start_run/4`, `retry_run/3`, `apply_run/6`. An
   error of the AI call itself is ai's own text (`PhoenixKitAI.Errors.message/1`).
   """
   @spec error_message(term()) :: String.t()
