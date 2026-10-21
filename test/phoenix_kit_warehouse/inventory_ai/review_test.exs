@@ -114,7 +114,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
 
       row = view_row(review, 1, [], stock(%{"item-4" => "0"}))
       assert {row.kind, row.quantity} == {:counted, "100"}
-      assert row.formulas == ["2×50 + ⌊0×50×0.35⌋ = 100"]
+      assert row.formulas == ["2×50 = 100"]
 
       {:ok, review} =
         Review.set_inputs(review, 1, %{"quantity" => "97"}, [], stock(%{"item-4" => "0"}))

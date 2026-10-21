@@ -62,6 +62,17 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
       assert eq?(qty, "15")
     end
 
+    test "a term that counts nothing is left out of the formula" do
+      closed_only = object(%{"closed_packages" => 4, "units_per_package" => 18})
+      assert {:counted, _, "4×18 = 72"} = Counting.count(closed_only, "piece")
+
+      open_only = object(%{"open_packages" => 1, "units_per_package" => 100})
+      assert {:counted, _, "⌊1×100×0.35⌋ = 35"} = Counting.count(open_only, "piece")
+
+      all = object(%{"closed_packages" => 2, "open_packages" => 1, "units_per_package" => 100})
+      assert {:counted, _, "2×100 + ⌊1×100×0.35⌋ = 235"} = Counting.count(all, "piece")
+    end
+
     test "loose units are added to the packages" do
       obj = object(%{"closed_packages" => 3, "units_per_package" => 12, "loose_units" => 5})
       assert {:counted, qty, _} = Counting.count(obj, "set")
@@ -102,6 +113,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
       obj = object(%{"closed_packages" => 4, "open_packages" => 1, "open_fill" => "0.37"})
       assert {:counted, qty, _} = Counting.count(obj, "pack")
       assert eq?(qty, "4.3")
+    end
+
+    test "no open packs: the formula has no open term" do
+      assert {:counted, _, "4 = 4"} = Counting.count(object(%{"closed_packages" => 4}), "pack")
     end
 
     test "with the packs printed on the box it is the n row" do
