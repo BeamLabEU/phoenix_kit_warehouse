@@ -226,6 +226,32 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
       assert PhoenixKitWarehouse.ai_tasks() == []
     end
 
+    test "still builds against a TaskSpec that has no typical_tokens yet" do
+      define_module(PhoenixKitAI.TaskSpec, """
+      defmodule PhoenixKitAI.TaskSpec do
+        defstruct [
+          :key, :label, :gettext_backend, :purpose, :needs, :self_flag,
+          :auto_block_threshold, :endpoints, private: false
+        ]
+      end
+      """)
+
+      define_module(
+        PhoenixKitWarehouse.InventoryAI.GuardWithNarrowSpec,
+        String.replace(
+          File.read!(@source),
+          "defmodule PhoenixKitWarehouse.InventoryAI.Guard do",
+          "defmodule PhoenixKitWarehouse.InventoryAI.GuardWithNarrowSpec do"
+        )
+      )
+
+      guard = Module.concat(["PhoenixKitWarehouse", "InventoryAI", "GuardWithNarrowSpec"])
+
+      assert [spec] = guard.ai_tasks()
+      assert spec.key == @task
+      refute Map.has_key?(spec, :typical_tokens)
+    end
+
     test "declares the task when ai has the TaskSpec" do
       define_module(PhoenixKitAI.TaskSpec, """
       defmodule PhoenixKitAI.TaskSpec do
