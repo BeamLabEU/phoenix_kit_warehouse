@@ -588,23 +588,25 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   defp show_late(repo, run) do
     case repo.get(InventoryAIRun, run.uuid) do
       %InventoryAIRun{status: "error", late_result: %{"result" => %{} = result} = late} ->
-        {1, [shown]} =
-          from(r in InventoryAIRun, where: r.uuid == ^run.uuid and r.status == "error", select: r)
-          |> repo.update_all(
-            set: [
-              status: "proposed",
-              result: result,
-              catalogue_map: late["catalogue_map"] || %{},
-              photo_file_uuids: late["photo_file_uuids"] || run.photo_file_uuids,
-              model: late["model"],
-              prompt_uuid: late["prompt_uuid"],
-              ai_request_uuid: late["ai_request_uuid"],
-              error: nil,
-              updated_at: now()
-            ]
-          )
-
-        {:ok, shown}
+        from(r in InventoryAIRun, where: r.uuid == ^run.uuid and r.status == "error", select: r)
+        |> repo.update_all(
+          set: [
+            status: "proposed",
+            result: result,
+            catalogue_map: late["catalogue_map"] || %{},
+            photo_file_uuids: late["photo_file_uuids"] || run.photo_file_uuids,
+            model: late["model"],
+            prompt_uuid: late["prompt_uuid"],
+            ai_request_uuid: late["ai_request_uuid"],
+            error: nil,
+            updated_at: now()
+          ]
+        )
+        |> case do
+          {1, [shown]} -> {:ok, shown}
+          # The run changed since it was read (a discard in another tab).
+          {0, _none} -> {:error, :no_late_result}
+        end
 
       _ ->
         {:error, :no_late_result}

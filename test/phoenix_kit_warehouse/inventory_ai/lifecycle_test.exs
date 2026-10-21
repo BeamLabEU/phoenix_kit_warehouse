@@ -102,6 +102,30 @@ defmodule PhoenixKitWarehouse.InventoryAI.LifecycleTest do
 
       assert status(failed) == "error"
     end
+
+    test "a run changed between the read and the write has no late answer to show", ctx do
+      run = run!(ctx.doc, "error", %{error: "interrupted", late_result: late(ctx)})
+
+      # The update of the run is skipped, as when a discard commits between
+      # the read of the run and its update: no row is written.
+      repo().query!("""
+      CREATE FUNCTION pkw_test_skip_run_update() RETURNS trigger AS $$
+      BEGIN
+        RETURN NULL;
+      END;
+      $$ LANGUAGE plpgsql
+      """)
+
+      repo().query!("""
+      CREATE TRIGGER pkw_test_skip_run_update BEFORE UPDATE ON phoenix_kit_warehouse_inventory_ai_runs
+      FOR EACH ROW EXECUTE FUNCTION pkw_test_skip_run_update()
+      """)
+
+      assert InventoryAI.show_late_result(run, ctx.user, inventory_uuid: ctx.doc.uuid) ==
+               {:error, :no_late_result}
+
+      assert status(run) == "error"
+    end
   end
 
   describe "closing the open runs" do
