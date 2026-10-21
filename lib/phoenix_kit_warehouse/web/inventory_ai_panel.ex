@@ -886,28 +886,29 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
               />
             </label>
 
-            <label :if={@ai.catalogues != []} class="flex flex-col gap-1">
-              <span class="text-sm font-medium">
+            <fieldset :if={@ai.catalogues != []} class="flex flex-col gap-1">
+              <legend class="text-sm font-medium mb-1">
                 {dgettext("default", "What is on these photos (optional)")}
-              </span>
-              <select
-                id="inventory-ai-catalogues"
-                name="catalogue_uuids[]"
-                multiple
-                class="select select-sm w-full h-auto min-h-16"
-              >
-                <option
+              </legend>
+              <div id="inventory-ai-catalogues" class="flex flex-wrap gap-x-4 gap-y-1">
+                <label
                   :for={catalogue <- @ai.catalogues}
-                  value={catalogue.uuid}
-                  selected={catalogue.uuid in @ai.catalogue_uuids}
+                  class="flex items-center gap-2 text-sm cursor-pointer"
                 >
-                  {catalogue.name}
-                </option>
-              </select>
+                  <input
+                    type="checkbox"
+                    name="catalogue_uuids[]"
+                    value={catalogue.uuid}
+                    checked={catalogue.uuid in @ai.catalogue_uuids}
+                    class="checkbox checkbox-sm"
+                  />
+                  <span>{catalogue.name}</span>
+                </label>
+              </div>
               <span class="text-xs text-base-content/60">
                 {dgettext("default", "None chosen: every catalogue.")}
               </span>
-            </label>
+            </fieldset>
           </div>
 
           <div
@@ -1319,7 +1320,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           <select name="no" class="select select-xs w-full">
             <option value="">{dgettext("default", "— other proposed item —")}</option>
             <option :for={item <- @row.alternatives} value={item["no"]}>
-              {item["name"]} {item["sku"] && "(#{item["sku"]})"}
+              {item["name"]} {sku_suffix(item["sku"])}
             </option>
           </select>
         </form>
@@ -1573,6 +1574,16 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   defp field_error("action", _error), do: dgettext("default", "This rule does not fit the line.")
   defp field_error(_field, _error), do: dgettext("default", "This row cannot be applied.")
+
+  # An item's SKU after its name, in brackets; nothing for an item without one.
+  defp sku_suffix(sku) when is_binary(sku) do
+    case String.trim(sku) do
+      "" -> nil
+      sku -> "(#{sku})"
+    end
+  end
+
+  defp sku_suffix(_sku), do: nil
 
   @doc """
   Before Conduct (spec §11.4, §11.5): the lines the photos counted below

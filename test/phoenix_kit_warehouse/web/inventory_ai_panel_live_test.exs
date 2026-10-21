@@ -451,6 +451,30 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
   end
 
   describe "the proposal and Apply" do
+    test "an alternative without a SKU shows no empty brackets", ctx do
+      _bolt = item!(ctx.catalogue, %{name: "Bolt"})
+      run = run!(ctx, "Shelf A", [object(%{"catalogue_no" => nil, "alternatives" => [1, 3]})])
+
+      lv = open!(ctx) |> open_run(run)
+      options = lv |> element("#inventory-ai-choose-1") |> render()
+
+      assert options =~ "Hinge (H-1)"
+      assert options =~ "Bolt"
+      refute options =~ "()"
+    end
+
+    test "the catalogues to narrow the photos to are checkboxes", ctx do
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+
+      assert has_element?(
+               lv,
+               ~s(#inventory-ai-catalogues input[type="checkbox"][name="catalogue_uuids[]"][value="#{ctx.catalogue.uuid}"])
+             )
+
+      refute has_element?(lv, "#inventory-ai-catalogues select")
+    end
+
     test "a seeded line is replaced, the others are not touched; the tab gets the written lines",
          ctx do
       stock!(ctx.screw, ctx.location, "40")
