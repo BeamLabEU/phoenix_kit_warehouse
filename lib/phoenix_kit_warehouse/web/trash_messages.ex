@@ -50,6 +50,20 @@ defmodule PhoenixKitWarehouse.Web.TrashMessages do
       )
   end
 
+  @doc """
+  Appends the warning that goods issues now hold more of `orders` (internal
+  orders) than they have, when `orders` is not empty.
+  """
+  def append_overcommitted(message, []), do: message
+
+  def append_overcommitted(message, orders) do
+    message <>
+      " " <>
+      dgettext("default", "Goods issues exceed the order for: %{numbers} — check the lines.",
+        numbers: Enum.map_join(orders, ", ", &tag/1)
+      )
+  end
+
   def restore_error(:not_deleted), do: dgettext("default", "This document is not in the trash")
   def restore_error(:not_draft), do: dgettext("default", "Only drafts can be restored")
   def restore_error(:not_found), do: dgettext("default", "Document not found")

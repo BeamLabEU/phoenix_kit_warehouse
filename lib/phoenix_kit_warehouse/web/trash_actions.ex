@@ -58,15 +58,22 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
           | :transfer
 
   @type kind :: %{
-          get: (Ecto.UUID.t() -> {:ok, struct()} | {:error, :not_found}),
-          soft_delete: (struct(), Ecto.UUID.t() | nil -> {:ok, struct()} | {:error, atom()})
+          required(:get) => (Ecto.UUID.t() -> {:ok, struct()} | {:error, :not_found}),
+          required(:soft_delete) => (struct(), Ecto.UUID.t() | nil ->
+                                       {:ok, struct()} | {:error, atom()}),
+          optional(:restore) => (struct(), Ecto.UUID.t() | nil ->
+                                   {:ok, struct()} | {:error, atom()})
         }
 
   # The kinds whose documents are posted (a transfer moves through its own
   # statuses instead).
   @posting_schemas [InternalOrder, SupplierOrder, GoodsReceipt, GoodsIssue, InventoryDocument]
 
-  @doc "The description of a document kind: `get/1` and `soft_delete/2` of its context."
+  @doc """
+  The description of a document kind: `get/1`, `soft_delete/2` and, for the
+  kinds restored without a swap (all but internal and supplier orders),
+  `restore/2` of its context.
+  """
   @spec kind(kind_name()) :: kind()
   def kind(:internal_order) do
     %{
@@ -85,28 +92,32 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
   def kind(:goods_receipt) do
     %{
       get: &GoodsReceipts.get_goods_receipt/1,
-      soft_delete: &GoodsReceipts.soft_delete/2
+      soft_delete: &GoodsReceipts.soft_delete/2,
+      restore: &GoodsReceipts.restore_goods_receipt/2
     }
   end
 
   def kind(:goods_issue) do
     %{
       get: &GoodsIssues.get_goods_issue/1,
-      soft_delete: &GoodsIssues.soft_delete/2
+      soft_delete: &GoodsIssues.soft_delete/2,
+      restore: &GoodsIssues.restore_goods_issue/2
     }
   end
 
   def kind(:inventory) do
     %{
       get: &Inventories.get_document/1,
-      soft_delete: &Inventories.soft_delete_document/2
+      soft_delete: &Inventories.soft_delete_document/2,
+      restore: &Inventories.restore_document/2
     }
   end
 
   def kind(:transfer) do
     %{
       get: &Transfers.get_transfer/1,
-      soft_delete: &Transfers.soft_delete_transfer/2
+      soft_delete: &Transfers.soft_delete_transfer/2,
+      restore: &Transfers.restore_transfer/2
     }
   end
 
@@ -181,6 +192,40 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
         socket |> put_flash(:error, error_message(kind, document, reason)) |> reload.()
     end
   end
+
+  @doc """
+  The `restore` event of a goods receipt, goods issue, stocktake or transfer:
+  brings the trashed draft of `kind` behind `uuid` back as the current user,
+  says so (or why not), and calls `reload`. A restored goods issue that now
+  holds more of an internal order than it has gets a warning naming the order
+  (`GoodsIssues.overcommitted_internal_orders/1`); the restore stands.
+  """
+  @spec restore(
+          Phoenix.LiveView.Socket.t(),
+          :goods_receipt | :goods_issue | :inventory | :transfer,
+          term(),
+          (Phoenix.LiveView.Socket.t() -> Phoenix.LiveView.Socket.t())
+        ) :: Phoenix.LiveView.Socket.t()
+  def restore(socket, kind_name, uuid, reload) do
+    kind = kind(kind_name)
+
+    with {:ok, uuid} <- cast_uuid(uuid),
+         {:ok, document} <- kind.get.(uuid),
+         {:ok, restored} <- kind.restore.(document, actor_uuid(socket)) do
+      socket |> put_flash(:info, restored_message(restored)) |> reload.()
+    else
+      {:error, reason} ->
+        socket |> put_flash(:error, TrashMessages.restore_error(reason)) |> reload.()
+    end
+  end
+
+  defp restored_message(%GoodsIssue{} = issue) do
+    issue
+    |> TrashMessages.restored([])
+    |> TrashMessages.append_overcommitted(GoodsIssues.overcommitted_internal_orders(issue))
+  end
+
+  defp restored_message(document), do: TrashMessages.restored(document, [])
 
   @doc "The `cancel_trash` event: closes the confirmation."
   @spec cancel_trash(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()

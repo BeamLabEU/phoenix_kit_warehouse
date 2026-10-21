@@ -86,7 +86,8 @@ defmodule PhoenixKitWarehouse.GettextTest do
           "Restored from the trash: %{document}.",
           "A posted document cannot be deleted",
           "A transfer in transit cannot be deleted — cancel it first",
-          "Unsaved changes in the form will not be saved."
+          "Unsaved changes in the form will not be saved.",
+          "Goods issues exceed the order for: %{numbers} — check the lines."
         ] do
       with_locale(locale, fn ->
         refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"

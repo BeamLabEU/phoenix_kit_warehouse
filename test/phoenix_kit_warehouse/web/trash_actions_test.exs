@@ -89,6 +89,16 @@ defmodule PhoenixKitWarehouse.Web.TrashActionsTest do
       assert TrashMessages.restored(%InternalOrder{number: 1}, []) ==
                "Restored from the trash: #IO-1."
     end
+
+    test "the over-reserve warning names the internal orders, and is left out without them" do
+      assert TrashMessages.append_overcommitted("Done.", []) == "Done."
+
+      assert TrashMessages.append_overcommitted("Done.", [
+               %InternalOrder{number: 3},
+               %InternalOrder{number: 5}
+             ]) ==
+               "Done. Goods issues exceed the order for: #IO-3, #IO-5 — check the lines."
+    end
   end
 
   describe "kind/1" do
@@ -98,6 +108,16 @@ defmodule PhoenixKitWarehouse.Web.TrashActionsTest do
 
         assert is_function(kind.get, 1)
         assert is_function(kind.soft_delete, 2)
+      end
+    end
+
+    test "the kinds restored without a swap also restore" do
+      for name <- ~w(goods_receipt goods_issue inventory transfer)a do
+        assert is_function(TrashActions.kind(name).restore, 2)
+      end
+
+      for name <- ~w(internal_order supplier_order)a do
+        refute Map.has_key?(TrashActions.kind(name), :restore)
       end
     end
   end

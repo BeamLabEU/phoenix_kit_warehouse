@@ -1114,6 +1114,11 @@ msgstr "Не вдалося відновити документ"
 msgid "Moved to the trash: %{numbers}."
 msgstr "Переміщено до кошика: %{numbers}."
 
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:62
+#, elixir-autogen, elixir-format
+msgid "Goods issues exceed the order for: %{numbers} — check the lines."
+msgstr "Видачі перевищують замовлення за: %{numbers} — перевірте рядки."
+
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:33
 #, elixir-autogen, elixir-format
 msgid "Only drafts can be restored"
