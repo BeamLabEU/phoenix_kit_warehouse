@@ -102,12 +102,16 @@ defmodule PhoenixKitWarehouse.MixProject do
       # `~> 2.0.x` expands to `< 2.1.0` and would strand host resolution the
       # moment core ships 2.1 — the same failure the old `~> 1.7.231` pin had
       # against core 2.0.0, which is what PR #15 was opened to fix.
-      # 2.26.1 is the floor: 2.26.0 shipped `<.decimal_input>` and
+      # 2.26.1 was the floor before: 2.26.0 shipped `<.decimal_input>` and
       # `PhoenixKit.Utils.Number.parse_decimal/2`, which every quantity/price
       # control and StockLedger's coercers now use (an older core is a
       # compile error in the consumer), and 2.26.1 stops a whole number
       # parsing to exponent form (`"10"` -> `1E+1`).
-      pk_dep(:phoenix_kit, "~> 2.26 and >= 2.26.1"),
+      # 2.57 is the floor now: the photo inventory makes each photo ready
+      # with `PhoenixKit.Modules.Storage.ImageProcessor.preview_jpeg/3`,
+      # first shipped in 2.57.0. An older core has no such function, so
+      # every photo would be skipped and every run would fail.
+      pk_dep(:phoenix_kit, "~> 2.57"),
       # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
       # builds from source when MDEX_NATIVE_BUILD=1 is set in the
       # environment; that path requires rustler itself, not just
@@ -123,10 +127,15 @@ defmodule PhoenixKitWarehouse.MixProject do
       # without the ai module switched on the inventory button is simply not
       # shown.
       pk_dep(:phoenix_kit_ai, "~> 0.25"),
-      # 0.18.0 is the floor: `ItemSelectorModal` (the three "Add item" flows)
+      # 0.18.0 was the floor before: `ItemSelectorModal` (the three "Add item" flows)
       # first shipped there. `~> 0.13` would still resolve 0.13–0.17, which
       # compile-fail on `PhoenixKitCatalogue.Web.Components.ItemSelectorModal`.
-      pk_dep(:phoenix_kit_catalogue, "~> 0.18"),
+      # 0.46 is the floor now: the photo inventory lists only goods (the
+      # `item_types` filter of the item type, #141) and counts in the pack,
+      # kilogram, litre and cubic metre units (#140), both first shipped in
+      # 0.46.0. An older catalogue ignores `item_types`, so services would
+      # reach the list the model chooses from.
+      pk_dep(:phoenix_kit_catalogue, "~> 0.46"),
       # 0.2.8 is the floor for the same reason `phoenix_kit` has one: six form
       # LiveViews `use PhoenixKitComments.Embed` (first shipped in 0.2.6, and a
       # `use` cannot be guarded), and `PhoenixKitWarehouse.Comments` calls

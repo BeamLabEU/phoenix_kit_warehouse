@@ -16,12 +16,13 @@ defmodule PhoenixKitWarehouse.CorePinConformanceTest do
   a V135 floor and this module is verified only against that baseline.
 
   A raised FLOOR within 2.x is fine — it is an API the module compiles against
-  (2.26.1: `<.decimal_input>` / `Number.parse_decimal/2`), not a ceiling. What
+  (2.26.1: `<.decimal_input>` / `Number.parse_decimal/2`; 2.57.0:
+  `ImageProcessor.preview_jpeg/3` for the photo inventory), not a ceiling. What
   must never happen is a ceiling below 3.0.
   """
 
-  @must_admit ["2.26.1", "2.27.0", "2.30.4", "2.99.0"]
-  @must_reject ["1.7.189", "1.7.236", "1.9.4", "2.0.0", "2.26.0", "3.0.0"]
+  @must_admit ["2.57.0", "2.60.1", "2.99.0"]
+  @must_reject ["1.7.189", "1.7.236", "1.9.4", "2.0.0", "2.26.1", "2.56.1", "3.0.0"]
 
   test "the :phoenix_kit requirement admits every core 2.x from the floor, nothing else" do
     requirement = core_requirement()
