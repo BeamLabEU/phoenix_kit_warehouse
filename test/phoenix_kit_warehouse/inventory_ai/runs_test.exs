@@ -11,11 +11,13 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
   import PhoenixKitWarehouse.Test.InventoryAIFixtures
 
   alias PhoenixKit.Activity
+  alias PhoenixKit.Modules.Storage.FolderLink
   alias PhoenixKitWarehouse.InventoryAI
   alias PhoenixKitWarehouse.InventoryAI.Prompt
   alias PhoenixKitWarehouse.InventoryAI.Runner
   alias PhoenixKitWarehouse.InventoryAI.Settings
   alias PhoenixKitWarehouse.InventoryAIRun
+  alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Test.InventoryAIStub, as: Stub
 
   setup do
@@ -433,10 +435,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       linked = storage_file!(nil, ctx.user)
 
       {:ok, folder} =
-        PhoenixKitWarehouse.StorageFolders.ensure_for_inventory(ctx.doc, ctx.user.uuid)
+        StorageFolders.ensure_for_inventory(ctx.doc, ctx.user.uuid)
 
-      %PhoenixKit.Modules.Storage.FolderLink{}
-      |> PhoenixKit.Modules.Storage.FolderLink.changeset(%{
+      %FolderLink{}
+      |> FolderLink.changeset(%{
         folder_uuid: folder.uuid,
         file_uuid: linked.uuid
       })

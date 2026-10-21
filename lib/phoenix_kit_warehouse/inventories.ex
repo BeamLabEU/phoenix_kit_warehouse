@@ -207,7 +207,8 @@ defmodule PhoenixKitWarehouse.Inventories do
     multi =
       if base == :error,
         do: multi,
-        else: Ecto.Multi.run(multi, :fingerprint, fn repo, _ -> {:ok, fingerprint(uuid, repo)} end)
+        else:
+          Ecto.Multi.run(multi, :fingerprint, fn repo, _ -> {:ok, fingerprint(uuid, repo)} end)
 
     case repo().transaction(multi) do
       {:ok, %{update: updated} = changes} ->
