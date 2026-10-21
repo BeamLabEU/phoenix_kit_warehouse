@@ -9,14 +9,15 @@ defmodule PhoenixKitWarehouse.Migrations do
   (`migrated_version/1` for migration context, `migrated_version_runtime/1`
   for Mix-task context), `up/1` re-reading the version before it changes
   anything, and a namespaced `COMMENT ON TABLE` marker on one anchor table
-  for a chain that spans eight. `phoenix_kit_billing` (`v4_statements/2`,
+  for a chain that spans nine. `phoenix_kit_billing` (`v4_statements/2`,
   ten adopted tables in one version) and `phoenix_kit_dashboards` (one
   adopted table) are the closest sibling examples of this exact adoption
   situation.
 
   ## Ownership situation — read before touching
 
-  All 8 `phoenix_kit_warehouse_*` tables are core's baseline: `V140` created
+  The 8 core `phoenix_kit_warehouse_*` tables (all but V3's runs table)
+  are core's baseline: `V140` created
   `stock`, `inventory_documents`, `internal_orders`, `supplier_orders`,
   `goods_receipts`, and `goods_issues`; `V144` added `transfers` and
   `min_stock`. On every existing install all 8 already have their full
@@ -129,7 +130,8 @@ defmodule PhoenixKitWarehouse.Migrations do
   package. Removing this module's data is a human, manual step — see
   README.md "Removing this module" for the operator SQL. There is
   deliberately no automated uninstall path, and `down/1` NEVER drops any of
-  the 8 tables for ANY target version, including `0` — it only unstamps
+  its 9 tables (the 8 core tables and V3's runs table) for ANY target
+  version, including `0` — it only unstamps
   (or re-stamps) the marker on the anchor table. The rows are live stock
   balances and document history, and on most installs every table is
   core-created; rolling back this module's chain must not destroy any of
@@ -312,8 +314,8 @@ defmodule PhoenixKitWarehouse.Migrations do
   `reason` / `external_ref` columns and the three `external_ref` unique
   indexes, so rows written under V2 survive a rollback, and stepping down
   from V3 keeps the runs table and every run in it. Only the marker is
-  re-stamped; all 8 tables and every row in them are left untouched, for any
-  target including `0`. Running `up` again is idempotent.
+  re-stamped; all 9 tables (the 8 core tables and the runs table) and every
+  row in them are left untouched, for any target including `0`. Running `up` again is idempotent.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ @default_prefix, target \\ 0)
