@@ -4,6 +4,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
   # answer, the warehouse change, the posting, the server's checks.
   use PhoenixKitWarehouse.LiveCase, async: false
 
+  import Ecto.Query, only: [from: 2]
   import PhoenixKitWarehouse.Test.InventoryAIFixtures
 
   alias PhoenixKit.Modules.Storage
@@ -144,7 +145,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       assert has_element?(lv, "#inventory-ai-area #inventory-ai-panel")
     end
 
-    test "the list of batches keeps the state a person opened it in through an update", ctx do
+    test "the list of batches is marked to keep its open state through an update", ctx do
       run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
       lv = open!(ctx)
 
@@ -436,6 +437,21 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       assert_receive {:inventory_ai_run, %{run_uuid: uuid, status: "proposed"}}, 5_000
       assert InventoryAI.get_run(ctx.doc.uuid, uuid).photo_file_uuids == [stored]
       refute has_element?(lv, "#inventory-ai-stored")
+    end
+
+    test "a held photo that no longer passes is not held again: no loop of refusals", ctx do
+      {lv, stored, other} = refused_after_store!(ctx)
+
+      other |> Ecto.Changeset.change(status: "error") |> repo().update!()
+
+      from(f in PhoenixKit.Modules.Storage.File, where: f.uuid == ^stored)
+      |> repo().update_all(set: [status: "trashed"])
+
+      html = lv |> form("#inventory-ai-upload-form", %{"place" => "A"}) |> render_submit()
+
+      assert html =~ InventoryAI.error_message(:invalid_photos)
+      refute html =~ "The photos are kept in the Files tab"
+      assert :sys.get_state(lv.pid).socket.assigns.ai.stored_photos == []
     end
 
     test "Forget leaves them in the Files tab and sends them with no run", ctx do
