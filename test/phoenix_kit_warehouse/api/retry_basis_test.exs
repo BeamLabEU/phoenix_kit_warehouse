@@ -568,6 +568,46 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
       end
     end
 
+    test "a two-line stocktake with one product trashed: a changed count of the live line is refused",
+         %{first: first, a: a, b: b, ctx: ctx, dry: dry} do
+      lines = fn a_quantity, b_quantity -> [line(a, a_quantity), line(b, b_quantity)] end
+      input = %{"external_ref" => "RB-GONE-STOCKTAKE", "lines" => lines.("4", "7")}
+      assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+
+      assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
+               Write.set_stock(input, ctx)
+
+      for retry_lines <- [lines.("4", "8"), lines.("5", "7")], call <- [ctx, dry] do
+        retry = %{input | "lines" => retry_lines}
+        assert conflict_codes(Write.set_stock(retry, call)) == ["external_ref_lines_differ"]
+      end
+
+      assert Decimal.equal?(quantity(b.uuid, first.uuid), Decimal.new(7))
+    end
+
+    test "an id that was never on the stocktake is not taken for the trashed product", %{
+      a: a,
+      b: b,
+      catalogue: catalogue,
+      ctx: ctx,
+      dry: dry
+    } do
+      input = %{
+        "external_ref" => "RB-GONE-STRANGER",
+        "lines" => [line(a, "4"), line(b, "7")]
+      }
+
+      assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
+      {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(a)
+      stranger = item!(catalogue)
+      retry = %{input | "lines" => [line(stranger, "4"), line(b, "7")]}
+
+      for call <- [ctx, dry] do
+        assert conflict_codes(Write.set_stock(retry, call)) == ["external_ref_lines_differ"]
+      end
+    end
+
     if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
          function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
       test "a trashed product addressed by sku is the same", %{a: a, b: b, ctx: ctx, input: input} do
@@ -666,6 +706,70 @@ defmodule PhoenixKitWarehouse.API.RetryBasisTest do
         end
 
         assert {:ok, %{"status" => "skipped"}, _effects} = Write.receive_stock(input, ctx)
+      end
+    end
+
+    if Code.ensure_loaded?(PhoenixKitCatalogue.API) and
+         function_exported?(PhoenixKitCatalogue.API, :resolve_refs, 2) do
+      # A stocktake as an ERP sends it: products by external ID, one trashed since.
+      defp erp_stocktake!(catalogue, ctx) do
+        gone = item!(catalogue, %{data: %{"api" => %{"external_id" => "ERP-GONE"}}})
+        kept = item!(catalogue, %{data: %{"api" => %{"external_id" => "ERP-KEPT"}}})
+
+        lines = fn gone_quantity, kept_quantity ->
+          [
+            %{"ref" => %{"external_id" => "ERP-GONE"}, "quantity" => gone_quantity},
+            %{"ref" => %{"external_id" => "ERP-KEPT"}, "quantity" => kept_quantity}
+          ]
+        end
+
+        input = %{"external_ref" => "ERP-COUNT-1", "lines" => lines.("4", "7")}
+        assert {:ok, %{"status" => "posted"}} = Write.set_stock(input, ctx)
+        {:ok, _item} = PhoenixKitCatalogue.Catalogue.trash_item(gone)
+
+        {input, lines, kept}
+      end
+
+      test "ERP stocktake: the same request after a product was trashed is skipped", %{
+        catalogue: catalogue,
+        ctx: ctx,
+        dry: dry
+      } do
+        {input, _lines, _kept} = erp_stocktake!(catalogue, ctx)
+
+        assert {:ok, %{"status" => "skipped"}, [%{"code" => "external_ref_lines_unverified"}]} =
+                 Write.set_stock(input, ctx)
+
+        assert {:preview, %{"status" => "would_skip"}, _fingerprint} =
+                 Write.set_stock(input, dry)
+      end
+
+      test "ERP stocktake: a trashed line does not hide a changed count of another line", %{
+        first: first,
+        catalogue: catalogue,
+        ctx: ctx,
+        dry: dry
+      } do
+        {input, lines, kept} = erp_stocktake!(catalogue, ctx)
+
+        for {gone_quantity, kept_quantity} <- [{"4", "8"}, {"5", "7"}], call <- [ctx, dry] do
+          retry = %{input | "lines" => lines.(gone_quantity, kept_quantity)}
+          assert conflict_codes(Write.set_stock(retry, call)) == ["external_ref_lines_differ"]
+        end
+
+        assert Decimal.equal?(quantity(kept.uuid, first.uuid), Decimal.new(7))
+      end
+
+      test "ERP stocktake: an external ID that was never posted is not taken for the trashed one",
+           %{catalogue: catalogue, ctx: ctx, dry: dry} do
+        {input, _lines, _kept} = erp_stocktake!(catalogue, ctx)
+        stranger = %{"ref" => %{"external_id" => "ERP-NEVER"}, "quantity" => "4"}
+        retry = %{input | "lines" => [stranger, List.last(input["lines"])]}
+
+        for call <- [ctx, dry] do
+          assert [%{path: "lines[0].ref", code: "not_found"}] =
+                   refusal(Write.set_stock(retry, call))
+        end
       end
     end
 

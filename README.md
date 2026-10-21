@@ -66,6 +66,10 @@ posting) rolls the draft back too, but the number sequence has advanced.
   and a repeat returns `{:ok, :already_posted, existing_document}` without
   writing anything, so a retried delivery is harmless. The lines of the repeat
   are not compared with the existing document's.
+- `Inventories.create_and_post/3` takes `skip_unchanged: true`: a stocktake
+  where every counted line already holds its quantity returns
+  `{:error, :unchanged}` and writes nothing, so its `external_ref` is not
+  recorded either and a later call with it runs as a new stocktake.
 
 ### Linking documents to host records
 
@@ -119,8 +123,10 @@ How they behave, in short:
   `confirm_token`, the same call with the token posts it. This holds for a retry of a
   posted `external_ref` too.
 - `dry_run: true` (a control field every write tool takes) answers what the call would
-  do (`would_post`, `would_skip`, or the same refusal a real call gives) and writes
-  nothing. A stocktake is worth previewing: the `from` of each line is the current stock.
+  do (`would_post`, `would_skip`, `unchanged` for a stocktake that changes nothing, or
+  the same refusal a real call gives) and writes nothing. A stocktake is worth
+  previewing: the `from` of each line is the current stock. A preview that answers
+  `unchanged` has nothing to confirm: the confirmed call would post no document either.
 - Every posted line answers the stock before (`from`) and after (`to`). A confirmation
   code is bound to what the preview showed, including the current stock of every
   line: any other document that moves one of those products before the code is used
@@ -130,8 +136,15 @@ How they behave, in short:
   of 1 second; nothing was changed and the same call can be sent again. A call that
   carried a confirmation code (above the confirmation threshold) has spent it: send it
   again without the code.
+- `set_stock` that changes nothing (every listed product already holds its counted
+  quantity) creates no document and burns no document number: it answers
+  `status: "unchanged"` with the `results` (`action: "unchanged"`) and no `document`.
+  A stocktake where at least one line changes is posted whole. After an `unchanged`
+  answer the `external_ref` is not recorded (there is no document), so a later call with
+  the same reference runs normally; use `Idempotency-Key` for replays.
 - `external_ref` carries your own document number: sending it again answers
-  `skipped` with the existing document and moves no stock. On `issue_stock`
+  `skipped` with the existing document and moves no stock (for a posted document;
+  an `unchanged` `set_stock` posts none, see above). On `issue_stock`
   `source: {"kind": "external", "ref": ...}` is the same reference (do not send both).
   The retry is answered from the posted document before the lines are checked (a
   product trashed or a default warehouse changed since does not matter). What a retry
