@@ -74,6 +74,21 @@ defmodule PhoenixKitWarehouse.GettextTest do
     end)
   end
 
+  test "et, ru and uk translate the trash strings" do
+    for locale <- ~w(et ru uk),
+        msgid <- ["Trash (%{count})", "Restore", "Document moved to the trash"] do
+      with_locale(locale, fn ->
+        refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"
+      end)
+    end
+
+    with_locale("ru", fn ->
+      assert Gettext.dgettext(PhoenixKitWarehouse.Gettext, "default", "Trash (%{count})",
+               count: 3
+             ) == "Корзина (3)"
+    end)
+  end
+
   describe "catalogues are complete" do
     @catalogues for locale <- ~w(en et ru),
                     do:

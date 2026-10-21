@@ -26,6 +26,18 @@ defmodule PhoenixKitWarehouse.ReadmeTest do
     end
   end
 
+  test "the README documents the trash and the one_draft_per_source switch" do
+    for phrase <- [
+          "config :phoenix_kit_warehouse, one_draft_per_source: true",
+          "replace_draft_for_source/3",
+          "supersede_drafts: true",
+          "swap: true",
+          "?view=trash"
+        ] do
+      assert @readme =~ phrase
+    end
+  end
+
   test "the README states the caveats an integrator must know" do
     # the catalogue_id rule, the retry answer, the issue retry gap, the confirmation hold,
     # the log switch

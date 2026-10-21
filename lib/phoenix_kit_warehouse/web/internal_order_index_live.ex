@@ -14,6 +14,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
   # leaving the page.
   use PhoenixKitWeb.Live.UrlState,
     params: [
+      view: [default: "active", url_key: "view", in: ~w(active trash)],
       search: [default: "", url_key: "q"],
       sort_by: [
         default: "number",
@@ -38,9 +39,11 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
     ColumnModal,
     FilterChips,
     SetupNotice,
+    TrashTabs,
     WarehouseHeader
   }
 
+  alias PhoenixKitWarehouse.Web.TrashMessages
   alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -64,6 +67,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
       |> SetupNotice.assign_setup_status()
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
+      |> assign(:trash_count, 0)
       |> ColumnManagement.assign_column_state(InternalOrderColumnConfig)
 
     {:ok, socket}
@@ -96,6 +100,36 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
   # Events
   # ---------------------------------------------------------------------------
 
+  @impl true
+  def handle_event("set_view", %{"view" => view}, socket) do
+    {:noreply, push_url_state(socket, view: view)}
+  end
+
+  # Restoring is a draft-only move out of the trash. With the host's
+  # `:one_draft_per_source` switch on, the live drafts of the same source go to
+  # the trash in its place, and the flash names them.
+  @impl true
+  def handle_event("restore", %{"uuid" => uuid}, socket) do
+    actor_uuid = socket.assigns.current_user_uuid
+    swap? = PhoenixKitWarehouse.one_draft_per_source?()
+
+    with {:ok, uuid} <- cast_uuid(uuid),
+         {:ok, order} <- InternalOrders.get_internal_order(uuid),
+         {:ok, %{order: restored, superseded: superseded}} <-
+           InternalOrders.restore_internal_order(order, actor_uuid, swap: swap?) do
+      {:noreply,
+       socket
+       |> put_flash(:info, TrashMessages.restored(restored, superseded))
+       |> assign_orders()}
+    else
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, TrashMessages.restore_error(reason))
+         |> assign_orders()}
+    end
+  end
+
   # `replace: true` — debounced box, so a typed-out query would otherwise leave
   # one history entry per pause and Back would walk the search string backwards.
   @impl true
@@ -125,23 +159,37 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
     {:noreply, push_url_state(socket, sort_dir: flip_dir(socket.assigns.sort_dir))}
   end
 
+  # The uuid comes from the browser; a malformed one is a document that is not
+  # there, not a query error.
+  defp cast_uuid(uuid) do
+    case Ecto.UUID.cast(uuid) do
+      {:ok, uuid} -> {:ok, uuid}
+      :error -> {:error, :not_found}
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Pipeline
   # ---------------------------------------------------------------------------
 
   defp assign_orders(socket) do
+    trash? = socket.assigns.view == "trash"
+
     orders =
-      InternalOrders.list_internal_orders()
+      InternalOrders.list_internal_orders(trashed: trash?)
       |> enrich_orders()
       |> apply_global_search(socket.assigns.search)
       |> apply_column_filters(socket.assigns.active_filters, socket.assigns.filter_values)
       |> apply_sort(socket.assigns.sort_by, socket.assigns.sort_dir)
 
-    assign(socket, :orders, orders)
+    socket
+    |> assign(:orders, orders)
+    |> assign(:trash_count, InternalOrders.count_trashed_internal_orders())
   end
 
   defp enrich_orders(orders) do
-    user_names = UserNames.resolve(orders)
+    user_names =
+      UserNames.resolve(orders, [:created_by_uuid, :performed_by_uuid, :deleted_by_uuid])
 
     orders_with_sub = Enum.map(orders, &{&1, sub_order_uuid_of(&1)})
 
@@ -156,6 +204,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
       %{
         uuid: order.uuid,
         created_by: UserNames.label(user_names, order.created_by_uuid),
+        deleted_at: order.deleted_at,
+        deleted_by: UserNames.label(user_names, order.deleted_by_uuid),
         performed_by: UserNames.label(user_names, order.performed_by_uuid),
         number: order.number,
         status: order.status,
@@ -286,6 +336,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:internal_orders} />
         <SetupNotice.setup_notice status={@setup_status} />
+        <TrashTabs.trash_tabs prefix="io" view={@view} trash_count={@trash_count} />
 
         <.table_default
           id="internal-orders-table"
@@ -300,7 +351,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
 
               Enum.map(@selected_columns, fn col ->
                 %{label: column_label(meta_map, col), value: render_card_value(col, entry)}
-              end)
+              end) ++ trash_card_fields(@view, entry)
             end
           }
         >
@@ -414,6 +465,14 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
                   <% end %>
                 </.table_default_header_cell>
               <% end %>
+              <%= if @view == "trash" do %>
+                <.table_default_header_cell>
+                  {dgettext("default", "Deleted")}
+                </.table_default_header_cell>
+                <.table_default_header_cell>
+                  {dgettext("default", "Deleted by")}
+                </.table_default_header_cell>
+              <% end %>
               <.table_default_header_cell class="w-12"></.table_default_header_cell>
             </.table_default_row>
           </.table_default_header>
@@ -422,20 +481,34 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
             <%= if @orders == [] do %>
               <.table_default_row hover={false}>
                 <.table_default_cell
-                  colspan={length(@selected_columns) + 1}
+                  colspan={length(@selected_columns) + if(@view == "trash", do: 3, else: 1)}
                   class="text-center py-10 text-base-content/50"
                 >
                   <.icon name="hero-arrow-right-circle" class="h-10 w-10 mx-auto mb-2 opacity-50" />
-                  <div class="text-sm font-medium">{dgettext("default", "No internal orders yet")}</div>
+                  <div id={@view == "trash" && "io-trash-empty"} class="text-sm font-medium">
+                    <%= if @view == "trash" do %>
+                      {dgettext("default", "The trash is empty")}
+                    <% else %>
+                      {dgettext("default", "No internal orders yet")}
+                    <% end %>
+                  </div>
                 </.table_default_cell>
               </.table_default_row>
             <% end %>
             <%= for entry <- @orders do %>
-              <.table_default_row class="transform-gpu relative cursor-pointer">
+              <.table_default_row id={"io-row-#{entry.uuid}"} class="transform-gpu relative cursor-pointer">
                 <% meta_map = InternalOrderColumnConfig.column_metadata_map() %>
                 <%= for col <- @selected_columns, meta = Map.get(meta_map, col), meta do %>
                   <.table_default_cell class={cell_class(col, meta)}>
                     {render_cell(col, entry)}
+                  </.table_default_cell>
+                <% end %>
+                <%= if @view == "trash" do %>
+                  <.table_default_cell id={"io-deleted-at-#{entry.uuid}"} class="text-sm">
+                    {fmt_date(entry.deleted_at)}
+                  </.table_default_cell>
+                  <.table_default_cell id={"io-deleted-by-#{entry.uuid}"} class="text-sm">
+                    {entry.deleted_by}
                   </.table_default_cell>
                 <% end %>
                 <.table_default_cell class="relative z-10 w-12">
@@ -446,8 +519,21 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
                           "/admin/warehouse/internal-orders/#{entry.uuid}"
                         )
                       }
-                      icon="hero-pencil-square"
-                      label={dgettext("default", "Edit")}
+                      icon={if @view == "trash", do: "hero-eye", else: "hero-pencil-square"}
+                      label={
+                        if @view == "trash",
+                          do: dgettext("default", "Open"),
+                          else: dgettext("default", "Edit")
+                      }
+                    />
+                    <.table_row_menu_button
+                      :if={@view == "trash" and entry.status == "draft"}
+                      id={"io-restore-#{entry.uuid}"}
+                      phx-click="restore"
+                      phx-disable-with={dgettext("default", "Restoring...")}
+                      phx-value-uuid={entry.uuid}
+                      icon="hero-arrow-uturn-left"
+                      label={dgettext("default", "Restore")}
                     />
                   </.table_row_menu>
                 </.table_default_cell>
@@ -567,6 +653,15 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderIndexLive do
   defp render_card_value("created_by", entry), do: entry.created_by
   defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"
+
+  defp trash_card_fields("trash", entry) do
+    [
+      %{label: dgettext("default", "Deleted"), value: fmt_date(entry.deleted_at)},
+      %{label: dgettext("default", "Deleted by"), value: entry.deleted_by}
+    ]
+  end
+
+  defp trash_card_fields(_view, _entry), do: []
 
   defp fmt_date(nil), do: "—"
   defp fmt_date(dt), do: Calendar.strftime(dt, "%d.%m.%Y")

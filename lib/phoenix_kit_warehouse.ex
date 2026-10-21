@@ -31,6 +31,16 @@ defmodule PhoenixKitWarehouse do
   anything else a consuming app wants to link) through the generic
   `PhoenixKitWarehouse.SourceKinds` registry rather than a direct dependency
   on any specific "order" concept — see that module's docs.
+
+  ## Configuration
+
+    * `config :phoenix_kit_warehouse, one_draft_per_source: true` (default
+      `false`) - the admin UI keeps one draft per source: generating supplier
+      orders from an internal order sends the live drafts of the same supplier
+      to the trash, and restoring a draft from the trash sends the live drafts
+      of its source (pair) there. Documents can always be restored from the
+      "Trash" tab of the internal and supplier order lists; the setting only
+      adds the replacement. See `one_draft_per_source?/0`.
   """
 
   use PhoenixKit.Module
@@ -55,6 +65,15 @@ defmodule PhoenixKitWarehouse do
   alias PhoenixKitWarehouse.Web.TurnoverReportLive
 
   @version Mix.Project.config()[:version]
+
+  @doc """
+  True when the host has switched on "one draft per source" for the admin UI
+  (`config :phoenix_kit_warehouse, one_draft_per_source: true`). Only the value
+  `true` switches it on; unset means off, and the UI then behaves as before.
+  """
+  @spec one_draft_per_source?() :: boolean()
+  def one_draft_per_source?,
+    do: Application.get_env(:phoenix_kit_warehouse, :one_draft_per_source, false) == true
 
   # ===========================================================================
   # Required callbacks

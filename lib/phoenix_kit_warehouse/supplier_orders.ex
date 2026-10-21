@@ -4,6 +4,21 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   Supplier orders are generated (semi-automatically) from posted internal orders.
   Posting has NO stock effect — goods receipt will do that.
+
+  ## One draft per (internal order, supplier)
+
+  `generate_from_internal_order/3` called with `supersede_drafts: true` sends
+  the live drafts of the same internal order and supplier to the trash (soft
+  delete, restorable with `restore_supplier_order/3`) once the new drafts are
+  made. It never trashes a posted document, a draft that refers to another
+  internal order (an imported, combined one), a draft of another internal
+  order or supplier, or a draft of a supplier the new generation made nothing
+  for. Without the option generation is unchanged.
+
+  Moves to the trash and back are logged as `warehouse.supplier_order.trashed`
+  and `warehouse.supplier_order.restored` activities, written after the
+  transaction has committed and subject to the `:inventory_activity_logging`
+  switch like every other entry of `PhoenixKitWarehouse.ActivityLog`.
   """
 
   import Ecto.Query
@@ -11,7 +26,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   require Logger
 
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.CommittedQuantities
+  alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.InternalOrders
@@ -26,12 +43,38 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   @doc """
   Lists non-deleted supplier orders ordered by number descending (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed orders instead
+      (any status, same order), the content of the trash view.
   """
-  def list_supplier_orders(_opts \\ []) do
+  def list_supplier_orders(opts \\ []) do
     SupplierOrder
-    |> where([o], is_nil(o.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([o], desc: o.number)
     |> repo().all()
+  end
+
+  @doc "Counts the trashed supplier orders (any status)."
+  @spec count_trashed_supplier_orders() :: non_neg_integer()
+  def count_trashed_supplier_orders, do: DraftTrash.count_trashed(SupplierOrder)
+
+  @doc """
+  Lists, by number, the live drafts of the internal order that
+  `generate_from_internal_order/3` with `supersede_drafts: true` could send to
+  the trash: drafts with a supplier that refer to no other internal order. It
+  only reads (nothing is locked), so it is a hint for a confirmation, not a
+  promise - the generation decides under its lock which of them really move.
+  """
+  @spec list_replaceable_drafts(Ecto.UUID.t()) :: [SupplierOrder.t()]
+  def list_replaceable_drafts(internal_order_uuid) when is_binary(internal_order_uuid) do
+    from(o in SupplierOrder,
+      where: o.status == "draft" and is_nil(o.deleted_at),
+      where: o.internal_order_uuid == ^internal_order_uuid and not is_nil(o.supplier_uuid),
+      order_by: [asc: o.number]
+    )
+    |> repo().all()
+    |> only_internal_order(internal_order_uuid)
   end
 
   @doc """
@@ -83,7 +126,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   @doc """
   Updates a draft supplier order. Returns `{:error, :not_draft}` when not in
-  draft status.
+  draft status, `{:error, :deleted}` when it is in the trash.
 
   Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
   just the in-memory struct) so a stale tab cannot overwrite an order that
@@ -108,7 +151,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   supplier order.
 
   Pure metadata — does not touch `lines` and is not gated to draft status.
-  A duplicate `{type, uuid}` pair is a no-op.
+  A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
+  a document in the trash.
   """
   def add_source_ref(%SupplierOrder{} = order, type, uuid) when type in ["internal_order"] do
     new_ref = %{"type" => type, "uuid" => uuid}
@@ -117,21 +161,26 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       ((order.source_refs || []) ++ [new_ref])
       |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-    order
-    |> SupplierOrder.changeset(%{source_refs: refs})
-    |> repo().update()
+    update_source_refs(order, refs)
   end
 
   @doc """
   Detaches a traceability reference from a supplier order. No-op when the
-  `{type, uuid}` pair isn't present.
+  `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
+  document in the trash.
   """
   def remove_source_ref(%SupplierOrder{} = order, type, uuid) do
     refs = Enum.reject(order.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
+    update_source_refs(order, refs)
+  end
+
+  # The trash is read from the row (locked), not from the struct, which may be
+  # a tab behind.
+  defp update_source_refs(order, refs) do
     order
     |> SupplierOrder.changeset(%{source_refs: refs})
-    |> repo().update()
+    |> then(&DraftTrash.update_unless_trashed(SupplierOrder, &1))
   end
 
   # ---------------------------------------------------------------------------
@@ -147,7 +196,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   - Flips status → "posted", sets posted_at and performed_by_uuid.
   - Does NOT write any stock rows.
 
-  Returns `{:error, :not_draft}` for non-draft orders.
+  Returns `{:error, :not_draft}` for non-draft orders and `{:error, :deleted}`
+  for one in the trash.
   """
   def post_supplier_order(%SupplierOrder{status: status}, _performed_by_uuid)
       when status != "draft" do
@@ -176,17 +226,125 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   # Soft delete
   # ---------------------------------------------------------------------------
 
-  @doc "Soft-deletes a draft supplier order. Returns {:error, :not_draft} for posted documents."
-  def soft_delete_supplier_order(%SupplierOrder{status: "draft"} = order, actor_uuid) do
-    order
-    |> SupplierOrder.soft_delete_changeset(%{
-      deleted_at: DateTime.utc_now() |> DateTime.truncate(:second),
-      deleted_by_uuid: actor_uuid
-    })
-    |> repo().update()
+  @doc """
+  Soft-deletes a draft supplier order (sends it to the trash).
+
+  Locks the row and moves it only while it is still a live draft in the
+  database, so a draft posted in another tab is not trashed from a stale
+  struct. Returns `{:ok, order}`, `{:error, :not_draft}` for posted documents,
+  `{:error, :deleted}` when it is already in the trash and
+  `{:error, :not_found}` for a row that no longer exists.
+  """
+  def soft_delete_supplier_order(%SupplierOrder{status: "draft", uuid: uuid}, actor_uuid) do
+    result =
+      repo().transaction(fn ->
+        case lock_rows([uuid]) do
+          [] ->
+            repo().rollback(:not_found)
+
+          [%SupplierOrder{deleted_at: %DateTime{}}] ->
+            repo().rollback(:deleted)
+
+          [%SupplierOrder{status: status}] when status != "draft" ->
+            repo().rollback(:not_draft)
+
+          [_draft] ->
+            case trash_ids([uuid], actor_uuid) do
+              [trashed] -> trashed
+              [] -> repo().rollback(:not_draft)
+            end
+        end
+      end)
+
+    with {:ok, trashed} <- result do
+      log_trashed([trashed], actor_uuid, "manual", nil)
+      {:ok, trashed}
+    end
   end
 
   def soft_delete_supplier_order(%SupplierOrder{}, _actor_uuid), do: {:error, :not_draft}
+
+  @doc """
+  Brings a trashed draft supplier order back.
+
+  Returns `{:ok, %{order: restored, superseded: [trashed_orders]}}`,
+  `{:error, :not_deleted}` for a live one, `{:error, :not_draft}` for a trashed
+  posted document (legacy; it stays in the trash) or `{:error, :not_found}`.
+
+  `opts`:
+    * `:swap` (default `false`) - when the restored draft belongs to one
+      (internal order, supplier) pair and refers to no other internal order,
+      the live drafts of that pair that refer to no other internal order go to
+      the trash in the same transaction (same rules and lock as
+      `generate_from_internal_order/3` with `supersede_drafts: true`), so "one
+      draft per pair" holds after the restore. A combined draft, or one
+      without a supplier or an internal order, is restored without a swap
+      whatever this is.
+
+  Call it outside a transaction of the same repo, otherwise the activity
+  entries are written inside the caller's transaction instead of after the
+  commit.
+  """
+  @spec restore_supplier_order(SupplierOrder.t(), Ecto.UUID.t() | nil, keyword()) ::
+          {:ok, %{order: SupplierOrder.t(), superseded: [SupplierOrder.t()]}}
+          | {:error, :not_deleted | :not_draft | :not_found}
+  def restore_supplier_order(%SupplierOrder{uuid: uuid}, actor_uuid, opts \\ []) do
+    swap? = Keyword.get(opts, :swap, false) == true
+
+    result =
+      repo().transaction(fn ->
+        with %SupplierOrder{} = peek <- repo().get(SupplierOrder, uuid),
+             :ok <- trashed_draft(peek),
+             pair = if(swap?, do: single_pair(peek)),
+             :ok <- lock_swap_pair(pair),
+             [%SupplierOrder{} = locked] <- lock_rows([uuid]),
+             :ok <- trashed_draft(locked) do
+          # Only swap under the lock that was taken: the row could have got
+          # another pair between the first read and its own lock.
+          pair = if single_pair(locked) == pair, do: pair
+          superseded = swap_out(pair, uuid, actor_uuid)
+
+          case DraftTrash.restore_row(SupplierOrder, uuid) do
+            %SupplierOrder{} = restored -> %{order: restored, superseded: superseded}
+            nil -> repo().rollback(:not_deleted)
+          end
+        else
+          nil -> repo().rollback(:not_found)
+          [] -> repo().rollback(:not_found)
+          {:error, reason} -> repo().rollback(reason)
+        end
+      end)
+
+    with {:ok, %{order: restored, superseded: superseded}} = ok <- result do
+      ActivityLog.log_supplier_order_restored(restored, actor_uuid: actor_uuid)
+      log_trashed(superseded, actor_uuid, "restore_swap", restored.uuid)
+      ok
+    end
+  end
+
+  defp trashed_draft(%SupplierOrder{deleted_at: nil}), do: {:error, :not_deleted}
+  defp trashed_draft(%SupplierOrder{status: "draft"}), do: :ok
+  defp trashed_draft(%SupplierOrder{}), do: {:error, :not_draft}
+
+  defp lock_swap_pair(nil), do: :ok
+
+  defp lock_swap_pair({internal_order_uuid, _supplier_uuid}) do
+    lock_internal_order!(internal_order_uuid)
+    :ok
+  end
+
+  defp swap_out(nil, _own_uuid, _actor_uuid), do: []
+
+  defp swap_out({internal_order_uuid, supplier_uuid}, own_uuid, actor_uuid) do
+    from(o in SupplierOrder,
+      where: o.status == "draft" and is_nil(o.deleted_at) and o.uuid != ^own_uuid,
+      where: o.internal_order_uuid == ^internal_order_uuid and o.supplier_uuid == ^supplier_uuid
+    )
+    |> lock_query()
+    |> repo().all()
+    |> only_internal_order(internal_order_uuid)
+    |> trash_drafts(actor_uuid)
+  end
 
   # ---------------------------------------------------------------------------
   # Correction (note + storage_folder on posted)
@@ -239,10 +397,24 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
      ordered_quantity (= shortfall, keeper edits later),
      base_price (catalogue base price), required_quantity.
 
-  Returns `{:ok, %{supplier_orders: [...drafts...], unassigned_lines: [...]}}`.
-  Drafts are NOT posted.
+  Returns `{:ok, %{supplier_orders: [...drafts...], unassigned_lines: [...],
+  superseded: [...trashed drafts...]}}`. Drafts are NOT posted.
+
+  Options:
+    * `:supersede_drafts` (default `false`, generation is then exactly as
+      described above and `superseded` is `[]`) - for every supplier the
+      generation made a draft for, the live drafts of the same internal order
+      and supplier go to the trash in the same transaction, serialised per
+      internal order by an advisory lock; `actor_uuid` is recorded as the one
+      who trashed them. Posted drafts, drafts that refer to another internal
+      order (imported, combined) and drafts of suppliers the generation made
+      nothing for are left alone.
+
+  Call it outside a transaction of the same repo, otherwise the activity
+  entries are written inside the caller's transaction instead of after the
+  commit.
   """
-  def generate_from_internal_order(internal_order, actor_uuid) do
+  def generate_from_internal_order(internal_order, actor_uuid, opts \\ []) do
     item_uuids =
       internal_order.lines
       |> Enum.map(& &1["item_uuid"])
@@ -306,9 +478,13 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
         end
       end)
 
+    supersede? =
+      Keyword.get(opts, :supersede_drafts, false) == true and assigned_by_supplier != %{}
+
     multi =
       assigned_by_supplier
-      |> Enum.reduce(Ecto.Multi.new(), fn {supplier_uuid, lines}, multi ->
+      |> Enum.reduce(generation_multi(supersede?, internal_order), fn {supplier_uuid, lines},
+                                                                      multi ->
         op_name = {:create_supplier_order, supplier_uuid}
 
         Ecto.Multi.run(multi, op_name, fn repo, _changes ->
@@ -325,6 +501,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
           |> repo.insert()
         end)
       end)
+      |> supersede_step(supersede?, internal_order, actor_uuid)
 
     case repo().transaction(multi) do
       {:ok, results} ->
@@ -333,11 +510,67 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
           |> Enum.filter(fn {key, _} -> match?({:create_supplier_order, _}, key) end)
           |> Enum.map(fn {_, order} -> order end)
 
-        {:ok, %{supplier_orders: supplier_orders, unassigned_lines: unassigned_lines}}
+        superseded = Map.get(results, :superseded, [])
+        log_superseded(superseded, supplier_orders, actor_uuid)
+
+        {:ok,
+         %{
+           supplier_orders: supplier_orders,
+           unassigned_lines: unassigned_lines,
+           superseded: superseded
+         }}
 
       {:error, _op, reason, _changes} ->
         {:error, reason}
     end
+  end
+
+  # Without the option the transaction is the plain inserts. With it the
+  # advisory lock of the internal order comes first, so two generations (or a
+  # restore with a swap) for one internal order run one after the other.
+  defp generation_multi(false, _internal_order), do: Ecto.Multi.new()
+
+  defp generation_multi(true, internal_order) do
+    Ecto.Multi.run(Ecto.Multi.new(), :lock_internal_order, fn _repo, _changes ->
+      {:ok, lock_internal_order!(internal_order.uuid)}
+    end)
+  end
+
+  # After the inserts: the live drafts of the same (internal order, supplier)
+  # pairs, except the new ones, go to the trash. Suppliers the generation made
+  # nothing for are not looked at.
+  defp supersede_step(multi, false, _internal_order, _actor_uuid), do: multi
+
+  defp supersede_step(multi, true, internal_order, actor_uuid) do
+    Ecto.Multi.run(multi, :superseded, fn _repo, changes ->
+      new_orders =
+        for {{:create_supplier_order, _}, order} <- changes, do: order
+
+      {:ok, supersede_pair_drafts(internal_order.uuid, new_orders, actor_uuid)}
+    end)
+  end
+
+  defp supersede_pair_drafts(internal_order_uuid, new_orders, actor_uuid) do
+    new_uuids = Enum.map(new_orders, & &1.uuid)
+    supplier_uuids = Enum.map(new_orders, & &1.supplier_uuid)
+
+    from(o in SupplierOrder,
+      where: o.status == "draft" and is_nil(o.deleted_at) and o.uuid not in ^new_uuids,
+      where: o.internal_order_uuid == ^internal_order_uuid and o.supplier_uuid in ^supplier_uuids
+    )
+    |> lock_query()
+    |> repo().all()
+    |> only_internal_order(internal_order_uuid)
+    |> trash_drafts(actor_uuid)
+  end
+
+  # Each trashed draft names the new draft of its supplier as its successor.
+  defp log_superseded(superseded, new_orders, actor_uuid) do
+    successors = Map.new(new_orders, &{&1.supplier_uuid, &1.uuid})
+
+    Enum.each(superseded, fn order ->
+      log_trashed([order], actor_uuid, "superseded", Map.get(successors, order.supplier_uuid))
+    end)
   end
 
   # ---------------------------------------------------------------------------
@@ -647,18 +880,81 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   # Private helpers
   # ---------------------------------------------------------------------------
 
+  # Locks the row FOR UPDATE and asserts it is still a live row in
+  # `expected_status`. A miss is explained by a second read: a trashed row
+  # answers `:deleted`, anything else the caller's `error`.
   defp lock_status_step(uuid, expected_status, error) do
     Ecto.Multi.run(Ecto.Multi.new(), :lock_status, fn repo, _changes ->
       query =
         from(o in SupplierOrder,
-          where: o.uuid == ^uuid and o.status == ^expected_status,
+          where: o.uuid == ^uuid and o.status == ^expected_status and is_nil(o.deleted_at),
           lock: "FOR UPDATE"
         )
 
       case repo.one(query) do
-        nil -> {:error, error}
+        nil -> {:error, miss_reason(repo, uuid, error)}
         %SupplierOrder{} = locked -> {:ok, locked}
       end
+    end)
+  end
+
+  defp miss_reason(repo, uuid, error) do
+    case repo.get(SupplierOrder, uuid) do
+      %SupplierOrder{deleted_at: %DateTime{}} -> :deleted
+      _ -> error
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # One draft per (internal order, supplier): locking and the move to the trash
+  # ---------------------------------------------------------------------------
+
+  # Serialises everything that changes which drafts of one internal order are
+  # live: generation with `supersede_drafts` and the swap of a restore.
+  defp lock_internal_order!(internal_order_uuid),
+    do: DraftTrash.advisory_lock!("phoenix_kit_warehouse:so_for_io:#{internal_order_uuid}")
+
+  defp lock_query(query), do: DraftTrash.lock_query(query)
+
+  defp lock_rows(uuids), do: DraftTrash.lock_rows(SupplierOrder, uuids)
+
+  # A draft that refers to no internal order but this one (an empty
+  # `source_refs`, as generation leaves it, counts). One that refers to another
+  # one - or has a ref of an unreadable shape - is kept: a wrongly trashed
+  # imported draft would destroy the demand of its other internal orders.
+  defp only_internal_order(orders, internal_order_uuid) do
+    Enum.filter(orders, &only_internal_order?(&1, internal_order_uuid))
+  end
+
+  defp only_internal_order?(%SupplierOrder{source_refs: refs}, internal_order_uuid) do
+    Enum.all?(
+      List.wrap(refs),
+      &match?(%{"type" => "internal_order", "uuid" => ^internal_order_uuid}, &1)
+    )
+  end
+
+  # The (internal order, supplier) pair a draft is the only one of, or `nil`
+  # for a combined draft and one without a supplier or an internal order.
+  defp single_pair(%SupplierOrder{internal_order_uuid: io, supplier_uuid: sup} = order)
+       when is_binary(io) and is_binary(sup) do
+    if only_internal_order?(order, io), do: {io, sup}
+  end
+
+  defp single_pair(%SupplierOrder{}), do: nil
+
+  # See `DraftTrash`. Nothing here writes activity: the caller does that after
+  # the commit.
+  defp trash_drafts(rows, actor_uuid), do: rows |> Enum.map(& &1.uuid) |> trash_ids(actor_uuid)
+
+  defp trash_ids(ids, actor_uuid), do: DraftTrash.trash_ids(SupplierOrder, ids, actor_uuid)
+
+  defp log_trashed(orders, actor_uuid, reason, superseded_by_uuid) do
+    Enum.each(orders, fn order ->
+      ActivityLog.log_supplier_order_trashed(order,
+        actor_uuid: actor_uuid,
+        reason: reason,
+        superseded_by_uuid: superseded_by_uuid
+      )
     end)
   end
 

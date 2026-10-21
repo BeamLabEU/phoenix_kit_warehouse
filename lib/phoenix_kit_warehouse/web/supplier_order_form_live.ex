@@ -35,9 +35,18 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.TrashMessages
+  alias PhoenixKitWarehouse.Web.UserNames
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
+
+  # Events that change the document, its links or what is made from it. A
+  # document in the trash answers none of them; the buttons are hidden, this
+  # is for a stale event.
+  @trash_blocked ~w(set_supplier set_ordered_qty add_reserve save_draft post register_receipt
+                    save_correction open_source_picker open_link_picker source_picker_confirm
+                    remove_source_ref)
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -72,6 +81,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       |> assign(:source_refs, [])
       |> assign(:child_goods_receipt_refs, [])
       |> assign(:suppliers, [])
+      |> assign(:deleted_by_name, nil)
       |> assign(:show_source_picker, false)
       |> assign(:picker_purpose, :import)
       |> assign(:source_picker_candidates, [])
@@ -189,12 +199,35 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       |> assign(:received_summary, received_summary)
       |> assign(:source_refs, source_refs)
       |> assign(:child_goods_receipt_refs, child_goods_receipt_refs)
+      |> assign(:deleted_by_name, deleted_by_name(order))
       |> assign(
         :page_title,
         dgettext("default", "Supplier Order #%{number}", number: order.number)
       )
 
     if same_order?, do: socket, else: assign_edit_buffer(socket, order)
+  end
+
+  defp deleted_by_name(%{deleted_at: nil}), do: nil
+
+  defp deleted_by_name(order) do
+    UserNames.label(UserNames.resolve([order], [:deleted_by_uuid]), order.deleted_by_uuid)
+  end
+
+  # Reads the document again, buffer included: what the person had typed is
+  # not what the stored (possibly trashed) document holds.
+  defp reload_order(socket) do
+    socket
+    |> assign(:order, nil)
+    |> load_order_into_socket(socket.assigns.order.uuid)
+  end
+
+  # The write found the document in the trash (someone replaced it meanwhile):
+  # say so and draw the stored document, not the unsaved buffer.
+  defp trashed_meanwhile(socket) do
+    socket
+    |> put_flash(:error, TrashMessages.moved_to_trash())
+    |> reload_order()
   end
 
   defp assign_edit_buffer(socket, order) do
@@ -248,9 +281,19 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   # File folder resolution
   # ---------------------------------------------------------------------------
 
+  # The Files tab skipped the folder lookup while the document was in the
+  # trash; a restore makes up for it, so the tab does not stay empty.
+  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
+    do: maybe_start_files_folder_resolution(socket)
+
+  defp resume_files_tab(socket), do: socket
+
   defp maybe_start_files_folder_resolution(socket) do
     cond do
       not is_nil(socket.assigns.files_scope_folder_uuid) ->
+        socket
+
+      socket.assigns.order.deleted_at != nil ->
         socket
 
       not connected?(socket) ->
@@ -280,6 +323,53 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   @impl true
   def handle_event("validate", _params, socket), do: {:noreply, socket}
 
+  # A document in the trash answers none of the events that change it.
+  def handle_event(
+        event,
+        _params,
+        %{assigns: %{order: %{deleted_at: %DateTime{}}}} = socket
+      )
+      when event in @trash_blocked do
+    # The socket may be a tab behind: the document could have been restored
+    # meanwhile. Read it again; a live one is drawn as such and the event, which
+    # was meant for the form as it was, is not carried out.
+    socket = reload_order(socket)
+
+    case socket.assigns.order do
+      %{deleted_at: %DateTime{}} ->
+        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
+
+      _live ->
+        {:noreply, resume_files_tab(socket)}
+    end
+  end
+
+  def handle_event("restore", _params, %{assigns: %{order: nil}} = socket) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
+  def handle_event("restore", _params, socket) do
+    order = socket.assigns.order
+    user_uuid = socket.assigns.current_user && socket.assigns.current_user.uuid
+    swap? = PhoenixKitWarehouse.one_draft_per_source?()
+
+    case SupplierOrders.restore_supplier_order(order, user_uuid, swap: swap?) do
+      {:ok, %{order: restored, superseded: superseded}} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, TrashMessages.restored(restored, superseded))
+         |> reload_order()
+         |> resume_files_tab()}
+
+      {:error, reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, TrashMessages.restore_error(reason))
+         |> reload_order()
+         |> resume_files_tab()}
+    end
+  end
+
   def handle_event("set_supplier", %{"supplier_uuid" => supplier_uuid}, socket) do
     order = socket.assigns.order
 
@@ -301,6 +391,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
              socket
              |> assign(:order, updated_order)
              |> assign(:supplier_name, supplier_name)}
+
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to set supplier"))}
@@ -359,6 +452,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
          |> assign(:lines, lines)
          |> put_flash(:info, dgettext("default", "10% reserve applied"))}
 
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
+
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to apply reserve"))}
     end
@@ -398,6 +494,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
              |> assign(:order, updated_order)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
 
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
+
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
         end
@@ -431,6 +530,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
        |> put_flash(:info, dgettext("default", "Supplier order posted"))
        |> push_navigate(to: Routes.path("/admin/warehouse/supplier-orders"))}
     else
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
+
       {:error, :not_draft} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
 
@@ -630,6 +732,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
       {:error, _reason} ->
         {:noreply,
          socket
@@ -677,6 +782,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                dgettext("default", "Please set a supplier before importing lines")
              )}
 
+          {:error, :deleted} ->
+            {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
           {:error, _reason} ->
             {:noreply,
              socket
@@ -704,6 +812,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
           |> assign(:source_refs, DocRefs.refs_for(updated_order.source_refs || []))
 
         {:noreply, socket}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to remove link"))}
@@ -760,7 +871,11 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     assigns =
       assigns
       |> assign(:posted?, assigns.order && assigns.order.status == "posted")
+      |> assign(:deleted?, !!(assigns.order && assigns.order.deleted_at))
       |> assign(:order_uuid, assigns.order && assigns.order.uuid)
+
+    # Posted and trashed documents are shown, not edited.
+    assigns = assign(assigns, :read_only?, assigns.posted? || assigns.deleted?)
 
     assigns = assign_new(assigns, :internal_order_ref, fn -> nil end)
     assigns = assign_new(assigns, :sub_order_ref, fn -> nil end)
@@ -783,7 +898,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
       <div class="flex flex-wrap items-center justify-end gap-2">
         <%!-- Draft: Save draft + Post --%>
-        <%= if !@posted? and @active_tab in [:general, :lines] do %>
+        <%= if !@read_only? and @active_tab in [:general, :lines] do %>
           <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save draft")}
           </button>
@@ -792,13 +907,13 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
           </button>
         <% end %>
         <%!-- Posted + admin: correction --%>
-        <%= if @posted? and @admin? and @active_tab == :general do %>
+        <%= if @posted? and not @deleted? and @admin? and @active_tab == :general do %>
           <button type="button" phx-click="save_correction" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save correction")}
           </button>
         <% end %>
         <%!-- Posted: register receipt --%>
-        <%= if @posted? do %>
+        <%= if @posted? and not @deleted? do %>
           <button type="button" phx-click="register_receipt" class="btn btn-secondary btn-sm">
             <.icon name="hero-inbox-arrow-down" class="w-4 h-4" /> {dgettext(
               "default",
@@ -828,7 +943,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
           {dgettext("default", "Lines")}
         </.link>
         <.link
-          :if={@order_uuid}
+          :if={@order_uuid && !@deleted?}
           patch={Routes.path("/admin/warehouse/supplier-orders/#{@order_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
@@ -846,6 +961,22 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
         </.link>
       </div>
 
+      <%!-- Trashed document: say so, offer the way back (drafts only) --%>
+      <div :if={@deleted?} id="so-trash-banner" class="alert alert-warning">
+        <.icon name="hero-trash" class="w-5 h-5" />
+        <span>{TrashMessages.banner(@order.deleted_at, @deleted_by_name)}</span>
+        <button
+          :if={@order.status == "draft"}
+          type="button"
+          id="so-restore"
+          phx-click="restore"
+          phx-disable-with={dgettext("default", "Restoring...")}
+          class="btn btn-sm btn-primary"
+        >
+          <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
+        </button>
+      </div>
+
       <%!-- Posted banner (non-admin) --%>
       <%= if @posted? and not @admin? do %>
         <div class="alert alert-success">
@@ -857,7 +988,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       <%!-- Tab: General --%>
       <%= if @active_tab == :general do %>
         <%!-- Note field (draft only) --%>
-        <%= if !@posted? do %>
+        <%= if !@read_only? do %>
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
               <form phx-change="set_note" phx-submit="set_note">
@@ -877,7 +1008,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
         <% end %>
 
         <%!-- Supplier select (draft only) --%>
-        <%= if !@posted? and @order do %>
+        <%= if !@read_only? and @order do %>
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
               <label class="text-base-content/60 font-medium text-sm block mb-1">
@@ -997,7 +1128,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                     </dd>
                   </div>
                 <% end %>
-                <%= if @order.note && @posted? do %>
+                <%= if @order.note && @read_only? do %>
                   <div>
                     <dt class="text-base-content/60 font-medium">
                       {dgettext("default", "Note")}
@@ -1012,9 +1143,10 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                 downstream={@child_goods_receipt_refs}
                 upstream_label={dgettext("default", "Source documents")}
                 downstream_label={dgettext("default", "Related documents")}
+                read_only={@deleted?}
               />
               <%!-- Note edit on posted (admin only) --%>
-              <%= if @posted? and @admin? do %>
+              <%= if @posted? and not @deleted? and @admin? do %>
                 <div class="divider my-1"></div>
                 <div class="text-sm">
                   <label class="text-base-content/60 font-medium block mb-1">
@@ -1046,7 +1178,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
             <div class="flex items-center justify-between gap-2 mb-2">
               <h2 class="card-title text-base">{dgettext("default", "Order Lines")}</h2>
               <div class="flex items-center gap-2">
-                <%= if !@posted? do %>
+                <%= if !@read_only? do %>
                   <button
                     type="button"
                     phx-click="open_source_picker"
@@ -1067,7 +1199,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
             </div>
             <.supplier_order_lines_table
               lines={@lines}
-              posted?={@posted?}
+              posted?={@read_only?}
               received_summary={@received_summary}
             />
           </div>
@@ -1084,7 +1216,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                   <span class="loading loading-spinner loading-md" />
                   <span class="ml-2">{dgettext("default", "Loading files...")}</span>
                 </div>
-              <% is_nil(@files_scope_folder_uuid) -> %>
+              <% @deleted? or is_nil(@files_scope_folder_uuid) -> %>
                 <div class="alert alert-warning">
                   {dgettext("default", "Files are not available for this supplier order yet.")}
                 </div>

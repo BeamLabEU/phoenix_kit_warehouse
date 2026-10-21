@@ -1063,6 +1063,105 @@ msgstr "Laos"
 msgid "Only posted internal orders can create goods issues"
 msgstr "Kauba väljastamisi saab luua ainult sisestatud sistellimustest"
 
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:17
+#, elixir-autogen, elixir-format
+msgid "%{document} restored from the trash."
+msgstr "%{document} taastati prügikastist."
+
+#: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:29
+#, elixir-autogen, elixir-format
+msgid "Active"
+msgstr "Aktiivsed"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:460
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:648
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:460
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:650
+#, elixir-autogen, elixir-format
+msgid "Deleted"
+msgstr "Kustutatud"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:463
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:649
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:463
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:651
+#, elixir-autogen, elixir-format
+msgid "Deleted by"
+msgstr "Kustutaja"
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:38
+#, elixir-autogen, elixir-format
+msgid "Document moved to the trash"
+msgstr "Dokument viidi prügikasti"
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:34
+#, elixir-autogen, elixir-format
+msgid "Document not found"
+msgstr "Dokumenti ei leitud"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1212
+#, elixir-autogen, elixir-format
+msgid "Draft supplier orders %{numbers} for the same suppliers may be moved to the trash. Continue?"
+msgstr "Samade tarnijate tarnijatellimuste mustandid %{numbers} võidakse viia prügikasti. Jätka?"
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:35
+#, elixir-autogen, elixir-format
+msgid "Failed to restore the document"
+msgstr "Dokumendi taastamine ebaõnnestus"
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:27
+#, elixir-autogen, elixir-format
+msgid "Moved to the trash: %{numbers}."
+msgstr "Viidi prügikasti: %{numbers}."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:33
+#, elixir-autogen, elixir-format
+msgid "Only drafts can be restored"
+msgstr "Taastada saab ainult mustandeid"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:515
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:515
+#, elixir-autogen, elixir-format
+msgid "Open"
+msgstr "Ava"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:954
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:525
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:942
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:525
+#, elixir-autogen, elixir-format
+msgid "Restore"
+msgstr "Taasta"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:978
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:533
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:973
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:533
+#, elixir-autogen, elixir-format
+msgid "Restoring..."
+msgstr "Taastamine..."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:480
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:480
+#, elixir-autogen, elixir-format
+msgid "The trash is empty"
+msgstr "Prügikast on tühi"
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:42
+#, elixir-autogen, elixir-format
+msgid "This document is in the trash (deleted %{date} by %{user})."
+msgstr "See dokument on prügikastis (kustutatud %{date}, kustutaja %{user})."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:32
+#, elixir-autogen, elixir-format
+msgid "This document is not in the trash"
+msgstr "See dokument ei ole prügikastis"
+
+#: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:40
+#, elixir-autogen, elixir-format
+msgid "Trash (%{count})"
+msgstr "Prügikast (%{count})"
+
 #: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:614
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can generate supplier orders"
