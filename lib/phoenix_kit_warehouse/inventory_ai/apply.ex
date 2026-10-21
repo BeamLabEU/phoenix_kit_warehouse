@@ -53,8 +53,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
   fingerprint is `base_fingerprint`; `actor` is who pressed Apply.
 
   A row: `%{"row" => n, "item_uuid" => uuid, "quantity" => qty}`, with
-  `"action"` (the line's default when absent, see `Lines.choices/3`) and
-  `"package_size"` (the units per package a person typed) optional.
+  `"action"` (the line's default when absent, see `Lines.choices/3`),
+  `"package_size"` (the units per package a person typed) and
+  `"merged_rows"` (the other rows of the proposal the table merged into
+  this one: their objects count together, and none of them may be applied
+  again) optional.
 
   `{:ok, %{document: doc, run: run, summary: summary}}` - `doc` read back,
   with `doc.lines` and `doc.fingerprint` the tab's new buffer and base.
@@ -185,7 +188,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
       end)
 
     rows = for {:ok, row} <- checked, do: row
-    errors = errors ++ repeated(rows, :row, "row") ++ repeated(rows, :item_uuid, "item_uuid")
+
+    errors =
+      errors ++ repeated_numbers(rows) ++ repeated(rows, :item_uuid, "item_uuid")
 
     if errors == [], do: {:ok, rows}, else: {:error, {:invalid_rows, errors}}
   end
@@ -195,12 +200,14 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
   defp check_row(row, proposal) when is_map(row) do
     number = whole(row["row"])
     proposed = number && proposal[number]
+    merged = merged_rows(row["merged_rows"], number, proposal)
     quantity = quantity(row["quantity"])
     package_size = package_size(row["package_size"])
 
     errors =
       []
       |> add_error(is_nil(proposed), number, "row", :unknown)
+      |> add_error(merged == :error, number, "merged_rows", :unknown)
       |> add_error(Ecto.UUID.cast(row["item_uuid"]) == :error, number, "item_uuid", :invalid)
       |> add_error(field_error(quantity), number, "quantity")
       |> add_error(field_error(package_size), number, "package_size")
@@ -209,7 +216,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
       {:ok,
        %{
          row: number,
-         proposed: proposed,
+         merged_rows: merged,
+         proposed: merge_proposed(proposed, merged, proposal),
          item_uuid: row["item_uuid"],
          quantity: elem(quantity, 1),
          package_size: elem(package_size, 1),
@@ -221,6 +229,42 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
   end
 
   defp check_row(_row, _proposal), do: {:error, [%{row: nil, field: "row", error: :unknown}]}
+
+  # The other rows of the proposal a row of the table stands for, when the
+  # table merged rows of one item: numbers of the proposal, other than the
+  # row's own.
+  defp merged_rows(nil, _number, _proposal), do: []
+
+  defp merged_rows(numbers, number, proposal) when is_list(numbers) do
+    merged = Enum.map(numbers, &whole/1)
+
+    if Enum.all?(merged, &(is_integer(&1) and &1 != number and Map.has_key?(proposal, &1))),
+      do: merged,
+      else: :error
+  end
+
+  defp merged_rows(_numbers, _number, _proposal), do: :error
+
+  # The objects of every row a merged row stands for count together.
+  defp merge_proposed(proposed, [], _proposal), do: proposed
+
+  defp merge_proposed(proposed, merged, proposal) do
+    objects = Enum.flat_map([proposed | Enum.map(merged, &proposal[&1])], &(&1["objects"] || []))
+    Map.put(proposed, "objects", objects)
+  end
+
+  # A row of the proposal applied once: as a row of its own or merged into
+  # another.
+  defp repeated_numbers(rows) do
+    rows
+    |> Enum.flat_map(fn row -> Enum.map([row.row | row.merged_rows], &{&1, row.row}) end)
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+    |> Enum.flat_map(fn
+      {_number, [_one]} -> []
+      {_number, [_ | more]} -> Enum.map(more, &%{row: &1, field: "row", error: :repeated})
+    end)
+    |> Enum.uniq()
+  end
 
   defp add_error(errors, false, _row, _field, _error), do: errors
 
@@ -339,6 +383,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
           {:ok, lines,
            %{
              row: row.row,
+             merged_rows: row.merged_rows,
              item_uuid: item.uuid,
              action: action,
              quantity: row.quantity,
@@ -404,6 +449,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
         Enum.map(applied, fn entry ->
           %{
             "row" => entry.row,
+            "merged_rows" => entry.merged_rows,
             "item_uuid" => entry.item_uuid,
             "action" => entry.action,
             "quantity" => entry.quantity,

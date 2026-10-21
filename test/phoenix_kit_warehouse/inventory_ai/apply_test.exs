@@ -325,6 +325,60 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
     end
   end
 
+  describe "rows the table merged" do
+    test "a merged row counts the formulas of all its rows and keeps them in the decisions",
+         ctx do
+      doc = draft!(ctx.location, [])
+
+      run =
+        run!(doc, ctx, "A", [
+          object(%{"catalogue_no" => 2, "loose_units" => 9}),
+          object(%{"object_key" => "B", "catalogue_no" => nil, "loose_units" => 4})
+        ])
+
+      %{run: applied} =
+        apply!(doc, run, [row(1, ctx.screw, "13", %{"merged_rows" => [2]})], ctx.user)
+
+      screw = line(doc, ctx.screw)
+      assert eq?(screw["counted_quantity"], "13")
+      assert screw["ai_basis"] == "A: 9, 4"
+      assert [%{"row" => 1, "merged_rows" => [2]}] = applied.decisions["rows"]
+      assert_invariant(doc)
+    end
+
+    test "a merged row number that is not in the proposal, or stands twice, is refused", ctx do
+      doc = draft!(ctx.location, [])
+
+      run =
+        run!(doc, ctx, "A", [
+          object(%{"catalogue_no" => 2, "loose_units" => 9}),
+          object(%{"object_key" => "B", "catalogue_no" => 1, "loose_units" => 4})
+        ])
+
+      {:ok, loaded} = Inventories.get_document_with_fingerprint(doc.uuid)
+
+      apply = fn rows ->
+        InventoryAI.apply_run(run, loaded.fingerprint, loaded.lines, rows, ctx.user,
+          inventory_uuid: doc.uuid
+        )
+      end
+
+      assert {:error, {:invalid_rows, [%{row: 1, field: "merged_rows", error: :unknown}]}} =
+               apply.([row(1, ctx.screw, "13", %{"merged_rows" => [7]})])
+
+      assert {:error, {:invalid_rows, [%{row: 1, field: "merged_rows", error: :unknown}]}} =
+               apply.([row(1, ctx.screw, "13", %{"merged_rows" => "2"})])
+
+      assert {:error, {:invalid_rows, [%{row: 2, field: "row", error: :repeated}]}} =
+               apply.([
+                 row(1, ctx.screw, "13", %{"merged_rows" => [2]}),
+                 row(2, ctx.hinge, "4")
+               ])
+
+      assert InventoryAI.get_run(doc.uuid, run.uuid).status == "proposed"
+    end
+  end
+
   describe "what is kept" do
     test "the decisions in the run and the journal entry", ctx do
       doc = draft!(ctx.location)
