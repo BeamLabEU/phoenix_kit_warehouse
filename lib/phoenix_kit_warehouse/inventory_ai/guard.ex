@@ -178,12 +178,14 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
     `self_flag: true` with no automatic block (`auto_block_threshold: nil`):
     the module flags the off-purpose photos itself, a flag gives a signal, and
     only a person blocks. `typical_tokens` is one batch of the probes: the
-    photos plus the whole catalogue in, the counted objects out.
+    photos plus the whole catalogue in, the counted objects out. Built with
+    `struct/2`, which leaves out a field the installed `TaskSpec` does not
+    have yet: a literal would not compile against it.
     """
     @spec ai_tasks() :: [struct()]
     def ai_tasks do
       [
-        %PhoenixKitAI.TaskSpec{
+        struct(PhoenixKitAI.TaskSpec,
           key: @task_key,
           label: label(),
           gettext_backend: PhoenixKitWarehouse.Gettext,
@@ -196,7 +198,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
           auto_block_threshold: nil,
           typical_tokens: {30_000, 4_000},
           endpoints: {PhoenixKitWarehouse.InventoryAI, :endpoint_uuids, []}
-        }
+        )
       ]
     end
   else
