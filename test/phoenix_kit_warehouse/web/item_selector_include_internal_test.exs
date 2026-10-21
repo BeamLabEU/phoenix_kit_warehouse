@@ -5,9 +5,9 @@ defmodule PhoenixKitWarehouse.Web.ItemSelectorIncludeInternalTest do
   fastener the picker silently skips is a line nobody can book.
 
   Catalogue 0.49+ hides the internal branch in `ItemSelectorModal` unless it
-  gets `include_internal`. The catalogue this tree is locked to (0.48.1) has no
-  such rule and drops the attr without a trace, so the modal's own state shows
-  nothing there. These tests therefore trace the `ItemSelectorModal.update/2`
+  gets `include_internal`. An older catalogue (the `~> 0.18` range allows one)
+  has no such rule and drops the attr without a trace, so the modal's own state
+  shows nothing there. These tests therefore trace the `ItemSelectorModal.update/2`
   call the LiveView makes when the picker opens and read the assigns it hands
   over. That holds on any catalogue version; deleting `include_internal={true}`
   from a form fails its test.
