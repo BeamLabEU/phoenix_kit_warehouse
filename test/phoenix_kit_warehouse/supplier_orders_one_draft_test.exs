@@ -298,7 +298,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
       assert [entry] = activity("warehouse.supplier_order.trashed", old.uuid)
       assert entry.resource_type == "supplier_order"
       assert entry.actor_uuid == actor
-      assert entry.metadata["reason"] == "superseded"
+      assert entry.metadata["trash_reason"] == "superseded"
       assert entry.metadata["superseded_by_uuid"] == new.uuid
       assert entry.metadata["number"] == to_string(old.number)
     end
@@ -374,7 +374,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
       refute live?(rival_b)
 
       assert [entry] = activity("warehouse.supplier_order.trashed", rival_a.uuid)
-      assert entry.metadata["reason"] == "restore_swap"
+      assert entry.metadata["trash_reason"] == "restore_swap"
       assert entry.metadata["superseded_by_uuid"] == trashed.uuid
     end
 
@@ -532,7 +532,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
 
       assert [entry] = activity("warehouse.supplier_order.trashed", so.uuid)
       assert entry.actor_uuid == actor
-      assert entry.metadata["reason"] == "manual"
+      assert entry.metadata["trash_reason"] == "manual"
       refute Map.has_key?(entry.metadata, "superseded_by_uuid")
     end
 

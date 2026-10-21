@@ -171,9 +171,10 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   Logs the move of an internal order to the trash.
 
   Options: `:actor_uuid` (who pressed the button, not the author of the
-  order), `:reason` (`"superseded"`, `"manual"` or `"restore_swap"`) and
-  `:superseded_by_uuid` (the order that took its place; left out when `nil`).
-  Meant to be called after the transaction that did the move has committed.
+  order), `:reason` (`"superseded"`, `"manual"` or `"restore_swap"`, stored
+  as `"trash_reason"` in the metadata) and `:superseded_by_uuid` (the order
+  that took its place; left out when `nil`). Meant to be called after the
+  transaction that did the move has committed.
   """
   def log_internal_order_trashed(%InternalOrder{} = order, opts),
     do: log_trashed("warehouse.internal_order.trashed", "internal_order", order, opts)
@@ -197,6 +198,60 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   def log_supplier_order_restored(%SupplierOrder{} = order, opts),
     do: log_restored("warehouse.supplier_order.restored", "supplier_order", order, opts)
 
+  @doc """
+  Logs the move of a goods receipt to the trash; options as
+  `log_internal_order_trashed/2`.
+  """
+  def log_goods_receipt_trashed(%GoodsReceipt{} = receipt, opts),
+    do: log_trashed("warehouse.goods_receipt.trashed", "goods_receipt", receipt, opts)
+
+  @doc """
+  Logs the restore of a goods receipt from the trash. Options: `:actor_uuid`.
+  """
+  def log_goods_receipt_restored(%GoodsReceipt{} = receipt, opts),
+    do: log_restored("warehouse.goods_receipt.restored", "goods_receipt", receipt, opts)
+
+  @doc """
+  Logs the move of a goods issue to the trash; options as
+  `log_internal_order_trashed/2`. The issue's own `"reason"` stays in the
+  metadata beside `"trash_reason"`.
+  """
+  def log_goods_issue_trashed(%GoodsIssue{} = issue, opts),
+    do: log_trashed("warehouse.goods_issue.trashed", "goods_issue", issue, opts)
+
+  @doc """
+  Logs the restore of a goods issue from the trash. Options: `:actor_uuid`.
+  """
+  def log_goods_issue_restored(%GoodsIssue{} = issue, opts),
+    do: log_restored("warehouse.goods_issue.restored", "goods_issue", issue, opts)
+
+  @doc """
+  Logs the move of an inventory document to the trash; options as
+  `log_internal_order_trashed/2`.
+  """
+  def log_inventory_trashed(%InventoryDocument{} = doc, opts),
+    do: log_trashed("warehouse.inventory.trashed", "inventory_document", doc, opts)
+
+  @doc """
+  Logs the restore of an inventory document from the trash. Options:
+  `:actor_uuid`.
+  """
+  def log_inventory_restored(%InventoryDocument{} = doc, opts),
+    do: log_restored("warehouse.inventory.restored", "inventory_document", doc, opts)
+
+  @doc """
+  Logs the move of a transfer to the trash; options as
+  `log_internal_order_trashed/2`.
+  """
+  def log_transfer_trashed(%Transfer{} = transfer, opts),
+    do: log_trashed("warehouse.transfer.trashed", "transfer", transfer, opts)
+
+  @doc """
+  Logs the restore of a transfer from the trash. Options: `:actor_uuid`.
+  """
+  def log_transfer_restored(%Transfer{} = transfer, opts),
+    do: log_restored("warehouse.transfer.restored", "transfer", transfer, opts)
+
   ## Internals
 
   # A move to the trash or back is always somebody's click; `:mode` follows
@@ -206,29 +261,31 @@ defmodule PhoenixKitWarehouse.ActivityLog do
     [actor_uuid: actor_uuid, mode: if(actor_uuid, do: "manual", else: "auto")]
   end
 
-  defp log_trashed(action, resource_type, order, opts) do
+  # The reason of the move goes under "trash_reason": a goods issue already
+  # has a "reason" of its own (why the goods left) in `base_metadata/1`.
+  defp log_trashed(action, resource_type, doc, opts) do
     metadata =
-      %{"reason" => Keyword.get(opts, :reason)}
+      %{"trash_reason" => Keyword.get(opts, :reason)}
       |> put_unless_nil("superseded_by_uuid", Keyword.get(opts, :superseded_by_uuid))
 
     log(
       %{
         action: action,
         resource_type: resource_type,
-        resource_uuid: order.uuid,
-        metadata: Map.merge(base_metadata(order), metadata)
+        resource_uuid: doc.uuid,
+        metadata: Map.merge(base_metadata(doc), metadata)
       },
       trash_log_opts(opts)
     )
   end
 
-  defp log_restored(action, resource_type, order, opts) do
+  defp log_restored(action, resource_type, doc, opts) do
     log(
       %{
         action: action,
         resource_type: resource_type,
-        resource_uuid: order.uuid,
-        metadata: base_metadata(order)
+        resource_uuid: doc.uuid,
+        metadata: base_metadata(doc)
       },
       trash_log_opts(opts)
     )
