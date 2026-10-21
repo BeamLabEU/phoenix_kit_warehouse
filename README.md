@@ -256,6 +256,10 @@ conducted as usual. What the module does around that:
   Owner/Admin). Choosing the endpoint is choosing where money goes: the settings
   block is shown to, and saved by, a holder of the `ai` permission or an
   administrator only. The money limits are ai's.
+- **Time and cost.** One batch is one vision call: the photos and the whole
+  live catalogue in, the counted objects out. Measured on a catalogue of about
+  600 items with a Gemini Flash model through OpenRouter: 33-75 seconds and
+  about $0.04-0.07 per batch, most of it the model's output with its reasoning.
 - **Settings** (`PhoenixKit.Settings`): `warehouse_inventory_ai_endpoint_uuid`
   (empty: no button), `warehouse_inventory_ai_prompt_uuid` (the module's own
   prompt in the ai prompts, made on first use; a prompt edited by hand is never
