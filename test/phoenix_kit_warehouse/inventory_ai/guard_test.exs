@@ -231,7 +231,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
       defmodule PhoenixKitAI.TaskSpec do
         defstruct [
           :key, :label, :gettext_backend, :purpose, :needs, :self_flag,
-          :auto_block_threshold, :endpoints, private: false
+          :auto_block_threshold, :typical_tokens, :endpoints, private: false
         ]
       end
       """)
@@ -257,7 +257,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
       assert spec.key == @task
       assert spec.needs == [:vision, :json_schema]
       assert spec.self_flag == true
-      assert spec.auto_block_threshold == 0
+      assert spec.auto_block_threshold == nil
+      assert spec.typical_tokens == {30_000, 4_000}
       assert spec.gettext_backend == PhoenixKitWarehouse.Gettext
       assert spec.label == "Inventory count from photos"
       assert is_binary(spec.purpose) and spec.purpose != ""

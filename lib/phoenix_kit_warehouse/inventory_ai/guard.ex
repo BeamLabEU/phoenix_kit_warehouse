@@ -175,8 +175,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
     @doc """
     The task the guard knows this module's AI use by (phoenix_kit_ai task
     guard). `PhoenixKitWarehouse.ai_tasks/0` hands it to the guard's registry.
-    `self_flag: true`, threshold 0: the module flags the off-purpose photos
-    itself, and a flag gives a signal, never a block.
+    `self_flag: true` with no automatic block (`auto_block_threshold: nil`):
+    the module flags the off-purpose photos itself, a flag gives a signal, and
+    only a person blocks. `typical_tokens` is one batch of the probes: the
+    photos plus the whole catalogue in, the counted objects out.
     """
     @spec ai_tasks() :: [struct()]
     def ai_tasks do
@@ -191,7 +193,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
               "that are visible and how many of each. Photos of shelves, boxes and stacks; " <>
               "nothing else is asked.",
           self_flag: true,
-          auto_block_threshold: 0,
+          auto_block_threshold: nil,
+          typical_tokens: {30_000, 4_000},
           endpoints: {PhoenixKitWarehouse.InventoryAI, :endpoint_uuids, []}
         }
       ]
