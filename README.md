@@ -263,7 +263,7 @@ mix phoenix_kit.update
 ### Removing this module
 
 There is deliberately **no automated uninstall**.
-`PhoenixKitWarehouse.Migrations.down/1` never drops any of the 8
+`PhoenixKitWarehouse.Migrations.down/1` never drops any of its
 `phoenix_kit_warehouse_*` tables or a row in them, for any target version —
 a host that merely removes this dependency from `mix.exs` has not consented
 to deleting live stock balances and document history, and a migration
@@ -275,6 +275,8 @@ step, in FK-safe order (children before parents):
 ```sql
 -- Only after removing :phoenix_kit_warehouse from mix.exs, and only if you
 -- actually want every stock balance and document gone for good.
+-- The runs of the photo inventory first: they reference the inventory documents.
+DROP TABLE phoenix_kit_warehouse_inventory_ai_runs;
 DROP TABLE phoenix_kit_warehouse_goods_issues;
 DROP TABLE phoenix_kit_warehouse_goods_receipts;
 DROP TABLE phoenix_kit_warehouse_supplier_orders;

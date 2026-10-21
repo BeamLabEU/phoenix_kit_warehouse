@@ -48,7 +48,7 @@ defmodule PhoenixKitWarehouse.MigrationsTest do
     alias PhoenixKit.Migrations.Postgres.Helpers
 
     test "current_version/0 and version_table/0" do
-      assert Migrations.current_version() == 2
+      assert Migrations.current_version() == 3
       assert Migrations.version_table() == "phoenix_kit_warehouse_stock"
     end
 
@@ -282,7 +282,7 @@ defmodule PhoenixKitWarehouse.MigrationsTest do
       statements = Migrations.up_statements()
 
       assert List.last(statements) ==
-               "COMMENT ON TABLE public.phoenix_kit_warehouse_stock IS 'pkw_schema:2'",
+               "COMMENT ON TABLE public.phoenix_kit_warehouse_stock IS 'pkw_schema:3'",
              "the marker must be stamped after the DDL it certifies, not before"
     end
 
@@ -328,6 +328,9 @@ defmodule PhoenixKitWarehouse.MigrationsTest do
 
       assert Migrations.down_statements("public", 2) ==
                ["COMMENT ON TABLE public.phoenix_kit_warehouse_stock IS 'pkw_schema:2'"]
+
+      assert Migrations.down_statements("public", 3) ==
+               ["COMMENT ON TABLE public.phoenix_kit_warehouse_stock IS 'pkw_schema:3'"]
     end
 
     # For `up/1` the expected content is the full set of OPERATIONS rather
@@ -422,6 +425,10 @@ defmodule PhoenixKitWarehouse.MigrationsTest do
       {"CREATE UNIQUE INDEX", "phoenix_kit_warehouse_goods_issues_external_ref_index"},
       {"CREATE UNIQUE INDEX", "phoenix_kit_warehouse_goods_receipts_external_ref_index"},
       {"CREATE UNIQUE INDEX", "phoenix_kit_warehouse_inventory_documents_external_ref_index"},
+      # V3: the runs of the photo inventory, their document index and one running run per document.
+      {"CREATE TABLE", "phoenix_kit_warehouse_inventory_ai_runs"},
+      {"CREATE INDEX", "phoenix_kit_warehouse_inventory_ai_runs_inventory_uuid_index"},
+      {"CREATE UNIQUE INDEX", "phoenix_kit_warehouse_inventory_ai_runs_running_index"},
       {"COMMENT ON TABLE", "phoenix_kit_warehouse_stock"}
     ]
 
@@ -544,7 +551,7 @@ defmodule PhoenixKitWarehouse.MigrationsTest do
                  "up_statements(#{inspect(prefix)}) contains: #{stmt}"
         end
 
-        for target <- [0, 1, 2] do
+        for target <- [0, 1, 2, 3] do
           for stmt <- Migrations.down_statements(prefix, target) do
             refute strip_referential_actions(stmt) =~ forbidden,
                    "down_statements(#{inspect(prefix)}, #{target}) contains: #{stmt}"
