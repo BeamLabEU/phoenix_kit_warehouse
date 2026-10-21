@@ -302,6 +302,16 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     |> load_doc_into_socket(uuid, socket.assigns.locale)
   end
 
+  # An event that changes the stocktake, on one in the trash.
+  defp refuse_trashed(socket) do
+    TrashActions.refuse_trashed(
+      socket,
+      :doc,
+      &(&1 |> reset_location_confirm() |> reload_doc()),
+      &resume_files_tab/1
+    )
+  end
+
   # A write found the stocktake in the trash: say so and draw the stored
   # stocktake, not the unsaved buffer.
   defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_doc/1)
@@ -377,14 +387,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   @impl true
   def handle_event(event, _params, %{assigns: %{doc: %{deleted_at: %DateTime{}}}} = socket)
       when event in @trash_blocked,
-      do:
-        {:noreply,
-         TrashActions.refuse_trashed(
-           socket,
-           :doc,
-           &(&1 |> reset_location_confirm() |> reload_doc()),
-           &resume_files_tab/1
-         )}
+      do: {:noreply, refuse_trashed(socket)}
 
   # "Move to trash" of the form's own stocktake (TrashActions); the uuid is
   # the form's, not the browser's. After the move the form is drawn as trashed.
@@ -393,19 +396,16 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
   end
 
-  def handle_event("inventory_ai_" <> _ = event, params, socket) do
-    if socket.assigns.doc && socket.assigns.doc.deleted_at do
-      {:noreply,
-       TrashActions.refuse_trashed(
-         socket,
-         :doc,
-         &(&1 |> reset_location_confirm() |> reload_doc()),
-         &resume_files_tab/1
-       )}
-    else
-      InventoryAIPanel.handle_event(event, params, socket, &apply_written/2)
-    end
-  end
+  # The photo inventory's events: every one is refused in the trash.
+  def handle_event(
+        "inventory_ai_" <> _,
+        _params,
+        %{assigns: %{doc: %{deleted_at: %DateTime{}}}} = socket
+      ),
+      do: {:noreply, refuse_trashed(socket)}
+
+  def handle_event("inventory_ai_" <> _ = event, params, socket),
+    do: InventoryAIPanel.handle_event(event, params, socket, &apply_written/2)
 
   def handle_event("request_trash", _params, socket) do
     {:noreply,
@@ -732,33 +732,17 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       lines: socket.assigns.lines
     }
 
-    doc = socket.assigns.doc
+    case ensure_saved(socket.assigns.doc, save_attrs, user_uuid, socket.assigns.base_fingerprint) do
+      {:ok, saved_doc} ->
+        # The save is the tab's own write: its document and fingerprint are
+        # the tab's base, also when the posting after it fails.
+        socket
+        |> assign(:doc, saved_doc)
+        |> assign(:base_fingerprint, saved_doc.fingerprint)
+        |> post_saved(saved_doc, current_user)
 
-    with {:ok, saved_doc} <-
-           ensure_saved(doc, save_attrs, user_uuid, socket.assigns.base_fingerprint),
-         {:ok, posted_doc} <- Inventories.post_document(saved_doc, user_uuid) do
-      ActivityLog.log_posted(posted_doc, actor: current_user)
-
-      # The photo runs still open are closed: the document is no draft now.
-      InventoryAI.close_open_runs(posted_doc.uuid, current_user, "posted")
-
-      {:noreply,
-       socket
-       |> put_flash(:info, dgettext("default", "Stocktake conducted"))
-       |> push_navigate(to: Routes.path("/admin/warehouse"))}
-    else
-      {:error, :not_draft} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("default", "Document is already conducted"))}
-
-      {:error, :deleted} ->
-        {:noreply, trashed_meanwhile(socket)}
-
-      {:error, :stale} ->
-        {:noreply, put_flash(socket, :error, InventoryAI.error_message(:stale))}
-
-      {:error, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("default", "Failed to conduct stocktake"))}
+      error ->
+        {:noreply, post_failed(socket, error)}
     end
   end
 
@@ -1469,6 +1453,35 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   defp ensure_saved(%PhoenixKitWarehouse.InventoryDocument{} = doc, _attrs, _user_uuid, _base) do
     {:ok, doc}
   end
+
+  defp post_saved(socket, saved_doc, current_user) do
+    case Inventories.post_document(saved_doc, current_user && current_user.uuid) do
+      {:ok, posted_doc} ->
+        ActivityLog.log_posted(posted_doc, actor: current_user)
+
+        # The photo runs still open are closed: the document is no draft now.
+        InventoryAI.close_open_runs(posted_doc.uuid, current_user, "posted")
+
+        {:noreply,
+         socket
+         |> put_flash(:info, dgettext("default", "Stocktake conducted"))
+         |> push_navigate(to: Routes.path("/admin/warehouse"))}
+
+      error ->
+        {:noreply, post_failed(socket, error)}
+    end
+  end
+
+  defp post_failed(socket, {:error, :not_draft}),
+    do: put_flash(socket, :error, dgettext("default", "Document is already conducted"))
+
+  defp post_failed(socket, {:error, :deleted}), do: trashed_meanwhile(socket)
+
+  defp post_failed(socket, {:error, :stale}),
+    do: put_flash(socket, :error, InventoryAI.error_message(:stale))
+
+  defp post_failed(socket, {:error, _reason}),
+    do: put_flash(socket, :error, dgettext("default", "Failed to conduct stocktake"))
 
   # The photo inventory applied a proposal (`InventoryAI.apply_run/6` read the
   # document back): the written lines are the new buffer, their fingerprint

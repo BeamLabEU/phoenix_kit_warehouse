@@ -97,6 +97,29 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveFingerprintTest do
       assert render_click(a, "post", %{}) =~ stale_text()
       assert Inventories.get_document!(ctx.doc.uuid).status == "draft"
     end
+
+    test "a Conduct that saved the lines and then failed leaves the tab's base the saved one",
+         ctx do
+      # A line of -5 cannot be posted: the save before the posting passes,
+      # the posting fails.
+      doc =
+        draft!(ctx.doc.location_uuid, [
+          %{"item_uuid" => ctx.hinge.uuid, "counted_quantity" => "-5"},
+          %{"item_uuid" => ctx.screw.uuid, "counted_quantity" => "40"}
+        ])
+
+      {:ok, a, _} = live(ctx.conn, items_path(doc))
+      set_counted(a, index_of(doc, ctx.screw), "480")
+
+      html = render_click(a, "post", %{})
+      assert html =~ "Failed to conduct stocktake"
+      assert Inventories.get_document!(doc.uuid).status == "draft"
+      assert Lines.decimal(line(doc, ctx.screw)["counted_quantity"]) |> Decimal.eq?(480)
+
+      set_counted(a, index_of(doc, ctx.screw), "470")
+      refute render_click(a, "save_draft", %{}) =~ stale_text()
+      assert Lines.decimal(line(doc, ctx.screw)["counted_quantity"]) |> Decimal.eq?(470)
+    end
   end
 
   describe "the warehouse change" do
