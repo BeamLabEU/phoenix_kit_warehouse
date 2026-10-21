@@ -740,6 +740,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   defp shown?(ai, %InventoryDocument{status: "draft", deleted_at: nil}), do: ai.can_edit?
   defp shown?(_ai, _doc), do: false
 
+  # Anything the panel shows: without it the panel takes no room on the tab.
+  defp content?(ai, doc) do
+    ai.error != nil or ai.notice != nil or ai.runs != [] or (ai.open? and visible?(ai, doc)) or
+      ai.review != nil
+  end
+
   @doc """
   Above the count sheet: the runs of the document, the panel (when opened)
   and the open proposal.
@@ -753,7 +759,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   def panel(assigns) do
     ~H"""
-    <div :if={shown?(@ai, @doc)} class="flex flex-col gap-3">
+    <div
+      :if={shown?(@ai, @doc) and content?(@ai, @doc)}
+      id="inventory-ai-area"
+      class="mb-3 flex flex-col gap-3"
+    >
       <div :if={@ai.error} id="inventory-ai-error" class="alert alert-error text-sm py-2">
         <.icon name="hero-exclamation-triangle" class="w-4 h-4" />
         <span>{@ai.error}</span>
@@ -961,7 +971,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   defp runs(assigns) do
     ~H"""
-    <details id="inventory-ai-runs" class="collapse collapse-arrow bg-base-100 border border-base-200">
+    <details
+      id="inventory-ai-runs"
+      phx-mounted={Phoenix.LiveView.JS.ignore_attributes(["open"])}
+      class="collapse collapse-arrow bg-base-100 border border-base-200"
+    >
       <summary class="collapse-title min-h-0 py-2 text-sm font-medium">
         {dgettext("default", "Photo batches (%{count})", count: length(@ai.runs))}
         <span

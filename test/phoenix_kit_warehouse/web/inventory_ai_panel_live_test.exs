@@ -136,6 +136,21 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       assert has_element?(lv, "#inventory-ai-privacy")
     end
 
+    test "the panel takes no room on the Items tab while it has nothing to show", ctx do
+      lv = open!(ctx)
+      refute has_element?(lv, "#inventory-ai-area")
+
+      lv |> element("#inventory-ai-open") |> render_click()
+      assert has_element?(lv, "#inventory-ai-area #inventory-ai-panel")
+    end
+
+    test "the list of batches keeps the state a person opened it in through an update", ctx do
+      run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
+      lv = open!(ctx)
+
+      assert has_element?(lv, "details#inventory-ai-runs[phx-mounted*=ignore_attrs]")
+    end
+
     test "not without an endpoint", ctx do
       :ok = Settings.set_endpoint_uuid(nil)
       refute has_element?(open!(ctx), "#inventory-ai-open")

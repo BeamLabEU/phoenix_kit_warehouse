@@ -1222,16 +1222,14 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
                 <% end %>
               </div>
             </div>
-            <div class="mb-3">
-              <InventoryAIPanel.panel
-                ai={@ai}
-                doc={@doc}
-                uploads={@uploads}
-                lines={@lines}
-                stock_map={@stock_map}
-                locale={@locale}
-              />
-            </div>
+            <InventoryAIPanel.panel
+              ai={@ai}
+              doc={@doc}
+              uploads={@uploads}
+              lines={@lines}
+              stock_map={@stock_map}
+              locale={@locale}
+            />
             <WarehouseBrowser.count_sheet
               lines={@lines}
               track_value={@track_value}
