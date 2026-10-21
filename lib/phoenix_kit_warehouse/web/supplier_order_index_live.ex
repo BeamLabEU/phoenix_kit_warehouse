@@ -40,11 +40,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     ColumnModal,
     FilterChips,
     SetupNotice,
+    TrashAction,
     TrashTabs,
     WarehouseHeader
   }
 
-  alias PhoenixKitWarehouse.Web.TrashMessages
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages}
   alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -66,6 +67,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
       |> assign(:trash_count, 0)
+      |> assign(:trash_candidate, nil)
       |> ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
 
     {:ok, socket}
@@ -128,6 +130,17 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
          |> assign_orders()}
     end
   end
+
+  # "Move to trash" of a row: the confirmation, then the move (TrashActions).
+  @impl true
+  def handle_event("request_trash", %{"uuid" => uuid}, socket),
+    do: {:noreply, TrashActions.request_trash(socket, :supplier_order, uuid, &assign_orders/1)}
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :supplier_order, &assign_orders/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
 
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
@@ -214,6 +227,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
         number: order.number,
         status: order.status,
         status_label: status_label(order.status),
+        trash_reason: TrashActions.blocked_reason(order),
         supplier_uuid: order.supplier_uuid,
         supplier_name: supplier && supplier.name,
         internal_order_uuid: order.internal_order_uuid,
@@ -429,6 +443,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
             </button>
           </:toolbar_actions>
 
+          <:card_actions :let={entry}>
+            <div class="relative z-10">
+              <.row_menu id_prefix="so-card" entry={entry} view={@view} />
+            </div>
+          </:card_actions>
+
           <:card_header :let={entry}>
             <.link
               navigate={
@@ -512,30 +532,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
                   </.table_default_cell>
                 <% end %>
                 <.table_default_cell class="relative z-10 w-12">
-                  <.table_row_menu id={"so-menu-#{entry.uuid}"}>
-                    <.table_row_menu_link
-                      navigate={
-                        PhoenixKit.Utils.Routes.path(
-                          "/admin/warehouse/supplier-orders/#{entry.uuid}"
-                        )
-                      }
-                      icon={if @view == "trash", do: "hero-eye", else: "hero-pencil-square"}
-                      label={
-                        if @view == "trash",
-                          do: dgettext("default", "Open"),
-                          else: dgettext("default", "Edit")
-                      }
-                    />
-                    <.table_row_menu_button
-                      :if={@view == "trash" and entry.status == "draft"}
-                      id={"so-restore-#{entry.uuid}"}
-                      phx-click="restore"
-                      phx-disable-with={dgettext("default", "Restoring...")}
-                      phx-value-uuid={entry.uuid}
-                      icon="hero-arrow-uturn-left"
-                      label={dgettext("default", "Restore")}
-                    />
-                  </.table_row_menu>
+                  <.row_menu id_prefix="so" entry={entry} view={@view} />
                 </.table_default_cell>
               </.table_default_row>
             <% end %>
@@ -550,8 +547,43 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
           temp_selected={@temp_selected_columns}
           temp_active_filters={@temp_active_filters}
         />
+
+        <TrashAction.trash_confirm id_prefix="so" candidate={@trash_candidate} />
       </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
+    """
+  end
+
+  # The ⋮ menu of a row; the card view renders it again under its own id
+  # prefix, so no id repeats on the page.
+  attr(:id_prefix, :string, required: true)
+  attr(:entry, :map, required: true)
+  attr(:view, :string, required: true)
+
+  defp row_menu(assigns) do
+    ~H"""
+    <.table_row_menu id={"#{@id_prefix}-menu-#{@entry.uuid}"}>
+      <.table_row_menu_link
+        navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders/#{@entry.uuid}")}
+        icon={if @view == "trash", do: "hero-eye", else: "hero-pencil-square"}
+        label={
+          if @view == "trash",
+            do: dgettext("default", "Open"),
+            else: dgettext("default", "Edit")
+        }
+      />
+      <TrashAction.trash_menu_item
+        :if={@view == "active"}
+        id_prefix={@id_prefix}
+        uuid={@entry.uuid}
+        reason={@entry.trash_reason}
+      />
+      <TrashAction.restore_menu_item
+        :if={@view == "trash" and @entry.status == "draft"}
+        id_prefix={@id_prefix}
+        uuid={@entry.uuid}
+      />
+    </.table_row_menu>
     """
   end
 

@@ -34,7 +34,15 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
-  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+
+  alias PhoenixKitWarehouse.Web.Components.{
+    CommentsPanel,
+    RelatedDocuments,
+    TrashAction,
+    WarehouseBrowser
+  }
+
+  alias PhoenixKitWarehouse.Web.TrashActions
   alias PhoenixKitWarehouse.Web.TrashMessages
   alias PhoenixKitWarehouse.Web.UserNames
 
@@ -82,6 +90,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       |> assign(:child_goods_receipt_refs, [])
       |> assign(:suppliers, [])
       |> assign(:deleted_by_name, nil)
+      |> assign(:trash_candidate, nil)
       |> assign(:show_source_picker, false)
       |> assign(:picker_purpose, :import)
       |> assign(:source_picker_candidates, [])
@@ -343,6 +352,28 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
         {:noreply, resume_files_tab(socket)}
     end
   end
+
+  # "Move to trash" of the form's own document (TrashActions); the uuid is the
+  # form's, not the browser's. After the move the form is drawn as trashed.
+  def handle_event("request_trash", _params, %{assigns: %{order: nil}} = socket) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
+  def handle_event("request_trash", _params, socket) do
+    {:noreply,
+     TrashActions.request_trash(
+       socket,
+       :supplier_order,
+       socket.assigns.order.uuid,
+       &reload_order/1
+     )}
+  end
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :supplier_order, &reload_order/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
 
   def handle_event("restore", _params, %{assigns: %{order: nil}} = socket) do
     {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
@@ -897,6 +928,11 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
       <div class="flex flex-wrap items-center justify-end gap-2">
+        <TrashAction.trash_button
+          :if={@order && !@deleted?}
+          id_prefix="so"
+          reason={TrashActions.blocked_reason(@order)}
+        />
         <%!-- Draft: Save draft + Post --%>
         <%= if !@read_only? and @active_tab in [:general, :lines] do %>
           <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
@@ -1266,6 +1302,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
         selected_uuids={@source_picker_selected}
         search_query={@source_picker_query}
       />
+
+      <TrashAction.trash_confirm id_prefix="so" candidate={@trash_candidate} form />
     </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """

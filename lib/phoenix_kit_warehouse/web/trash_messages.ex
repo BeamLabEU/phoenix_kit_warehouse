@@ -1,20 +1,41 @@
 defmodule PhoenixKitWarehouse.Web.TrashMessages do
   @moduledoc false
-  # The flash texts and labels the trash views of the internal and supplier
-  # order LiveViews share.
+  # The flash texts and labels the trash views of the warehouse document
+  # LiveViews share. The sentences name the document after a colon, so they
+  # need no gendered verb: in ru/uk a stocktake is feminine, the rest masculine.
 
   use Gettext, backend: PhoenixKitWarehouse.Gettext
 
-  alias PhoenixKitWarehouse.InternalOrder
-  alias PhoenixKitWarehouse.SupplierOrder
+  alias PhoenixKitWarehouse.{
+    GoodsIssue,
+    GoodsReceipt,
+    InternalOrder,
+    InventoryDocument,
+    SupplierOrder,
+    Transfer
+  }
 
-  @doc "The label of a document as the lists print it (`#IO-12`, `#SO-7`)."
+  @doc """
+  The label of a document as the lists print it (`#IO-12`, `#SO-7`, `#GR-3`,
+  `#GI-4`, `#TR-5`); a stocktake, listed as a bare `#6`, is named
+  "Inventory #6" so a flash says what it is.
+  """
   def tag(%InternalOrder{number: number}), do: "#IO-#{number}"
   def tag(%SupplierOrder{number: number}), do: "#SO-#{number}"
+  def tag(%GoodsReceipt{number: number}), do: "#GR-#{number}"
+  def tag(%GoodsIssue{number: number}), do: "#GI-#{number}"
+  def tag(%Transfer{number: number}), do: "#TR-#{number}"
+
+  def tag(%InventoryDocument{number: number}),
+    do: dgettext("default", "Inventory #%{number}", number: number)
+
+  @doc "The flash after a move to the trash."
+  def moved(document),
+    do: dgettext("default", "Moved to the trash: %{document}.", document: tag(document))
 
   @doc "The flash after a restore: the document, and the drafts that went to the trash for it."
   def restored(order, superseded) do
-    dgettext("default", "%{document} restored from the trash.", document: tag(order))
+    dgettext("default", "Restored from the trash: %{document}.", document: tag(order))
     |> append_moved(superseded)
   end
 
