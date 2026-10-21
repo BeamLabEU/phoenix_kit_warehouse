@@ -450,6 +450,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       html = lv |> form("#inventory-ai-upload-form", %{"place" => "A"}) |> render_submit()
 
       assert html =~ InventoryAI.error_message(:invalid_photos)
+      assert html =~ "Choose the photos of this batch again."
       refute html =~ "The photos are kept in the Files tab"
       assert :sys.get_state(lv.pid).socket.assigns.ai.stored_photos == []
     end
@@ -467,6 +468,18 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
   end
 
   describe "the proposal and Apply" do
+    test "a row far below the stock, ticked by hand, says so", ctx do
+      run = run!(ctx, "Shelf A", [object(%{"catalogue_no" => 1, "loose_units" => 4})])
+      lv = open!(ctx) |> open_run(run)
+
+      refute checked?(lv, 1)
+      refute has_element?(lv, "#inventory-ai-far-below-1")
+
+      tick(lv, 1)
+      assert checked?(lv, 1)
+      assert has_element?(lv, "#inventory-ai-far-below-1")
+    end
+
     test "an alternative without a SKU shows no empty brackets", ctx do
       _bolt = item!(ctx.catalogue, %{name: "Bolt"})
       run = run!(ctx, "Shelf A", [object(%{"catalogue_no" => nil, "alternatives" => [1, 3]})])

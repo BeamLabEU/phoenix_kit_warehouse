@@ -3002,3 +3002,8 @@ msgstr[1] "Vahekaardil Failid salvestatud fotosid läheb selle partiiga kaasa: %
 #, elixir-autogen, elixir-format
 msgid "Do not send them"
 msgstr "Ära saada neid"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:599
+#, elixir-autogen, elixir-format
+msgid "Choose the photos of this batch again."
+msgstr "Valige selle partii fotod uuesti."

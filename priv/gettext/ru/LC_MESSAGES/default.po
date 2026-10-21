@@ -3009,3 +3009,8 @@ msgstr[2] "С этой партией уйдут %{count} фото, сохран
 #, elixir-autogen, elixir-format
 msgid "Do not send them"
 msgstr "Не отправлять их"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:599
+#, elixir-autogen, elixir-format
+msgid "Choose the photos of this batch again."
+msgstr "Выберите фото этой партии заново."

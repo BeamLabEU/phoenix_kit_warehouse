@@ -594,7 +594,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   # A held photo that no longer passes (trashed or moved out of the folder
   # since) would meet the same refusal on every Propose: nothing is held.
   defp refused_with(socket, _photos, :invalid_photos) do
-    update_ai(socket, &%{&1 | stored_photos: [], error: message(:invalid_photos)})
+    error =
+      message(:invalid_photos) <>
+        " " <> dgettext("default", "Choose the photos of this batch again.")
+
+    update_ai(socket, &%{&1 | stored_photos: [], error: error})
   end
 
   defp refused_with(socket, photos, reason) do
@@ -1450,6 +1454,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
         </div>
         <div
           :if={@row.checked and :sharply_below_stock in @row.reasons}
+          id={"inventory-ai-far-below-#{@row.key}"}
           class="text-warning mt-1"
         >
           {reason_text(:sharply_below_stock)}

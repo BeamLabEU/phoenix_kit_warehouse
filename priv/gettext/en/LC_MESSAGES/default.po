@@ -3002,3 +3002,8 @@ msgstr[1] "%{count} photos stored in the Files tab go with this batch."
 #, elixir-autogen, elixir-format
 msgid "Do not send them"
 msgstr "Do not send them"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:599
+#, elixir-autogen, elixir-format
+msgid "Choose the photos of this batch again."
+msgstr "Choose the photos of this batch again."
