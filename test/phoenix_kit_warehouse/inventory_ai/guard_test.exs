@@ -5,9 +5,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
   # by modules defined in the test under the names it will have.
   use PhoenixKitWarehouse.DataCase, async: false
 
+  import ExUnit.CaptureLog
+
   alias PhoenixKit.Settings
   alias PhoenixKitWarehouse.InventoryAI.Guard
-  alias PhoenixKitWarehouse.InventoryAI.GuardWithSpec
   alias PhoenixKitWarehouse.InventoryAI.Settings, as: AISettings
 
   @task "warehouse.inventory_photo"
@@ -67,13 +68,13 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
   end
 
   describe "endpoint_options/0 without the guard" do
-    test "lists every enabled endpoint, none fit-marked" do
+    test "lists every enabled endpoint" do
       on = endpoint!(%{name: "Vision on"})
       off = endpoint!(%{name: "Vision off", enabled: false})
 
       options = Guard.endpoint_options()
 
-      assert %{uuid: on_uuid, name: "Vision on", model: "google/gemini-flash", fit: nil} =
+      assert %{uuid: on_uuid, name: "Vision on", model: "google/gemini-flash"} =
                Enum.find(options, &(&1.uuid == on.uuid))
 
       assert on_uuid == on.uuid
@@ -95,7 +96,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
       :ok
     end
 
-    test "asks the guard for the task's endpoints and takes its fit marks" do
+    test "asks the guard for the task's endpoints; its fit marks are not kept (ai refuses a call)" do
       fit = endpoint!(%{name: "Fits"})
       unfit = endpoint!(%{name: "Does not fit"})
       Process.put(:endpoints, [{fit, :fit}, {unfit, {:unfit, [:vision]}}])
@@ -110,10 +111,56 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
 
       assert_received {:asked, @task}
 
-      assert Enum.map(options, &{&1.uuid, &1.fit}) == [
-               {fit.uuid, :fit},
-               {unfit.uuid, {:unfit, [:vision]}}
-             ]
+      assert Enum.map(options, & &1.uuid) == [fit.uuid, unfit.uuid]
+      assert Enum.all?(options, &(Map.keys(&1) |> Enum.sort() == [:model, :name, :uuid]))
+    end
+
+    test "takes an endpoint the guard lists without a mark" do
+      bare = endpoint!(%{name: "Bare"})
+      Process.put(:endpoints, [bare])
+
+      define_module(PhoenixKitAI.Tasks, """
+      defmodule PhoenixKitAI.Tasks do
+        def endpoint_options(_task), do: Process.get(:endpoints)
+      end
+      """)
+
+      assert Enum.map(Guard.endpoint_options(), & &1.uuid) == [bare.uuid]
+    end
+
+    test "a guard that raises gives every enabled endpoint and a warning" do
+      on = endpoint!(%{name: "Still offered"})
+
+      define_module(PhoenixKitAI.Tasks, """
+      defmodule PhoenixKitAI.Tasks do
+        def endpoint_options(_task), do: raise("registry is down")
+      end
+      """)
+
+      log =
+        capture_log(fn ->
+          assert on.uuid in Enum.map(Guard.endpoint_options(), & &1.uuid)
+        end)
+
+      assert log =~ "Tasks.endpoint_options/1 raised"
+      assert log =~ "offering every enabled endpoint"
+    end
+
+    test "a guard that exits gives every enabled endpoint and a warning" do
+      on = endpoint!(%{name: "Offered after an exit"})
+
+      define_module(PhoenixKitAI.Tasks, """
+      defmodule PhoenixKitAI.Tasks do
+        def endpoint_options(_task), do: exit(:noproc)
+      end
+      """)
+
+      log =
+        capture_log(fn ->
+          assert on.uuid in Enum.map(Guard.endpoint_options(), & &1.uuid)
+        end)
+
+      assert log =~ "Tasks.endpoint_options/1 exited"
     end
   end
 
@@ -201,7 +248,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
         )
       )
 
-      assert [spec] = GuardWithSpec.ai_tasks()
+      # Defined at run time just above: named by Module.concat/1, so that a
+      # plain call does not warn at compile time.
+      guard_with_spec = Module.concat(["PhoenixKitWarehouse", "InventoryAI", "GuardWithSpec"])
+
+      assert [spec] = guard_with_spec.ai_tasks()
       assert spec.__struct__ == PhoenixKitAI.TaskSpec
       assert spec.key == @task
       assert spec.needs == [:vision, :json_schema]

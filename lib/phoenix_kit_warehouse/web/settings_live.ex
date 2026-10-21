@@ -8,6 +8,11 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   Both persist to `PhoenixKit.Settings` (admin-configurable, no redeploy)
   via `PhoenixKitWarehouse.StockLedger`.
 
+  A second block, "AI: inventory from photos" (the endpoint, the limits of a
+  batch, a link to the prompt), is shown to a holder of the `ai` module or an
+  administrator only - checked in `render/1` and again in the event handler -
+  and persists through `PhoenixKitWarehouse.InventoryAI.Settings`.
+
   Admin header-breadcrumb pattern: `use PhoenixKitWeb, :live_view` + a
   `self_wrapped_layout` on_mount wrapping render/1 in `<LayoutWrapper.app_layout>`
   (title in the global admin header).
@@ -61,9 +66,9 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   # so the check is made here as well as in `render/1`: an event sent to a
   # page that does not show the block is refused.
   @impl true
-  def handle_event("save_inventory_ai", %{"inventory_ai" => params}, socket) do
+  def handle_event("save_inventory_ai", payload, socket) do
     if inventory_ai_access?(socket) do
-      {:noreply, save_inventory_ai(socket, params)}
+      {:noreply, save_inventory_ai(socket, payload)}
     else
       {:noreply,
        put_flash(
@@ -91,8 +96,11 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
       Scope.has_role?(scope, Role.system_roles().admin)
   end
 
-  defp save_inventory_ai(socket, params) do
-    options = socket.assigns.inventory_ai_options
+  # The answer of the last save is told once: both marks are cleared first, so
+  # that a failure never stands next to the "Saved." of the save before it.
+  defp save_inventory_ai(socket, %{"inventory_ai" => params}) when is_map(params) do
+    socket = assign(socket, inventory_ai_error: nil, inventory_ai_saved?: false)
+    options = endpoint_choices(InventoryAISettings.endpoint_uuid())
 
     with {:ok, endpoint_uuid} <- parse_endpoint(params["endpoint_uuid"], options),
          {:ok, max_photos} <-
@@ -105,27 +113,30 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
       socket |> load_inventory_ai() |> assign(:inventory_ai_saved?, true)
     else
       {:error, :endpoint} ->
-        assign(
+        inventory_ai_failed(
           socket,
-          :inventory_ai_error,
           dgettext("default", "Choose one of the listed endpoints, or none.")
         )
 
       {:error, {:number, limit}} ->
-        assign(
+        inventory_ai_failed(
           socket,
-          :inventory_ai_error,
           dgettext("default", "Enter whole numbers from 1 up to %{limit}.", limit: limit)
         )
 
       {:error, _reason} ->
-        assign(
-          socket,
-          :inventory_ai_error,
-          dgettext("default", "The settings could not be saved.")
-        )
+        inventory_ai_failed(socket, dgettext("default", "The settings could not be saved."))
     end
   end
+
+  defp save_inventory_ai(socket, _payload) do
+    inventory_ai_failed(
+      assign(socket, :inventory_ai_saved?, false),
+      dgettext("default", "The settings could not be saved.")
+    )
+  end
+
+  defp inventory_ai_failed(socket, message), do: assign(socket, :inventory_ai_error, message)
 
   # Empty clears; otherwise one of the offered endpoints, or the one saved
   # already (it may have been switched off since: saving the page must not
@@ -150,16 +161,10 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   defp load_inventory_ai(socket) do
     if inventory_ai_access?(socket) do
       saved = InventoryAISettings.endpoint_uuid()
-      offered = Guard.endpoint_options()
-
-      options =
-        if saved && not Enum.any?(offered, &(&1.uuid == saved)),
-          do: offered ++ [%{uuid: saved, name: nil, model: nil, fit: nil}],
-          else: offered
 
       socket
       |> assign(:inventory_ai_visible?, true)
-      |> assign(:inventory_ai_options, options)
+      |> assign(:inventory_ai_options, endpoint_choices(saved))
       |> assign(:inventory_ai_endpoint_uuid, saved)
       |> assign(:inventory_ai_max_photos, InventoryAISettings.max_photos())
       |> assign(:inventory_ai_max_items, InventoryAISettings.max_items())
@@ -173,6 +178,23 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
     end
   end
 
+  # The offered endpoints, and the saved one if it is not among them (switched
+  # off or deleted since): it stays a choice, named when it still exists.
+  defp endpoint_choices(saved) do
+    offered = Guard.endpoint_options()
+
+    if saved && not Enum.any?(offered, &(&1.uuid == saved)),
+      do: offered ++ [saved_choice(saved)],
+      else: offered
+  end
+
+  defp saved_choice(uuid) do
+    case PhoenixKitAI.get_endpoint(uuid) do
+      nil -> %{uuid: uuid, name: nil, model: nil, offered?: false}
+      endpoint -> %{uuid: uuid, name: endpoint.name, model: endpoint.model, offered?: false}
+    end
+  end
+
   defp prompt_path do
     uuid = InventoryAISettings.prompt_uuid()
 
@@ -182,6 +204,10 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   end
 
   defp endpoint_label(%{name: nil}), do: dgettext("default", "Unavailable endpoint")
+
+  defp endpoint_label(%{name: name, model: model, offered?: false}),
+    do: "#{name} (#{model}) - #{dgettext("default", "no longer offered")}"
+
   defp endpoint_label(%{name: name, model: model}), do: "#{name} (#{model})"
 
   defp load(socket) do

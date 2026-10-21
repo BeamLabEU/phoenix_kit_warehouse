@@ -72,7 +72,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
   The endpoints the settings page offers (phoenix_kit_ai task guard): what
   `PhoenixKitAI.Tasks.endpoint_options/1` says for the task when the ai has
   it, otherwise every enabled endpoint. Each is
-  `%{uuid, name, model, fit}`; `fit` is the guard's mark, `nil` without one.
+  `%{uuid, name, model}`. The guard's own fit mark is not kept: a model that
+  does not fit is refused by ai at the call (`{:model_unfit, _}`), and
+  nothing is sent or written.
   """
   @spec endpoint_options() :: [map()]
   def endpoint_options do
@@ -109,18 +111,18 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
     :unavailable
   end
 
-  defp option({%{uuid: _} = endpoint, fit}), do: [option(endpoint, fit)]
-  defp option(%{uuid: _} = endpoint), do: [option(endpoint, nil)]
+  defp option({%{uuid: _} = endpoint, _fit}), do: [to_option(endpoint)]
+  defp option(%{uuid: _} = endpoint), do: [to_option(endpoint)]
   defp option(_other), do: []
 
-  defp option(endpoint, fit),
-    do: %{uuid: endpoint.uuid, name: endpoint.name, model: endpoint.model, fit: fit}
+  defp to_option(endpoint),
+    do: %{uuid: endpoint.uuid, name: endpoint.name, model: endpoint.model}
 
   defp enabled_endpoint_options do
     {endpoints, _total} =
       PhoenixKitAI.list_endpoints(enabled: true, page_size: @endpoints_page_size)
 
-    Enum.map(endpoints, &option(&1, nil))
+    Enum.map(endpoints, &to_option/1)
   end
 
   # --- phoenix_kit_ai task guard: the off-purpose signal ----------------------------
@@ -142,7 +144,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
 
   defp signal(guard, task, user_uuid, reason, request_uuid) do
     case guard.report_off_purpose(task, user_uuid, reason, request_uuid) do
-      {:error, reason} -> failed(reason)
+      {:error, failure} -> failed(failure)
       _ok -> :ok
     end
   rescue

@@ -46,7 +46,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Prompt do
   # the model writes `description` and `basis` in the language `LANGUAGE`
   # names. No `{{` anywhere: the prompt module reads it as a variable.
   @template """
-  You count stock on photos for a warehouse. The request has the photos, numbered 1..N in the order given, then a `CATALOGUE` block and a `LANGUAGE` line (et, ru or en). The `CATALOGUE` has one line per catalogue item: `No|name|sku|unit|catalogue > category path`. A ★ in front of the number means the item is held on this warehouse.
+  You count stock on photos for a warehouse. The request has the photos, numbered 1..N in the order given, then a `CATALOGUE` block and a `LANGUAGE` line (for example et, ru, uk or en). The `CATALOGUE` has one line per catalogue item: `No|name|sku|unit|catalogue > category path`. A ★ in front of the number means the item is held on this warehouse.
 
   The photos are taken in one place and may overlap. One physical object (a box, a bin, a stack, a product) is ONE entry: give it a short `object_key` and list in `photos` every photo it is visible on. Never count the same object twice. Say in `overlap` which photos show the same things.
 

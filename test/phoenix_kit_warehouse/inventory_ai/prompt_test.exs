@@ -1,6 +1,8 @@
 defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
   use PhoenixKitWarehouse.DataCase, async: false
 
+  import ExUnit.CaptureLog
+
   alias PhoenixKit.Settings
   alias PhoenixKitWarehouse.InventoryAI.Prompt
 
@@ -201,6 +203,59 @@ defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
 
       assert followed.content == updated.content
       assert PhoenixKitAI.get_prompt(made.uuid).updated_at == updated.updated_at
+    end
+  end
+
+  describe "ensure/1: an update that cannot be made" do
+    @v1 "Rules, version one."
+    @v2 "Rules, version two."
+
+    # The update is a side job of the count: whatever goes wrong, the count
+    # asks with the prompt it read, the failure is logged without the text.
+    defp outdated_prompt! do
+      {:ok, made} = Prompt.ensure(template: @v1)
+      {made, [Prompt.template_sha(@v1)]}
+    end
+
+    test "an update the prompt module refuses leaves the prompt as read" do
+      {made, previous} = outdated_prompt!()
+
+      log =
+        capture_log(fn ->
+          # An empty template is refused by the prompt's own changeset.
+          assert Prompt.follow_template(made, template: "", previous: previous) == made
+        end)
+
+      assert log =~ "could not be brought up to the template"
+      assert log =~ made.uuid
+      refute log =~ @v1
+      assert PhoenixKitAI.get_prompt(made.uuid).content == @v1
+    end
+
+    test "an exception inside the transaction is logged and the prompt as read is used" do
+      {made, previous} = outdated_prompt!()
+
+      log =
+        capture_log(fn ->
+          assert Prompt.follow_template(made, template: nil, previous: previous) == made
+        end)
+
+      assert log =~ "could not be brought up to the template"
+      assert PhoenixKitAI.get_prompt(made.uuid).content == @v1
+    end
+
+    test "a prompt deleted after the read is used as read, nothing is made" do
+      {made, previous} = outdated_prompt!()
+      {:ok, _} = PhoenixKitAI.delete_prompt(made)
+
+      log =
+        capture_log(fn ->
+          assert Prompt.follow_template(made, template: @v2, previous: previous) == made
+        end)
+
+      assert log =~ "could not be brought up to the template"
+      assert PhoenixKitAI.get_prompt(made.uuid) == nil
+      assert ours() == []
     end
   end
 

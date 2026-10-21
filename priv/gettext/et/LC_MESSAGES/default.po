@@ -11,29 +11,29 @@ msgstr ""
 "Language: et\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:128
+#: lib/phoenix_kit_warehouse/column_config.ex:125
 #, elixir-autogen, elixir-format
 msgid "#"
 msgstr "#"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:461
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:360
 #, elixir-autogen, elixir-format
 msgid "10% reserve applied"
 msgstr "10% varu rakendatud"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1041
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:905
 #, elixir-autogen, elixir-format
 msgid "A supplier is required before posting."
 msgstr "Enne sisestamist tuleb määrata tarnija."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1200
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1063
 #, elixir-autogen, elixir-format
 msgid "Add 10% reserve"
 msgstr "+10% varu"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1204
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1140
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1139
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1055
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1021
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1003
 #, elixir-autogen, elixir-format
 msgid "Add item"
 msgstr "Lisa toode"
@@ -43,17 +43,17 @@ msgstr "Lisa toode"
 msgid "All columns selected"
 msgstr "Kõik veerud on valitud"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:855
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:757
 #, elixir-autogen, elixir-format
 msgid "All prices updated"
 msgstr "Kõik hinnad uuendatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:396
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:319
 #, elixir-autogen, elixir-format
 msgid "All quantities set to ordered"
 msgstr "Kõik kogused seatud telliturule"
 
-#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:82
+#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:81
 #, elixir-autogen, elixir-format
 msgid "Any"
 msgstr "Kõik"
@@ -63,39 +63,39 @@ msgstr "Kõik"
 msgid "Apply"
 msgstr "Rakenda"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:400
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:394
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:424
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:386
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:736
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:424
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:387
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:355
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:351
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:350
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:344
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:733
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:350
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:346
 #, elixir-autogen, elixir-format
 msgid "Ascending"
 msgstr "Kasvavalt"
 
-#: lib/phoenix_kit_warehouse/web/components/related_documents.ex:52
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1192
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1321
+#: lib/phoenix_kit_warehouse/web/components/related_documents.ex:46
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1017
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1199
 #, elixir-autogen, elixir-format
 msgid "Attach"
 msgstr "Seo"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1222
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1351
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1261
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1046
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1228
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1098
 #, elixir-autogen, elixir-format
 msgid "Attach customer order"
 msgstr "Seo kliendi tellimus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1223
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1352
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1282
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1047
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1229
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1143
 #, elixir-autogen, elixir-format
 msgid "Attach internal order"
 msgstr "Seo sisetellimus"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1353
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1230
 #, elixir-autogen, elixir-format
 msgid "Attach supplier order"
 msgstr "Seo tarnijatellimus"
@@ -108,39 +108,38 @@ msgstr "Olemas"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:180
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:701
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1232
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:844
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:857
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1113
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:717
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:730
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr "Tühista"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:381
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:406
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:408
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:422
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:668
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:536
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:412
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:473
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:649
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:807
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1513
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:305
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:328
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:342
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:576
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:445
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:311
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:369
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:539
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:691
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1366
 #, elixir-autogen, elixir-format
 msgid "Cannot modify: document is not a draft"
 msgstr "Muutmine ebaõnnestus: dokument pole mustand"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:553
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:443
 #, elixir-autogen, elixir-format
 msgid "Cannot post: please set a supplier first"
 msgstr "Sisestamine pole võimalik: määra esmalt tarnija"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:439
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:701
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:617
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:653
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:514
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:558
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:335
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:606
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:493
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:556
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:407
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:449
 #, elixir-autogen, elixir-format
 msgid "Cannot save: document is not a draft"
 msgstr "Salvestamine ebaõnnestus: dokument pole mustand"
@@ -150,12 +149,12 @@ msgstr "Salvestamine ebaõnnestus: dokument pole mustand"
 msgid "Catalogue"
 msgstr "Kataloog"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1307
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1168
 #, elixir-autogen, elixir-format
 msgid "Catalogue base price"
 msgstr "Kataloogi põhihind"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:799
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:701
 #, elixir-autogen, elixir-format
 msgid "Catalogue module not available"
 msgstr "Kataloogi moodul pole saadaval"
@@ -165,12 +164,12 @@ msgstr "Kataloogi moodul pole saadaval"
 msgid "Category"
 msgstr "Kategooria"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:223
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Choose which location type marks warehouses and the default warehouse where stock is held."
 msgstr "Valige, milline asukohatüüp tähistab ladusid ja milline ladu hoiab vaikimisi laoseisu."
 
-#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:45
+#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:44
 #, elixir-autogen, elixir-format
 msgid "Clear filter"
 msgstr "Tühjenda filter"
@@ -180,13 +179,13 @@ msgstr "Tühjenda filter"
 msgid "Click to add"
 msgstr "Klõpsa lisamiseks"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:418
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:412
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:442
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:404
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:754
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:442
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:405
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:373
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:369
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:368
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:362
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:751
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:368
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:364
 #, elixir-autogen, elixir-format
 msgid "Columns"
 msgstr "Veerud"
@@ -201,138 +200,138 @@ msgstr "Veerud uuendatud"
 msgid "Failed to save columns"
 msgstr "Veergude salvestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:873
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1145
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1007
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1274
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:982
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1172
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:968
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1207
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:970
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1250
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:907
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1116
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:736
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:974
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:900
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1156
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:842
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1023
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:857
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1088
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:842
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1113
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:780
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:980
 #, elixir-autogen, elixir-format
 msgid "Comments"
 msgstr "Kommentaarid"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1149
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1278
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1176
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1211
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1254
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1120
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:978
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1160
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1027
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1092
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1117
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:984
 #, elixir-autogen, elixir-format
 msgid "Comments module is disabled. Enable it in PhoenixKit settings."
 msgstr "Kommentaaride moodul on välja lülitatud. Lülita see sisse PhoenixKiti seadetes."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:965
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:908
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:912
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:858
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:770
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:801
 #, elixir-autogen, elixir-format
 msgid "Conduct"
 msgstr "Sisesta"
 
-#: lib/phoenix_kit_warehouse/column_config/inventories.ex:27
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:923
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:291
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:936
+#: lib/phoenix_kit_warehouse/column_config/inventories.ex:26
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:785
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:251
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:825
 #, elixir-autogen, elixir-format
 msgid "Conducted"
 msgstr "Sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1061
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1063
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:913
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:944
 #, elixir-autogen, elixir-format
 msgid "Conducted at"
 msgstr "Sisestamise aeg"
 
-#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:63
+#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:62
 #, elixir-autogen, elixir-format
 msgid "Contains..."
 msgstr "Sisaldab..."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:522
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:757
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:675
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:722
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:614
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:725
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:403
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:659
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:548
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:622
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:504
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:607
 #, elixir-autogen, elixir-format
 msgid "Correction saved"
 msgstr "Parandus salvestatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:764
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:900
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:810
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:791
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:850
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:750
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:636
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:802
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:681
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:691
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:731
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:632
 #, elixir-autogen, elixir-format
 msgid "Could not open files folder: %{reason}"
 msgstr "Failide kausta avamine ebaõnnestus: %{reason}"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1128
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1009
 #, elixir-autogen, elixir-format
 msgid "Count sheet"
 msgstr "Inventuurileht"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:293
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:291
 #, elixir-autogen, elixir-format
 msgid "Counted"
 msgstr "Loendatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1031
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1144
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1051
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1053
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1093
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:972
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:860
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1026
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:903
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:934
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:957
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:837
 #, elixir-autogen, elixir-format
 msgid "Created"
 msgstr "Loodud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1110
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:991
 #, elixir-autogen, elixir-format
 msgid "Creator"
 msgstr "Looja"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1483
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1362
 #, elixir-autogen, elixir-format
 msgid "Current cost"
 msgstr "Praegune ostuhind"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:125
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:292
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:123
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:290
 #, elixir-autogen, elixir-format
 msgid "Current stock"
 msgstr "Laoseis"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1017
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1124
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:848
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1009
 #, elixir-autogen, elixir-format
 msgid "Customer orders"
 msgstr "Kliendi tellimused"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:54
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:415
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:409
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:439
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:401
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:751
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:439
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:402
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:370
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:366
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:365
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:359
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:748
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:365
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:361
 #, elixir-autogen, elixir-format
 msgid "Customize columns"
 msgstr "Veergude kohandamine"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:175
+#: lib/phoenix_kit_warehouse/column_config.ex:172
 #, elixir-autogen, elixir-format
 msgid "Date"
 msgstr "Kuupäev"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:246
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "Default warehouse"
 msgstr "Vaikeladu"
@@ -342,13 +341,13 @@ msgstr "Vaikeladu"
 msgid "Defaults"
 msgstr "Vaikimisi"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:401
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:395
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:425
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:387
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:737
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:425
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:388
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:356
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:352
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:351
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:345
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:734
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:351
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:347
 #, elixir-autogen, elixir-format
 msgid "Descending"
 msgstr "Kahanevalt"
@@ -363,54 +362,54 @@ msgstr "Tühista valik"
 msgid "Disable filter"
 msgstr "Keela filter"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:649
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:685
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:522
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:588
 #, elixir-autogen, elixir-format
 msgid "Document is already conducted"
 msgstr "Dokument on juba sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:467
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:729
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:545
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:363
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:634
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:435
 #, elixir-autogen, elixir-format
 msgid "Document is already posted"
 msgstr "Dokument on juba sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:765
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:665
 #, elixir-autogen, elixir-format
 msgid "Document is not posted"
 msgstr "Dokument pole sisestatud"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:34
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1542
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:285
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1395
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:246
 #, elixir-autogen, elixir-format
 msgid "Done"
 msgstr "Valmis"
 
-#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:50
-#: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:31
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:30
+#: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:30
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:27
-#: lib/phoenix_kit_warehouse/column_config/inventories.ex:27
+#: lib/phoenix_kit_warehouse/column_config/inventories.ex:26
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:29
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:32
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:304
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:298
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:328
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:290
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:328
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1540
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:283
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:261
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:257
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:256
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:250
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:256
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1393
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:244
 #, elixir-autogen, elixir-format
 msgid "Draft"
 msgstr "Mustand"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:428
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:690
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:606
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:642
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:503
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:547
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:327
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:598
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:485
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:548
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:399
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:441
 #, elixir-autogen, elixir-format
 msgid "Draft saved"
 msgstr "Mustand salvestatud"
@@ -425,7 +424,12 @@ msgstr "Lohistage valitud veerge ümberjärjestamiseks, klõpsake saadaval veeru
 msgid "Drag to reorder"
 msgstr "Lohistage ümberjärjestamiseks"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:63
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:449
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:442
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:441
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:436
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:441
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:429
 #, elixir-autogen, elixir-format
 msgid "Edit"
 msgstr "Muuda"
@@ -435,258 +439,258 @@ msgstr "Muuda"
 msgid "Enable filter"
 msgstr "Luba filter"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:714
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:608
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:526
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:750
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:458
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:589
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:522
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:415
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:637
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:355
 #, elixir-autogen, elixir-format
 msgid "Failed to add link"
 msgstr "Seose lisamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:467
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:363
 #, elixir-autogen, elixir-format
 msgid "Failed to apply reserve"
 msgstr "Varu rakendamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:653
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:526
 #, elixir-autogen, elixir-format
 msgid "Failed to conduct internal order"
 msgstr "Sisetellimuse sisestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:691
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:591
 #, elixir-autogen, elixir-format
 msgid "Failed to conduct stocktake"
 msgstr "Inventuuri sisestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:224
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:200
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft"
 msgstr "Mustandi loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:157
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:149
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft goods issue"
 msgstr "Kauba väljastamise mustandi loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:162
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:152
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft goods receipt"
 msgstr "Kauba vastuvõtu mustandi loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:177
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:157
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft internal order"
 msgstr "Sisetellimuse mustandi loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:170
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:152
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft supplier order"
 msgstr "Tarnijatellimuse mustandi loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:776
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:647
 #, elixir-autogen, elixir-format
 msgid "Failed to create goods issue"
 msgstr "Kauba väljastamise loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:588
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:478
 #, elixir-autogen, elixir-format
 msgid "Failed to create goods receipt"
 msgstr "Kauba vastuvõtu loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:735
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:606
 #, elixir-autogen, elixir-format
 msgid "Failed to generate supplier orders"
 msgstr "Tarnijatellimuste genereerimine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:674
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:568
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:488
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:800
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:552
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:485
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:380
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:684
 #, elixir-autogen, elixir-format
 msgid "Failed to import lines"
 msgstr "Ridade importimine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:500
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:381
 #, elixir-autogen, elixir-format
 msgid "Failed to post goods issue"
 msgstr "Kauba väljastamise sisestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:735
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:637
 #, elixir-autogen, elixir-format
 msgid "Failed to post goods receipt"
 msgstr "Kauba vastuvõtu sisestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:558
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:448
 #, elixir-autogen, elixir-format
 msgid "Failed to post supplier order"
 msgstr "Tarnijatellimuse sisestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:769
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:669
 #, elixir-autogen, elixir-format
 msgid "Failed to re-conduct stocktake"
 msgstr "Inventuuri uuesti sisestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:735
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:629
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:547
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:828
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:479
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:607
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:540
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:433
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:709
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:373
 #, elixir-autogen, elixir-format
 msgid "Failed to remove link"
 msgstr "Seose eemaldamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:525
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:760
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:678
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:725
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:617
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:728
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:406
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:662
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:551
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:625
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:507
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:610
 #, elixir-autogen, elixir-format
 msgid "Failed to save correction"
 msgstr "Paranduse salvestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:434
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:696
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:612
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:648
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:509
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:553
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:330
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:601
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:488
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:551
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:402
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:444
 #, elixir-autogen, elixir-format
 msgid "Failed to save draft"
 msgstr "Mustandi salvestamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:407
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:306
 #, elixir-autogen, elixir-format
 msgid "Failed to set supplier"
 msgstr "Tarnija määramine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:615
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:521
 #, elixir-autogen, elixir-format
 msgid "Failed to update"
 msgstr "Uuendamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:402
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:322
 #, elixir-autogen, elixir-format
 msgid "Failed to update quantities"
 msgstr "Koguste uuendamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:817
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:868
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:719
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:770
 #, elixir-autogen, elixir-format
 msgid "Failed to update price"
 msgstr "Hinna uuendamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:866
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1000
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:975
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:961
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:963
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:900
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:729
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:893
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:835
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:850
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:835
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:773
 #, elixir-autogen, elixir-format
 msgid "Files"
 msgstr "Failid"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1121
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:950
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this goods issue yet."
 msgstr "Failid ei ole selle kauba väljastamise jaoks veel saadaval."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1250
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1132
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this goods receipt yet."
 msgstr "Failid ei ole selle kauba vastuvõtu jaoks veel saadaval."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1148
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:999
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this internal order yet."
 msgstr "Failid ei ole selle sisemise tellimuse jaoks veel saadaval."
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1183
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1064
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this inventory yet."
 msgstr "Failid ei ole selle inventuuri jaoks veel saadaval."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1226
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1089
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this supplier order yet."
 msgstr "Failid ei ole selle tarnijatellimuse jaoks veel saadaval."
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:653
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:650
 #, elixir-autogen, elixir-format
 msgid "Flat"
 msgstr "Tasane loend"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:852
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:986
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:961
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:947
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:949
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:886
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:715
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:879
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:821
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:836
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:821
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:759
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr "Üldine"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:934
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:794
 #, elixir-autogen, elixir-format
 msgid "Generate supplier orders"
 msgstr "Genereeri tarnijatellimused"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:713
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:584
 #, elixir-autogen, elixir-format
 msgid "Generated %{n} supplier order(s)."
 msgstr "Genereeritud %{n} tarnijatellimus(t)."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:705
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:576
 #, elixir-autogen, elixir-format
 msgid "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
 msgstr "Genereeritud %{n} tarnijatellimus(t). %{m} rida ei saanud tarnijale määrata."
 
-#: lib/phoenix_kit_warehouse.ex:741
+#: lib/phoenix_kit_warehouse.ex:698
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:67
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:76
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:70
 #, elixir-autogen, elixir-format
 msgid "Goods Issue"
 msgstr "Kauba väljastamine"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:178
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:169
 #, elixir-autogen, elixir-format
 msgid "Goods Issue #%{number}"
 msgstr "Kauba väljastamine nr %{number}"
 
-#: lib/phoenix_kit_warehouse.ex:740
+#: lib/phoenix_kit_warehouse.ex:697
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:60
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:88
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:80
 #, elixir-autogen, elixir-format
 msgid "Goods Receipt"
 msgstr "Kauba vastuvõtt"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:185
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:174
 #, elixir-autogen, elixir-format
 msgid "Goods Receipt #%{number}"
 msgstr "Kauba vastuvõtt nr %{number}"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:768
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:639
 #, elixir-autogen, elixir-format
 msgid "Goods issue #%{number} created"
 msgstr "Kauba väljastamine nr %{number} loodud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:463
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:359
 #, elixir-autogen, elixir-format
 msgid "Goods issue posted — stock updated"
 msgstr "Kauba väljastamine sisestatud — laoseis uuendatud"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:582
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:472
 #, elixir-autogen, elixir-format
 msgid "Goods receipt #GR-%{number} created"
 msgstr "Kauba vastuvõtt #GR-%{number} loodud"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:725
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:630
 #, elixir-autogen, elixir-format
 msgid "Goods receipt posted — stock updated"
 msgstr "Kauba vastuvõtt sisestatud — laoseis uuendatud"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:642
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:639
 #, elixir-autogen, elixir-format
 msgid "Grouped"
 msgstr "Grupeeritud"
@@ -696,32 +700,32 @@ msgstr "Grupeeritud"
 msgid "Import (%{n})"
 msgstr "Impordi (%{n})"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1090
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1221
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1193
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1281
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:919
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1045
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1056
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1142
 #, elixir-autogen, elixir-format
 msgid "Import from internal order"
 msgstr "Impordi sisetellimusest"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1200
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1260
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1051
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1097
 #, elixir-autogen, elixir-format
 msgid "Import from order"
 msgstr "Impordi tellimusest"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1208
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1350
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1090
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1227
 #, elixir-autogen, elixir-format
 msgid "Import from supplier order"
 msgstr "Impordi tarnijatellimusest"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1106
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:958
 #, elixir-autogen, elixir-format
 msgid "Imported from"
 msgstr "Imporditud allikast"
 
-#: lib/phoenix_kit_warehouse.ex:736
+#: lib/phoenix_kit_warehouse.ex:693
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:88
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:502
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:25
@@ -729,175 +733,175 @@ msgstr "Imporditud allikast"
 msgid "In stock"
 msgstr "Laos"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:480
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:606
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:373
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:494
 #, elixir-autogen, elixir-format
 msgid "Insufficient stock for: %{item}. Reduce quantity or check stock levels."
 msgstr "Ebapiisav laoseis: %{item}. Vähendage kogust või kontrollige laostaatust."
 
-#: lib/phoenix_kit_warehouse/column_config.ex:251
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1004
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:94
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1111
+#: lib/phoenix_kit_warehouse/column_config.ex:243
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:835
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:77
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:975
 #, elixir-autogen, elixir-format
 msgid "Internal Order"
 msgstr "Sisetellimus"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:204
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:182
 #, elixir-autogen, elixir-format
 msgid "Internal Order #%{number}"
 msgstr "Sisetellimus nr %{number}"
 
-#: lib/phoenix_kit_warehouse.ex:738
+#: lib/phoenix_kit_warehouse.ex:695
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:39
 #, elixir-autogen, elixir-format
 msgid "Internal Orders"
 msgstr "Sisetellimused"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:641
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:517
 #, elixir-autogen, elixir-format
 msgid "Internal order conducted"
 msgstr "Sisetellimus sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1023
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1136
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:853
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1019
 #, elixir-autogen, elixir-format
 msgid "Internal orders"
 msgstr "Sisetellimused"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:831
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:694
 #, elixir-autogen, elixir-format
 msgid "Issue"
 msgstr "Väljastamine"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1086
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:915
 #, elixir-autogen, elixir-format
 msgid "Issue Lines"
 msgstr "Väljastamise read"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1249
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1073
 #, elixir-autogen, elixir-format
 msgid "Issue qty"
 msgstr "Väljastamise kogus"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:947
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:807
 #, elixir-autogen, elixir-format
 msgid "Issue to production"
 msgstr "Väljasta tootmisele"
 
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:25
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:124
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:290
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:122
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:288
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:500
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1246
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1368
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1481
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1278
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1298
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1245
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:229
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1070
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1245
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1360
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1115
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1159
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1107
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:227
 #, elixir-autogen, elixir-format
 msgid "Item"
 msgstr "Toode"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:968
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1191
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:954
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:893
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1135
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:828
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1042
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:843
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:766
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:999
 #, elixir-autogen, elixir-format
 msgid "Items"
 msgstr "Tooted"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:185
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:859
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:993
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:956
+#: lib/phoenix_kit_warehouse/column_config.ex:182
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:722
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:886
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:828
 #, elixir-autogen, elixir-format
 msgid "Lines"
 msgstr "Read"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1097
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:926
 #, elixir-autogen, elixir-format
 msgid "Lines are read-only on a posted goods issue."
 msgstr "Sisestatud kauba väljastamise read on kirjutuskaitstud."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1223
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1105
 #, elixir-autogen, elixir-format
 msgid "Lines are read-only on a posted goods receipt."
 msgstr "Sisestatud kauba vastuvõtu read on kirjutuskaitstud."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:477
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:372
 #, elixir-autogen, elixir-format
 msgid "Lines imported"
 msgstr "Read imporditud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:660
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:782
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:541
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:669
 #, elixir-autogen, elixir-format
 msgid "Lines imported from internal order(s)"
 msgstr "Read imporditud sisetellimus(t)est"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:557
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:477
 #, elixir-autogen, elixir-format
 msgid "Lines imported from supplier order(s)"
 msgstr "Read imporditud tarnijatellimus(t)est"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:703
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:597
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:515
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:739
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:447
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:581
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:514
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:407
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:629
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:347
 #, elixir-autogen, elixir-format
 msgid "Link added"
 msgstr "Seos lisatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1117
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1246
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1144
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1179
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1222
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1088
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:946
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1128
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:995
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1060
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1085
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:952
 #, elixir-autogen, elixir-format
 msgid "Loading files..."
 msgstr "Failide laadimine..."
 
-#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:108
+#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:110
 #, elixir-autogen, elixir-format
 msgid "Max"
 msgstr "Max"
 
-#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:99
+#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:100
 #, elixir-autogen, elixir-format
 msgid "Min"
 msgstr "Min"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:382
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:337
 #, elixir-autogen, elixir-format
 msgid "New goods issue"
 msgstr "Uus kauba väljastamine"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:376
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:333
 #, elixir-autogen, elixir-format
 msgid "New goods receipt"
 msgstr "Uus kauba vastuvõtt"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:406
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:332
 #, elixir-autogen, elixir-format
 msgid "New internal order"
 msgstr "Uus sisetellimus"
 
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:368
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:326
 #, elixir-autogen, elixir-format
 msgid "New stocktake"
 msgstr "Uus inventuur"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:406
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:332
 #, elixir-autogen, elixir-format
 msgid "New supplier order"
 msgstr "Uus tarnijatellimus"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:71
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:69
 #, elixir-autogen, elixir-format
 msgid "No catalogues available."
 msgstr "Kataloogid puuduvad."
@@ -912,150 +916,149 @@ msgstr "Veerge pole valitud"
 msgid "No documents found."
 msgstr "Dokumente ei leitud."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:496
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:428
 #, elixir-autogen, elixir-format
 msgid "No goods issues yet"
 msgstr "Kauba väljastamisi pole veel"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:487
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:421
 #, elixir-autogen, elixir-format
 msgid "No goods receipts yet"
 msgstr "Kauba vastuvõtte pole veel"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:517
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:420
 #, elixir-autogen, elixir-format
 msgid "No internal orders yet"
 msgstr "Sisetellimusi pole veel"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:118
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:116
 #, elixir-autogen, elixir-format
 msgid "No items"
 msgstr "Kaupu pole"
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:443
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:793
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:790
 #, elixir-autogen, elixir-format
 msgid "No items in stock."
 msgstr "Laos pole kaupa"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1290
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1257
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1127
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1119
 #, elixir-autogen, elixir-format
 msgid "No items yet"
 msgstr "Tooteid pole veel"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:723
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:594
 #, elixir-autogen, elixir-format
 msgid "No lines required restocking."
 msgstr "Ükski rida ei vajanud täiendamist."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1257
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1380
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1314
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1081
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1257
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1175
 #, elixir-autogen, elixir-format
 msgid "No lines yet"
 msgstr "Ridu pole veel"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:222
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:220
 #, elixir-autogen, elixir-format
 msgid "No lines yet. Add items from the catalogue below."
 msgstr "Ridu pole veel. Lisa kaupu allpool olevast kataloogist."
 
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:481
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:416
 #, elixir-autogen, elixir-format
 msgid "No stocktakes yet"
 msgstr "Inventuure pole veel"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:716
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:587
 #, elixir-autogen, elixir-format
 msgid "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
 msgstr "Tarnijatellimusi ei loodud. %{m} rida ei saanud määrata (0 või mitu tarnijat)."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:517
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:420
 #, elixir-autogen, elixir-format
 msgid "No supplier orders yet"
 msgstr "Tarnijatellimusi pole veel"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:671
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:549
 #, elixir-autogen, elixir-format
 msgid "No valid posted internal orders found"
 msgstr "Sobivaid sisestatud sisetellimusi ei leitud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:510
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:745
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:770
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:824
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:663
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:780
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:586
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:701
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:735
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:253
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:287
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:602
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:713
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:391
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:647
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:672
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:726
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:536
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:651
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:492
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:601
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:635
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:251
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:285
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:492
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:595
 #, elixir-autogen, elixir-format
 msgid "Not authorized"
 msgstr "Õigused puuduvad"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:234
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:252
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:292
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:103
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:121
 #, elixir-autogen, elixir-format
 msgid "Not set"
 msgstr "Määramata"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:214
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1049
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1060
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1162
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1173
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1096
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1115
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1139
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1158
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1040
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1059
+#: lib/phoenix_kit_warehouse/column_config.ex:211
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:878
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:889
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1044
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1055
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:948
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:966
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1003
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1021
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:905
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:923
 #, elixir-autogen, elixir-format
 msgid "Note"
 msgstr "Märkus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:907
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1068
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1041
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1181
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1017
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1123
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1018
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1005
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1166
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:942
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1067
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:762
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:897
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:926
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1063
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:869
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:974
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:899
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:869
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1029
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:807
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:931
 #, elixir-autogen, elixir-format
 msgid "Note (optional)"
 msgstr "Märkus (valikuline)"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:922
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1056
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1033
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1035
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1053
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:958
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:777
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:941
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:885
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:916
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:917
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:823
 #, elixir-autogen, elixir-format
 msgid "Number"
 msgstr "Number"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1301
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1162
 #, elixir-autogen, elixir-format
 msgid "On Hand"
 msgstr "Laos"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1248
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1072
 #, elixir-autogen, elixir-format
 msgid "On hand"
 msgstr "Laos"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:787
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:658
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can create goods issues"
 msgstr "Kauba väljastamisi saab luua ainult sisestatud sistellimustest"
@@ -1065,54 +1068,48 @@ msgstr "Kauba väljastamisi saab luua ainult sisestatud sistellimustest"
 msgid "Restored from the trash: %{document}."
 msgstr "Taastatud prügikastist: %{document}."
 
-#: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:30
+#: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:29
 #, elixir-autogen, elixir-format
 msgid "Active"
 msgstr "Aktiivsed"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:471
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:465
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:495
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:456
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:495
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:452
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:81
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:460
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:648
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:460
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:650
 #, elixir-autogen, elixir-format
 msgid "Deleted"
 msgstr "Kustutatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:474
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:468
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:498
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:459
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:498
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:455
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:82
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:463
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:649
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:463
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:651
 #, elixir-autogen, elixir-format
 msgid "Deleted by"
 msgstr "Kustutaja"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:73
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:38
 #, elixir-autogen, elixir-format
 msgid "Document moved to the trash"
 msgstr "Dokument viidi prügikasti"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:69
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:34
 #, elixir-autogen, elixir-format
 msgid "Document not found"
 msgstr "Dokumenti ei leitud"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1253
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1212
 #, elixir-autogen, elixir-format
 msgid "Draft supplier orders %{numbers} for the same suppliers may be moved to the trash. Continue?"
 msgstr "Samade tarnijate tarnijatellimuste mustandid %{numbers} võidakse viia prügikasti. Jätka?"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:70
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:35
 #, elixir-autogen, elixir-format
 msgid "Failed to restore the document"
 msgstr "Dokumendi taastamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:48
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:27
 #, elixir-autogen, elixir-format
 msgid "Moved to the trash: %{numbers}."
 msgstr "Viidi prügikasti: %{numbers}."
@@ -1122,175 +1119,176 @@ msgstr "Viidi prügikasti: %{numbers}."
 msgid "Goods issues exceed the order for: %{numbers} — check the lines."
 msgstr "Väljastamised ületavad tellimust: %{numbers} — kontrollige ridu."
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:68
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:33
 #, elixir-autogen, elixir-format
 msgid "Only drafts can be restored"
 msgstr "Taastada saab ainult mustandeid"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:62
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:515
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:515
 #, elixir-autogen, elixir-format
 msgid "Open"
 msgstr "Ava"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:157
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:228
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:954
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:525
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:942
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:525
 #, elixir-autogen, elixir-format
 msgid "Restore"
 msgstr "Taasta"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:154
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:225
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:978
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:533
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:973
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:533
 #, elixir-autogen, elixir-format
 msgid "Restoring..."
 msgstr "Taastamine..."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:494
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:485
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:515
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:479
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:515
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:472
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:480
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:480
 #, elixir-autogen, elixir-format
 msgid "The trash is empty"
 msgstr "Prügikast on tühi"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:93
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:42
 #, elixir-autogen, elixir-format
 msgid "This document is in the trash (deleted %{date} by %{user})."
 msgstr "See dokument on prügikastis (kustutatud %{date}, kustutaja %{user})."
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:67
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:32
 #, elixir-autogen, elixir-format
 msgid "This document is not in the trash"
 msgstr "See dokument ei ole prügikastis"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:42
+#: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:40
 #, elixir-autogen, elixir-format
 msgid "Trash (%{count})"
 msgstr "Prügikast (%{count})"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:743
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:614
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can generate supplier orders"
 msgstr "Tarnijatellimusi saab genereerida ainult sisestatud sistellimustest"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1184
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1047
 #, elixir-autogen, elixir-format
 msgid "Order Lines"
 msgstr "Tellimuse read"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:593
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:483
 #, elixir-autogen, elixir-format
 msgid "Order is not posted"
 msgstr "Tellimus pole sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1303
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1164
 #, elixir-autogen, elixir-format
 msgid "Order qty"
 msgstr "Tellimuse kogus"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1370
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1247
 #, elixir-autogen, elixir-format
 msgid "Ordered"
 msgstr "Tellitud"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1306
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1167
 #, elixir-autogen, elixir-format
 msgid "Outstanding"
 msgstr "Jääk"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:635
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:767
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:790
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:525
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:654
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:677
 #, elixir-autogen, elixir-format
 msgid "Please set a supplier before importing lines"
 msgstr "Enne ridade importimist määra tarnija"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:919
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:791
 #, elixir-autogen, elixir-format
 msgid "Post"
 msgstr "Sisesta"
 
-#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:50
-#: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:31
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:30
+#: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:30
 #: lib/phoenix_kit_warehouse/column_config/internal_orders.ex:27
 #: lib/phoenix_kit_warehouse/column_config/supplier_orders.ex:29
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:842
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:305
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:976
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:299
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:329
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:939
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:329
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:705
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:262
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:869
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:258
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:257
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:811
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:257
 #, elixir-autogen, elixir-format
 msgid "Posted"
 msgstr "Sisestatud"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:180
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1040
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1153
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1102
+#: lib/phoenix_kit_warehouse/column_config.ex:177
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:869
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1035
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:966
 #, elixir-autogen, elixir-format
 msgid "Posted at"
 msgstr "Sisestamise aeg"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1250
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1373
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1074
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1250
 #, elixir-autogen, elixir-format
 msgid "Prior stock"
 msgstr "Eelnev laoseis"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:795
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:697
 #, elixir-autogen, elixir-format
 msgid "Price updated"
 msgstr "Hind uuendatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1465
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1344
 #, elixir-autogen, elixir-format
 msgid "Purchase price proposals"
 msgstr "Ostuhinna ettepanekud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:930
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:819
 #, elixir-autogen, elixir-format
 msgid "Re-conduct"
 msgstr "Sisesta uuesti"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1199
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1081
 #, elixir-autogen, elixir-format
 msgid "Receipt Lines"
 msgstr "Vastuvõtu read"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1484
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1363
 #, elixir-autogen, elixir-format
 msgid "Receipt price"
 msgstr "Vastuvõtu hind"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1215
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1097
 #, elixir-autogen, elixir-format
 msgid "Receive all ordered"
 msgstr "Võta vastu kogu tellitud"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1371
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1305
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1248
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1166
 #, elixir-autogen, elixir-format
 msgid "Received"
 msgstr "Vastu võetud"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:931
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:803
 #, elixir-autogen, elixir-format
 msgid "Register receipt"
 msgstr "Registreeri vastuvõtt"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1107
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1150
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1051
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:959
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1014
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:916
 #, elixir-autogen, elixir-format
 msgid "Related documents"
 msgstr "Seotud dokumendid"
 
 #: lib/phoenix_kit_warehouse/web/components/column_modal.ex:119
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1337
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1304
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1176
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1168
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Eemalda"
@@ -1300,67 +1298,67 @@ msgstr "Eemalda"
 msgid "Remove line"
 msgstr "Eemalda rida"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1300
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1161
 #, elixir-autogen, elixir-format
 msgid "Required"
 msgstr "Nõutav"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1280
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1117
 #, elixir-autogen, elixir-format
 msgid "Required qty"
 msgstr "Nõutav kogus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1304
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1165
 #, elixir-autogen, elixir-format
 msgid "Reserve"
 msgstr "Varu"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:230
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1103
+#: lib/phoenix_kit_warehouse/column_config.ex:222
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:984
 #, elixir-autogen, elixir-format
 msgid "Responsible"
 msgstr "Vastutaja"
 
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:37
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:214
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:230
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:212
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:228
 #, elixir-autogen, elixir-format
 msgid "SKU"
 msgstr "Artikkel"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:837
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:971
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:918
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:922
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:925
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:866
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:700
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:864
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:780
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:811
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:797
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:739
 #, elixir-autogen, elixir-format
 msgid "Save correction"
 msgstr "Salvesta parandus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:828
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:962
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:901
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:904
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:916
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:841
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:691
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:855
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:763
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:793
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:788
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:714
 #, elixir-autogen, elixir-format
 msgid "Save draft"
 msgstr "Salvesta mustand"
 
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:649
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:357
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:351
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:381
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:343
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:701
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:381
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:344
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:312
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:308
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:307
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:301
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:698
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:307
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:303
 #, elixir-autogen, elixir-format
 msgid "Search..."
 msgstr "Otsi..."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:262
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:131
 #, elixir-autogen, elixir-format
 msgid "Select a warehouse location type first."
 msgstr "Valige esmalt lao asukohatüüp."
@@ -1375,69 +1373,69 @@ msgstr "Vali kõik"
 msgid "Selected"
 msgstr "Valitud"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1302
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1163
 #, elixir-autogen, elixir-format
 msgid "Shortfall"
 msgstr "Puudujääk"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:386
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:380
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:410
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:372
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:722
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:410
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:373
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:341
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:337
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:336
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:330
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:719
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:336
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:332
 #, elixir-autogen, elixir-format
 msgid "Sort by:"
 msgstr "Sorteerimine:"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1149
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1050
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1013
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:915
 #, elixir-autogen, elixir-format
 msgid "Source documents"
 msgstr "Alusdokumendid"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:144
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:926
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1060
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1037
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1039
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1057
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:962
+#: lib/phoenix_kit_warehouse/column_config.ex:141
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:781
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:945
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:889
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:920
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:921
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:827
 #, elixir-autogen, elixir-format
 msgid "Status"
 msgstr "Staatus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:92
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:85
 #, elixir-autogen, elixir-format
 msgid "Stocktake"
 msgstr "Inventuur"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:260
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:235
 #, elixir-autogen, elixir-format
 msgid "Stocktake #%{n}"
 msgstr "Inventuur nr %{n}"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:680
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:583
 #, elixir-autogen, elixir-format
 msgid "Stocktake conducted"
 msgstr "Inventuur sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:762
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:662
 #, elixir-autogen, elixir-format
 msgid "Stocktake re-conducted"
 msgstr "Inventuur uuesti sisestatud"
 
-#: lib/phoenix_kit_warehouse.ex:737
+#: lib/phoenix_kit_warehouse.ex:694
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:32
 #, elixir-autogen, elixir-format
 msgid "Stocktakes"
 msgstr "Inventuurid"
 
-#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:20
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:990
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1082
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1125
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:17
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:821
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:934
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:989
 #, elixir-autogen, elixir-format
 msgid "Sub-Order"
 msgstr "Alamtellimus"
@@ -1447,113 +1445,113 @@ msgstr "Alamtellimus"
 msgid "Sub-order"
 msgstr "Alamtellimus"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:296
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:294
 #, elixir-autogen, elixir-format
 msgid "Sum"
 msgstr "Summa"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:234
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1072
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1482
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1020
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1069
+#: lib/phoenix_kit_warehouse/column_config.ex:226
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:957
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1361
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:884
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:933
 #, elixir-autogen, elixir-format
 msgid "Supplier"
 msgstr "Tarnija"
 
 #: lib/phoenix_kit_warehouse/column_config/goods_receipts.ex:17
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1111
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:98
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:996
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:80
 #, elixir-autogen, elixir-format
 msgid "Supplier Order"
 msgstr "Tarnijatellimus"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:213
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:194
 #, elixir-autogen, elixir-format
 msgid "Supplier Order #%{number}"
 msgstr "Tarnijatellimus nr %{number}"
 
-#: lib/phoenix_kit_warehouse.ex:739
+#: lib/phoenix_kit_warehouse.ex:696
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:46
 #, elixir-autogen, elixir-format
 msgid "Supplier Orders"
 msgstr "Tarnijatellimused"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:538
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:431
 #, elixir-autogen, elixir-format
 msgid "Supplier order posted"
 msgstr "Tarnijatellimus sisestatud"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1130
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1014
 #, elixir-autogen, elixir-format
 msgid "Supplier orders"
 msgstr "Tarnijatellimused"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:892
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:747
 #, elixir-autogen, elixir-format
 msgid "This goods issue has been posted and stock has been updated."
 msgstr "See kauba väljastamine on sisestatud ja laoseis on uuendatud."
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1026
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:911
 #, elixir-autogen, elixir-format
 msgid "This goods receipt has been posted and stock has been updated."
 msgstr "See kauba vastuvõtt on sisestatud ja laoseis on uuendatud."
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1001
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:853
 #, elixir-autogen, elixir-format
 msgid "This internal order has been conducted and is now read-only."
 msgstr "See sistellimus on sisestatud ja on nüüd kirjutuskaitstud."
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:988
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:869
 #, elixir-autogen, elixir-format
 msgid "This stocktake has been conducted and is now read-only."
 msgstr "See inventuur on sisestatud ja on nüüd kirjutuskaitstud."
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:989
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:853
 #, elixir-autogen, elixir-format
 msgid "This supplier order has been posted and is now read-only."
 msgstr "See tarnijatellimus on sisestatud ja on nüüd kirjutuskaitstud."
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:260
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:258
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:474
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1133
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1014
 #, elixir-autogen, elixir-format
 msgid "Total"
 msgstr "Kokku"
 
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:112
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:126
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:124
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:503
 #, elixir-autogen, elixir-format
 msgid "Total value"
 msgstr "Koguväärtus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1001
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:882
 #, elixir-autogen, elixir-format
 msgid "Track value"
 msgstr "Arvesta väärtust"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:111
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:109
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:471
 #, elixir-autogen, elixir-format
 msgid "Uncategorized"
 msgstr "Kategooriata"
 
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:75
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:291
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:289
 #: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:501
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1247
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1369
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1279
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1299
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1246
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:215
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:231
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:1071
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1246
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1116
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1160
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1108
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:213
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:229
 #, elixir-autogen, elixir-format
 msgid "Unit"
 msgstr "Ühik"
 
-#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:295
+#: lib/phoenix_kit_warehouse/web/components/warehouse_browser.ex:293
 #, elixir-autogen, elixir-format
 msgid "Unit price"
 msgstr "Ühiku hind"
@@ -1563,96 +1561,96 @@ msgstr "Ühiku hind"
 msgid "Unit value"
 msgstr "Ühiku väärtus"
 
-#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:140
+#: lib/phoenix_kit_warehouse/web/components/filter_chips.ex:141
 #, elixir-autogen, elixir-format
 msgid "Unsupported filter type"
 msgstr "Toetamata filtritüüp"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1473
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1352
 #, elixir-autogen, elixir-format
 msgid "Update all"
 msgstr "Uuenda kõik"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1526
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1405
 #, elixir-autogen, elixir-format
 msgid "Update price"
 msgstr "Uuenda hind"
 
-#: lib/phoenix_kit_warehouse.ex:735
+#: lib/phoenix_kit_warehouse.ex:692
 #, elixir-format, elixir-autogen
 msgid "Warehouse stock, stocktakes, and document management"
 msgstr "Laoseisud, inventuurid ja dokumendihaldus"
 
-#: lib/phoenix_kit_warehouse.ex:734
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:67
-#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:319
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:68
-#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:313
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:67
-#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:343
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:80
-#: lib/phoenix_kit_warehouse/web/inventories_live.ex:305
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:112
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:619
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:65
-#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:343
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:68
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:306
+#: lib/phoenix_kit_warehouse.ex:691
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:56
+#: lib/phoenix_kit_warehouse/web/goods_issue_index_live.ex:276
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:57
+#: lib/phoenix_kit_warehouse/web/goods_receipt_index_live.ex:272
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:56
+#: lib/phoenix_kit_warehouse/web/internal_order_index_live.ex:271
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:70
+#: lib/phoenix_kit_warehouse/web/inventories_live.ex:265
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:111
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:617
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:54
+#: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:271
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:58
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:267
 #: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:47
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:146
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:182
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:145
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:180
 #, elixir-autogen, elixir-format
 msgid "Warehouse"
 msgstr "Ladu"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:254
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:939
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1083
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1070
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1072
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1080
+#: lib/phoenix_kit_warehouse/column_config.ex:246
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:794
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:968
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:922
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:953
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:944
 #, elixir-autogen, elixir-format
 msgid "Warehouse (location)"
 msgstr "Ladu (asukoht)"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:231
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:100
 #, elixir-autogen, elixir-format
 msgid "Warehouse location type"
 msgstr "Lao asukohatüüp"
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:88
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:191
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:212
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:61
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:66
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:81
 #, elixir-autogen, elixir-format
 msgid "Warehouse settings"
 msgstr "Lao seaded"
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:71
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:49
 #, elixir-autogen, elixir-format
 msgid "Warehouse is not set up yet"
 msgstr "Ladu ei ole veel seadistatud"
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:96
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:76
 #, elixir-autogen, elixir-format
 msgid "Create a location type for warehouses in Locations, then choose it in Warehouse settings."
 msgstr "Looge jaotises Asukohad ladude jaoks asukohatüüp ja valige see seejärel lao seadetes."
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:103
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:81
 #, elixir-autogen, elixir-format
 msgid "Add at least one location of the warehouse type in Locations."
 msgstr "Lisage jaotises Asukohad vähemalt üks lao tüüpi asukoht."
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:107
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:85
 #, elixir-autogen, elixir-format
 msgid "Choose the default warehouse in Warehouse settings."
 msgstr "Valige vaikeladu lao seadetes."
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:117
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:95
 #, elixir-autogen, elixir-format
 msgid "Open Locations"
 msgstr "Ava asukohad"
 
-#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:120
+#: lib/phoenix_kit_warehouse/web/components/setup_notice.ex:98
 #, elixir-autogen, elixir-format
 msgid "Add a location"
 msgstr "Lisa asukoht"
@@ -1662,7 +1660,7 @@ msgstr "Lisa asukoht"
 msgid "m²"
 msgstr "m²"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1436
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1315
 #, elixir-autogen, elixir-format
 msgid "over %{n}"
 msgstr "ülejääk %{n}"
@@ -1677,7 +1675,7 @@ msgstr "paar"
 msgid "pc"
 msgstr "tk"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1435
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1298
 #, elixir-autogen, elixir-format
 msgid "posted"
 msgstr "sisestatud"
@@ -1697,53 +1695,53 @@ msgstr "kompl."
 msgid "sheet"
 msgstr "leht"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1430
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1309
 #, elixir-autogen, elixir-format
 msgid "short %{n}"
 msgstr "puudujääk %{n}"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1372
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1249
 #, elixir-autogen, elixir-format
 msgid "Δ"
 msgstr "Δ"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:959
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1077
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:1103
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1076
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1092
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1426
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1459
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1074
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1086
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1229
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:814
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:962
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:988
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:928
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:973
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1305
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1338
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:938
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:950
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1091
 #, elixir-autogen, elixir-format
 msgid "— not set —"
 msgstr "— määramata —"
 
-#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1028
+#: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:892
 #, elixir-autogen, elixir-format
 msgid "— select supplier —"
 msgstr "— vali tarnija —"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:661
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:186
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:658
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:184
 #, elixir-autogen, elixir-format
 msgid "All warehouses"
 msgstr "Kõik laod"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1168
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1032
 #, elixir-autogen, elixir-format
 msgid "Attach a document"
 msgstr "Lisa dokument"
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:218
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:240
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:216
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:238
 #, elixir-autogen, elixir-format
 msgid "Balance"
 msgstr "Saldo"
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:198
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:196
 #, elixir-autogen, elixir-format
 msgid "Balance shows each item's current stock, not a historical balance as of the selected end date."
 msgstr "Saldo näitab positsiooni praegust laoseisu, mitte ajaloolist saldot valitud lõppkuupäeva seisuga."
@@ -1753,54 +1751,54 @@ msgstr "Saldo näitab positsiooni praegust laoseisu, mitte ajaloolist saldot val
 msgid "Below minimum stock"
 msgstr "Alla miinimumvaru"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:646
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:534
 #, elixir-autogen, elixir-format
 msgid "Both warehouses must be set before receiving"
 msgstr "Enne vastuvõtmist peavad mõlemad laod olema määratud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1177
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1041
 #, elixir-autogen, elixir-format
 msgid "Cancel this transfer?"
 msgstr "Kas tühistada see ülekanne?"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1189
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1053
 #, elixir-autogen, elixir-format
 msgid "Cancel transfer"
 msgstr "Tühista ülekanne"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:35
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1543
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:286
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1396
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:247
 #, elixir-autogen, elixir-format
 msgid "Cancelled"
 msgstr "Tühistatud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1002
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:867
 #, elixir-autogen, elixir-format
 msgid "Cancelled at"
 msgstr "Tühistatud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1235
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1116
 #, elixir-autogen, elixir-format
 msgid "Change warehouse"
 msgstr "Vaheta ladu"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1223
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1104
 #, elixir-autogen, elixir-format
 msgid "Change warehouse?"
 msgstr "Kas vahetada ladu?"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:308
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:306
 #, elixir-autogen, elixir-format
 msgid "Could not create a supplier order for this item"
 msgstr "Sellele positsioonile ei õnnestunud tarnijatellimust luua"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:815
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:812
 #, elixir-autogen, elixir-format
 msgid "Create supplier order"
 msgstr "Loo tarnijatellimus"
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:244
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:242
 #, elixir-autogen, elixir-format
 msgid "Current on-hand quantity — not a historical balance as of the end date."
 msgstr "Praegune laoseis — mitte ajalooline saldo lõppkuupäeva seisuga."
@@ -1811,78 +1809,78 @@ msgid "Deficit"
 msgstr "Puudujääk"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:20
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1025
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:890
 #, elixir-autogen, elixir-format
 msgid "Destination warehouse"
 msgstr "Sihtladu"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:582
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:473
 #, elixir-autogen, elixir-format
 msgid "Document is already shipped"
 msgstr "Dokument on juba lähetatud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:639
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:527
 #, elixir-autogen, elixir-format
 msgid "Document is not in transit"
 msgstr "Dokument ei ole teel"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:703
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:585
 #, elixir-autogen, elixir-format
 msgid "Failed to cancel transfer"
 msgstr "Ülekande tühistamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:376
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:663
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:572
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1508
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:300
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:571
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:478
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1361
 #, elixir-autogen, elixir-format
 msgid "Failed to change warehouse"
 msgstr "Lao vahetamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:194
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:171
 #, elixir-autogen, elixir-format
 msgid "Failed to create draft transfer"
 msgstr "Ülekande mustandi loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:604
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:602
 #, elixir-autogen, elixir-format
 msgid "Failed to create supplier order"
 msgstr "Tarnijatellimuse loomine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:650
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:538
 #, elixir-autogen, elixir-format
 msgid "Failed to receive transfer"
 msgstr "Ülekande vastuvõtmine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:614
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:502
 #, elixir-autogen, elixir-format
 msgid "Failed to ship transfer"
 msgstr "Ülekande lähetamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1092
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:956
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this transfer yet."
 msgstr "Selle ülekande failid pole veel saadaval."
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:160
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:158
 #, elixir-autogen, elixir-format
 msgid "From"
 msgstr "Kust"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:33
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1541
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:284
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1394
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:245
 #, elixir-autogen, elixir-format
 msgid "In transit"
 msgstr "Teel"
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:216
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:233
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:214
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:231
 #, elixir-autogen, elixir-format
 msgid "Inflow"
 msgstr "Sissetulek"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1186
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1050
 #, elixir-autogen, elixir-format
 msgid "Keep transfer"
 msgstr "Jäta ülekanne alles"
@@ -1892,260 +1890,260 @@ msgstr "Jäta ülekanne alles"
 msgid "Min. quantity"
 msgstr "Min. kogus"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:270
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:268
 #, elixir-autogen, elixir-format
 msgid "Minimum quantity must be zero or greater"
 msgstr "Minimaalne kogus peab olema null või suurem"
 
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:369
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:328
 #, elixir-autogen, elixir-format
 msgid "New transfer"
 msgstr "Uus ülekanne"
 
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:157
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:944
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:974
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:943
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:973
 #, elixir-autogen, elixir-format
 msgid "No"
 msgstr "Ei"
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:263
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:261
 #, elixir-autogen, elixir-format
 msgid "No movement in this period"
 msgstr "Sellel perioodil liikumist pole"
 
-#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:474
+#: lib/phoenix_kit_warehouse/web/transfer_index_live.ex:410
 #, elixir-autogen, elixir-format
 msgid "No transfers yet"
 msgstr "Ülekandeid veel pole"
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:217
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:236
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:215
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:234
 #, elixir-autogen, elixir-format
 msgid "Outflow"
 msgstr "Väljaminek"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:592
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:480
 #, elixir-autogen, elixir-format
 msgid "Please select two different warehouses before shipping"
 msgstr "Enne lähetamist valige kaks erinevat ladu"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:860
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:733
 #, elixir-autogen, elixir-format
 msgid "Receive"
 msgstr "Võta vastu"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:23
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:992
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:857
 #, elixir-autogen, elixir-format
 msgid "Received at"
 msgstr "Vastu võetud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:847
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:720
 #, elixir-autogen, elixir-format
 msgid "Ship"
 msgstr "Läheta"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:22
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:982
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:847
 #, elixir-autogen, elixir-format
 msgid "Shipped at"
 msgstr "Lähetatud"
 
 #: lib/phoenix_kit_warehouse/column_config/transfers.ex:19
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1011
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:876
 #, elixir-autogen, elixir-format
 msgid "Source warehouse"
 msgstr "Lähteladu"
 
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:600
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:598
 #, elixir-autogen, elixir-format
 msgid "Supplier order draft created"
 msgstr "Tarnijatellimuse mustand loodud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1225
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1106
 #, elixir-autogen, elixir-format
 msgid "Switching the warehouse resets the counted quantities to the current stock of the new warehouse. Continue?"
 msgstr "Lao vahetamine lähtestab loendatud kogused uue lao praegusele laoseisule. Kas jätkata?"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:810
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:712
 #, elixir-autogen, elixir-format
 msgid "This price was already revised in the catalogue"
 msgstr "See hind on kataloogis juba üle vaadatud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:697
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:579
 #, elixir-autogen, elixir-format
 msgid "This transfer can no longer be cancelled"
 msgstr "Seda ülekannet ei saa enam tühistada"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1563
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1416
 #, elixir-autogen, elixir-format
 msgid "This transfer has been cancelled."
 msgstr "See ülekanne on tühistatud."
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1560
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1413
 #, elixir-autogen, elixir-format
 msgid "This transfer has been received and is now read-only."
 msgstr "Ülekanne on vastu võetud ja on nüüd kirjutuskaitstud."
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1554
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1407
 #, elixir-autogen, elixir-format
 msgid "This transfer is in transit. Stock has left the source warehouse."
 msgstr "Ülekanne on teel. Kaup on lähtelaost maha kantud."
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1179
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1043
 #, elixir-autogen, elixir-format
 msgid "This will reverse the shipment and credit the quantity back to the source warehouse. This cannot be undone."
 msgstr "Lähetus storneeritakse ja kogus kantakse tagasi lähtelattu. Seda ei saa tagasi võtta."
 
-#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:171
+#: lib/phoenix_kit_warehouse/web/turnover_report_live.ex:169
 #, elixir-autogen, elixir-format
 msgid "To"
 msgstr "Kuhu"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:120
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:99
 #, elixir-autogen, elixir-format
 msgid "Transfer"
 msgstr "Ülekanne"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:217
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:193
 #, elixir-autogen, elixir-format
 msgid "Transfer #%{number}"
 msgstr "Ülekanne nr %{number}"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:684
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:572
 #, elixir-autogen, elixir-format
 msgid "Transfer cancelled"
 msgstr "Ülekanne tühistatud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1247
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1109
 #, elixir-autogen, elixir-format
 msgid "Transfer qty"
 msgstr "Ülekantav kogus"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:634
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:522
 #, elixir-autogen, elixir-format
 msgid "Transfer received — stock updated at destination"
 msgstr "Ülekanne vastu võetud — sihtlao laoseis uuendatud"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:578
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:469
 #, elixir-autogen, elixir-format
 msgid "Transfer shipped — stock updated at source"
 msgstr "Ülekanne lähetatud — lähtelao laoseis uuendatud"
 
-#: lib/phoenix_kit_warehouse.ex:742
+#: lib/phoenix_kit_warehouse.ex:699
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:53
 #, elixir-autogen, elixir-format
 msgid "Transfers"
 msgstr "Ülekanded"
 
-#: lib/phoenix_kit_warehouse.ex:743
+#: lib/phoenix_kit_warehouse.ex:700
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:74
 #, elixir-autogen, elixir-format
 msgid "Turnover"
 msgstr "Käive"
 
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:861
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:763
 #, elixir-autogen, elixir-format
 msgid "Updated %{ok} price(s); %{failed} failed"
 msgstr "Uuendatud hindu: %{ok}; ebaõnnestus: %{failed}"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:369
-#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:656
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1501
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:296
+#: lib/phoenix_kit_warehouse/web/goods_receipt_form_live.ex:567
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1357
 #, elixir-autogen, elixir-format
 msgid "Warehouse changed"
 msgstr "Ladu muudetud"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:563
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:472
 #, elixir-autogen, elixir-format
 msgid "Warehouse changed — count sheet re-seeded"
 msgstr "Ladu muudetud — loendusleht uuesti külvatud"
 
 #: lib/phoenix_kit_warehouse/column_config/stock.ex:157
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:944
-#: lib/phoenix_kit_warehouse/web/stock_live.ex:974
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:943
+#: lib/phoenix_kit_warehouse/web/stock_live.ex:973
 #, elixir-autogen, elixir-format
 msgid "Yes"
 msgstr "Jah"
 
-#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1216
+#: lib/phoenix_kit_warehouse/web/transfer_form_live.ex:1078
 #, elixir-autogen, elixir-format
 msgid "— select —"
 msgstr "— vali —"
 
-#: lib/phoenix_kit_warehouse/column_config.ex:227
+#: lib/phoenix_kit_warehouse/column_config.ex:219
 #, elixir-autogen, elixir-format
 msgid "Created by"
 msgstr "Looja"
 
-#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:36
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:965
+#: lib/phoenix_kit_warehouse/column_config/goods_issues.ex:34
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:842
 #, elixir-autogen, elixir-format
 msgid "Reason"
 msgstr "Põhjus"
 
-#: lib/phoenix_kit_warehouse/goods_issues.ex:39
+#: lib/phoenix_kit_warehouse/goods_issues.ex:36
 #, elixir-autogen, elixir-format
 msgid "Production"
 msgstr "Tootmine"
 
-#: lib/phoenix_kit_warehouse/goods_issues.ex:40
+#: lib/phoenix_kit_warehouse/goods_issues.ex:37
 #, elixir-autogen, elixir-format
 msgid "Sale"
 msgstr "Müük"
 
-#: lib/phoenix_kit_warehouse/goods_issues.ex:41
+#: lib/phoenix_kit_warehouse/goods_issues.ex:38
 #, elixir-autogen, elixir-format
 msgid "Damage"
 msgstr "Kahjustus"
 
-#: lib/phoenix_kit_warehouse/goods_issues.ex:42
+#: lib/phoenix_kit_warehouse/goods_issues.ex:39
 #, elixir-autogen, elixir-format
 msgid "Other"
 msgstr "Muu"
 
 #: lib/phoenix_kit_warehouse/column_config.ex:219
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:983
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:860
 #, elixir-autogen, elixir-format
 msgid "External ref"
 msgstr "Väline viide"
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:401
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:322
 #, elixir-autogen, elixir-format
 msgid "Failed to change reason"
 msgstr "Põhjuse vahetamine ebaõnnestus"
 
-#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:194
+#: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:185
 #, elixir-autogen, elixir-format
 msgid "Set the default warehouse in the warehouse settings first."
 msgstr "Määrake esmalt lao seadetes vaikeladu."
 
-#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:492
+#: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:405
 #, elixir-autogen, elixir-format
 msgid "External ref %{ref} is already used by a posted goods issue."
 msgstr "Väline viide %{ref} on juba kasutusel sisestatud kauba väljastamisel."
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:108
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:128
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:184
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:199
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:251
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:125
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:140
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:164
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:49
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:69
 #, elixir-autogen, elixir-format
 msgid "Move to trash"
 msgstr "Prügikasti"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:249
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:162
 #, elixir-autogen, elixir-format
 msgid "Move to the trash?"
 msgstr "Teisaldada prügikasti?"
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:257
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:170
 #, elixir-autogen, elixir-format
 msgid "Move to the trash: %{document}. The document can be restored on the Trash tab."
 msgstr "Prügikasti: %{document}. Dokumendi saab taastada vahekaardil «Prügikast»."
 
-#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:253
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:166
 #, elixir-autogen, elixir-format
 msgid "Unsaved changes in the form will not be saved."
 msgstr "Vormi salvestamata muudatusi ei salvestata."
@@ -2160,112 +2158,118 @@ msgstr "Teisaldatud prügikasti: %{document}."
 msgid "Inventory #%{number}"
 msgstr "Inventuur #%{number}"
 
-#: lib/phoenix_kit_warehouse/web/trash_actions.ex:315
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:235
 #, elixir-autogen, elixir-format
 msgid "The document is already in the trash"
 msgstr "Dokument on juba prügikastis"
 
-#: lib/phoenix_kit_warehouse/web/trash_actions.ex:316
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:236
 #, elixir-autogen, elixir-format
 msgid "This document cannot be deleted"
 msgstr "Seda dokumenti ei saa kustutada"
 
-#: lib/phoenix_kit_warehouse/web/trash_actions.ex:142
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:149
 #, elixir-autogen, elixir-format
 msgid "A posted document cannot be deleted"
 msgstr "Sisestatud dokumenti ei saa kustutada"
 
-#: lib/phoenix_kit_warehouse/web/trash_actions.ex:145
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:152
 #, elixir-autogen, elixir-format
 msgid "A transfer in transit cannot be deleted — cancel it first"
 msgstr "Teel olevat ülekannet ei saa kustutada — tühista see esmalt"
 
-#: lib/phoenix_kit_warehouse/web/trash_actions.ex:148
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:155
 #, elixir-autogen, elixir-format
 msgid "A completed transfer cannot be deleted"
 msgstr "Lõpetatud ülekannet ei saa kustutada"
 
-#: lib/phoenix_kit_warehouse/web/trash_actions.ex:151
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:158
 #, elixir-autogen, elixir-format
 msgid "A cancelled transfer cannot be deleted"
 msgstr "Tühistatud ülekannet ei saa kustutada"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:275
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:301
 #, elixir-autogen, elixir-format
 msgid "A stocktake draft can suggest the items and counts seen on photos. The photos go to the AI provider of the chosen endpoint."
-msgstr "Inventuuri mustand võib pakkuda fotodel nähtud tooteid ja koguseid. Fotod saadetakse valitud lõpp-punkti tehisintellekti pakkujale."
+msgstr "Inventuuri mustand võib pakkuda fotodel nähtud tooteid ja koguseid. Fotod saadetakse valitud lõpp-punkti AI-pakkujale."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:291
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:317
 #, elixir-autogen, elixir-format
 msgid "AI endpoint"
-msgstr "TI lõpp-punkt"
+msgstr "AI lõpp-punkt"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:272
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:298
 #, elixir-autogen, elixir-format
 msgid "AI: inventory from photos"
-msgstr "TI: inventuur fotodest"
+msgstr "AI: inventuur fotodest"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:111
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:118
 #, elixir-autogen, elixir-format
 msgid "Choose one of the listed endpoints, or none."
 msgstr "Vali üks loetletud lõpp-punktidest või mitte ühtegi."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:321
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:347
 #, elixir-autogen, elixir-format
 msgid "Edit the prompt"
-msgstr "Muuda viipa"
+msgstr "Muuda promptit"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:118
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:124
 #, elixir-autogen, elixir-format
 msgid "Enter whole numbers from 1 up to %{limit}."
 msgstr "Sisesta täisarvud vahemikus 1 kuni %{limit}."
 
-#: lib/phoenix_kit_warehouse/inventory_ai/guard.ex:44
+#: lib/phoenix_kit_warehouse/inventory_ai/guard.ex:46
 #, elixir-autogen, elixir-format
 msgid "Inventory count from photos"
 msgstr "Inventuuri loendus fotodelt"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:314
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:340
 #, elixir-autogen, elixir-format
 msgid "Most catalogue lines in one request"
 msgstr "Katalooguridu ühes päringus kuni"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:72
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:77
 #, elixir-autogen, elixir-format
 msgid "Only a holder of the AI module can change these settings."
-msgstr "Neid seadeid saab muuta ainult TI mooduli õigusega kasutaja."
+msgstr "Neid seadeid saab muuta ainult AI mooduli õigusega kasutaja."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:306
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:332
 #, elixir-autogen, elixir-format
 msgid "Photos in one batch"
 msgstr "Fotosid ühes partiis"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:298
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:324
 #, elixir-autogen, elixir-format
 msgid "Pick a model that can read photos."
 msgstr "Vali mudel, mis oskab fotosid lugeda."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:334
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:360
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr "Salvesta"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:329
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:355
 #, elixir-autogen, elixir-format
 msgid "Saved."
 msgstr "Salvestatud."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:125
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:128
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:135
 #, elixir-autogen, elixir-format
 msgid "The settings could not be saved."
 msgstr "Seadeid ei õnnestunud salvestada."
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:184
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:206
 #, elixir-autogen, elixir-format
 msgid "Unavailable endpoint"
 msgstr "Kättesaamatu lõpp-punkt"
 
-#: lib/phoenix_kit_warehouse/web/settings_live.ex:299
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:325
 #, elixir-autogen, elixir-format
 msgid "Without an endpoint the button is not shown."
 msgstr "Ilma lõpp-punktita nuppu ei kuvata."
+
+#: lib/phoenix_kit_warehouse/web/settings_live.ex:209
+#, elixir-autogen, elixir-format
+msgid "no longer offered"
+msgstr "enam pakkumisel pole"
