@@ -1258,6 +1258,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
                 id={"inventory-ai-picker-#{@run.uuid}-#{@row.key}"}
                 statuses={["active"]}
                 item_types={["goods"]}
+                include_internal={true}
                 locale={@locale}
                 show_sku={true}
                 show_unit={true}
