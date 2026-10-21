@@ -180,7 +180,7 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   `{:ok, run, task_pid}` - the caller may monitor the task and call
   `interrupt_run/1` when it goes down. Errors: `:ai_disabled`,
   `:not_configured` (no endpoint chosen), `:no_photos`, `:invalid_photos`
-  (not a uuid, or not a file of the document's folder),
+  (not a uuid, not a file of the document's folder, or in the trash),
   `{:too_many_photos, count, max}`, `:place_too_long`,
   `:invalid_catalogues`, `{:too_many_items, count, max}`, `:not_draft`,
   `:deleted`, `:already_running`.
@@ -292,8 +292,8 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     end
   end
 
-  # The photos are files of the document's folder: their home folder, or a
-  # link into it.
+  # The photos are files of the document's folder, not in the trash: their
+  # home folder, or a link into it.
   defp document_photos(_repo, %InventoryDocument{storage_folder_uuid: nil}, _photos),
     do: {:error, :invalid_photos}
 
@@ -302,7 +302,9 @@ defmodule PhoenixKitWarehouse.InventoryAI do
       from(f in StorageFile,
         left_join: l in FolderLink,
         on: l.file_uuid == f.uuid and l.folder_uuid == ^folder,
-        where: f.uuid in ^photos and (f.folder_uuid == ^folder or not is_nil(l.uuid)),
+        where:
+          f.uuid in ^photos and f.status != "trashed" and
+            (f.folder_uuid == ^folder or not is_nil(l.uuid)),
         select: count(f.uuid, :distinct)
       )
       |> repo.one()
@@ -434,7 +436,9 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   Starts the photos of a failed run again and closes the failed run as
   `discarded` (replaced by the retry) in the same transaction. Only a run in
   `error` can be retried; the photos, the place and the catalogues are the
-  run's as the database has them. `{:ok, new_run, task_pid}`, or the errors
+  run's as the database has them, and the photos are checked again as for
+  `start_run/4` (files of the document's folder, none in the trash).
+  `{:ok, new_run, task_pid}`, or the errors
   of `start_run/4`, `:not_error` and `:wrong_document` (`opts` must name the
   run's document as `inventory_uuid:`).
   """
@@ -466,7 +470,10 @@ defmodule PhoenixKitWarehouse.InventoryAI do
                created_by_uuid: actor_uuid(actor),
                result: scope(catalogue_uuids, opts)
              },
-             fn _repo, _doc -> close_failed(run, discarded(actor, "retried", new_uuid)) end
+             fn repo, doc ->
+               with :ok <- document_photos(repo, doc, run.photo_file_uuids),
+                    do: close_failed(run, discarded(actor, "retried", new_uuid))
+             end
            ) do
       broadcast(%{run | status: "discarded"})
       launch(new_run, opts)

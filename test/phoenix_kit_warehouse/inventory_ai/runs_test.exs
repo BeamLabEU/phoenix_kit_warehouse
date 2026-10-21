@@ -11,6 +11,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
   import PhoenixKitWarehouse.Test.InventoryAIFixtures
 
   alias PhoenixKit.Activity
+  alias PhoenixKit.Modules.Storage.File, as: StorageFile
   alias PhoenixKit.Modules.Storage.FolderLink
   alias PhoenixKitWarehouse.InventoryAI
   alias PhoenixKitWarehouse.InventoryAI.Prompt
@@ -723,6 +724,37 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       retried = await(retried)
       assert retried.photo_file_uuids == failed.photo_file_uuids
       assert retried.place_label == failed.place_label
+    end
+
+    test "a retry checks again that the photos are files of the document, none in the trash",
+         ctx do
+      Stub.fail(401)
+      {failed, _pid} = start!(ctx)
+      failed = await(failed)
+      assert_received {:ai_request, _}
+      [photo | _] = ctx.photos
+
+      for change <- [[status: "trashed"], [status: "active", folder_uuid: nil]] do
+        {1, _} = Repo.update_all(from(f in StorageFile, where: f.uuid == ^photo), set: change)
+
+        assert InventoryAI.retry_run(failed, ctx.user,
+                 inventory_uuid: ctx.doc.uuid,
+                 retrieve: retriever()
+               ) == {:error, :invalid_photos}
+      end
+
+      refute_received {:ai_request, _}
+      assert InventoryAI.get_run(ctx.doc.uuid, failed.uuid).status == "error"
+    end
+
+    test "a photo in the trash is no photo of the document for a new run either", ctx do
+      [photo | _] = ctx.photos
+
+      {1, _} =
+        Repo.update_all(from(f in StorageFile, where: f.uuid == ^photo), set: [status: "trashed"])
+
+      assert InventoryAI.start_run(ctx.doc, attrs(ctx), ctx.user, retrieve: retriever()) ==
+               {:error, :invalid_photos}
     end
 
     test "a discarded or applied run cannot be discarded again", ctx do

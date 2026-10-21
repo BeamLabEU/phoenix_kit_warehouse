@@ -619,9 +619,14 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
     end
 
     test "retry closes the failed run as replaced and starts the photos again", ctx do
+      # The retry checks again that the photos are files of the document.
       failed =
         run!(ctx, "A", [])
-        |> Ecto.Changeset.change(status: "error", error: "x")
+        |> Ecto.Changeset.change(
+          status: "error",
+          error: "x",
+          photo_file_uuids: photos!(ctx.doc, ctx.admin, 1)
+        )
         |> repo().update!()
 
       :ok = InventoryAI.subscribe(ctx.doc.uuid)
@@ -635,7 +640,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       new_uuid = closed.decisions["discarded"]["replaced_by_run_uuid"]
       assert repo().get!(InventoryAIRun, new_uuid).photo_file_uuids == failed.photo_file_uuids
 
-      # The photos are no files: the new run fails on its own, without a call.
+      # The files hold no bytes: the new run fails on its own, without a call.
       assert_receive {:inventory_ai_run, %{run_uuid: ^new_uuid, status: "error"}}, 5_000
     end
 
