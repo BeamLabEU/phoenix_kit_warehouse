@@ -194,10 +194,27 @@ if repo_available do
   {:ok, _} = PhoenixKitWarehouse.Test.Endpoint.start_link()
 end
 
+# The photo inventory makes its photos with ImageMagick (`convert` and
+# `identify`, through core's ImageProcessor), and its fixture is a HEIC:
+# without an ImageMagick that reads HEIC those tests (`:imagemagick`) are
+# excluded instead of failing.
+imagemagick_heic? =
+  try do
+    System.find_executable("identify") != nil and
+      case System.cmd("convert", ["-list", "format"], stderr_to_stdout: true) do
+        {formats, 0} -> formats =~ ~r/^\s*HEIC\*?\s+\S+\s+r/m
+        _ -> false
+      end
+  rescue
+    # `convert` not on PATH.
+    _ -> false
+  end
+
 # Core's API is optional for this package: the tests of the tools run only
 # against a core that has the executor.
 exclude =
   if(repo_available, do: [], else: [:integration]) ++
-    if Code.ensure_loaded?(PhoenixKit.API.Executor), do: [], else: [:core_api]
+    if(Code.ensure_loaded?(PhoenixKit.API.Executor), do: [], else: [:core_api]) ++
+    if imagemagick_heic?, do: [], else: [:imagemagick]
 
 ExUnit.start(exclude: exclude)

@@ -7,6 +7,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.PhotosTest do
   # `Storage.retrieve_file/1` hands them over.
   use ExUnit.Case, async: true
 
+  # The photos are made with ImageMagick, the fixture is a HEIC.
+  @moduletag :imagemagick
+
   alias PhoenixKitWarehouse.InventoryAI.Photos
 
   @fixtures Path.expand("../../fixtures/inventory_ai", __DIR__)
