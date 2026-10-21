@@ -175,7 +175,22 @@ defmodule PhoenixKitWarehouse.API.Schemas do
 
   @doc false
   def set_stock_input,
-    do: write_input(:inventory, %{"external_ref" => external_ref()}, ["lines"])
+    do:
+      write_input(
+        :inventory,
+        %{
+          "external_ref" =>
+            Map.update!(
+              external_ref(),
+              "description",
+              &(&1 <>
+                  " On set_stock, a call answered \"unchanged\" posts no document, so the reference " <>
+                  "is not recorded: a later call with it runs as a new stocktake; use Idempotency-Key " <>
+                  "for replays.")
+            )
+        },
+        ["lines"]
+      )
 
   @doc false
   def issue_stock_input do
@@ -294,7 +309,7 @@ defmodule PhoenixKitWarehouse.API.Schemas do
     %{
       "type" => "object",
       "properties" => %{
-        "status" => %{"type" => "string", "enum" => ["posted", "skipped"]},
+        "status" => %{"type" => "string", "enum" => ["posted", "skipped", "unchanged"]},
         "document" => %{
           "type" => "object",
           "properties" => %{

@@ -159,7 +159,11 @@ defmodule PhoenixKitWarehouse.API do
             "(absolute, not a delta; 0 is allowed). Other products are untouched. Answers the " <>
             "document number and, per line, the exact previous quantity (from) and the new one (to). " <>
             "Atomic. Send external_ref so that a retry is harmless: a repeated reference answers " <>
-            "status \"skipped\" and does not reset stock that has moved since. " <>
+            "status \"skipped\" and does not reset stock that has moved since. If every listed " <>
+            "product already holds its counted quantity no document is created and the call " <>
+            "answers status \"unchanged\". No document exists then, so the external_ref is not " <>
+            "recorded and a later call with the same reference runs as a new stocktake (it sets " <>
+            "the counted quantities again): use Idempotency-Key for replays. " <>
             @retry_conflict_stocktake <> " " <> @held_for_confirmation,
         input_schema: Schemas.set_stock_input(),
         output_schema: Schemas.write_output(),
