@@ -508,7 +508,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
                twin_loaded.fingerprint,
                twin_loaded.lines,
                [row(1, ctx.hinge, "480")],
-               ctx.user, inventory_uuid: twin.uuid) == {:error, :wrong_document}
+               ctx.user,
+               inventory_uuid: twin.uuid
+             ) == {:error, :wrong_document}
 
       assert InventoryAI.get_run(ctx.run.uuid).status == "proposed"
       assert lines(ctx.doc) == ctx.loaded.lines
