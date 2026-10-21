@@ -3,18 +3,21 @@ defmodule PhoenixKitWarehouse.CataloguePinConformanceTest do
 
   @moduledoc """
   Guards the `:phoenix_kit_catalogue` requirement against drifting below the
-  version that first ships `ItemSelectorModal`.
+  version the module is built against.
 
   Three LiveViews compile-time alias
   `PhoenixKitCatalogue.Web.Components.ItemSelectorModal`, which arrived in
-  catalogue 0.18.0. A pin that still admits 0.13–0.17 lets a host resolve a
-  catalogue this package cannot compile against.
+  catalogue 0.18.0, and the photo inventory relies on the item type's
+  `item_types` filter and the pack/kg/litre/m3 units, which arrived in
+  0.46.0. A pin that still admits an older catalogue lets a host resolve
+  one that this package cannot compile against, or one that offers
+  services to the model.
   """
 
-  @must_admit ["0.18.0", "0.18.7", "0.19.0", "0.99.4"]
-  @must_reject ["0.13.0", "0.17.0", "1.0.0"]
+  @must_admit ["0.46.0", "0.48.1", "0.99.4"]
+  @must_reject ["0.13.0", "0.18.0", "0.45.1", "1.0.0"]
 
-  test "the :phoenix_kit_catalogue requirement admits 0.18+ and nothing below" do
+  test "the :phoenix_kit_catalogue requirement admits 0.46+ and nothing below" do
     requirement = catalogue_requirement()
 
     assert match?({:ok, _parsed}, Version.parse_requirement(requirement)),
@@ -23,7 +26,7 @@ defmodule PhoenixKitWarehouse.CataloguePinConformanceTest do
     for version <- @must_admit do
       assert Version.match?(version, requirement),
              "`:phoenix_kit_catalogue` requirement #{inspect(requirement)} rejects #{version}. " <>
-               "Keep it a two-segment `~> 0.18` so 0.18+ resolves and 1.0 does not."
+               "Keep it a two-segment `~> 0.46` so 0.46+ resolves and 1.0 does not."
     end
 
     for version <- @must_reject do
