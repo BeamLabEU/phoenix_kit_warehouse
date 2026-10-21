@@ -35,6 +35,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.Components.LineExplanations
   alias PhoenixKitWarehouse.Web.TrashMessages
   alias PhoenixKitWarehouse.Web.UserNames
 
@@ -1201,6 +1202,11 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
               lines={@lines}
               posted?={@read_only?}
               received_summary={@received_summary}
+            />
+            <LineExplanations.explanations
+              id="supplier-order-explanations"
+              lines={@lines}
+              quantity_logic?={true}
             />
           </div>
         </div>

@@ -25,6 +25,7 @@ defmodule PhoenixKitWarehouse.InternalOrders do
   alias PhoenixKitWarehouse.CommittedQuantities
   alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.InternalOrder
+  alias PhoenixKitWarehouse.LineExplanation
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.StockLedger
 
@@ -528,7 +529,10 @@ defmodule PhoenixKitWarehouse.InternalOrders do
               old_qty = parse_decimal(existing_line["required_quantity"])
               new_qty = parse_decimal(new_line["required_quantity"])
               summed = Decimal.add(old_qty, new_qty)
-              Map.put(existing_line, "required_quantity", StockLedger.format_quantity(summed))
+
+              existing_line
+              |> Map.put("required_quantity", StockLedger.format_quantity(summed))
+              |> LineExplanation.merge_into(new_line)
             end)
         end
       end)

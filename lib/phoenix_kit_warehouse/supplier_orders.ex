@@ -32,6 +32,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.InternalOrders
+  alias PhoenixKitWarehouse.LineExplanation
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrder
 
@@ -762,7 +763,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   # Merges two enriched lines for the same item_uuid by summing quantities.
   defp merge_enriched_lines(existing, new_line) do
-    %{
+    merged = %{
       "item_uuid" => existing["item_uuid"],
       "name" => existing["name"],
       "sku" => existing["sku"],
@@ -786,6 +787,11 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
         ),
       "base_price" => existing["base_price"] || new_line["base_price"]
     }
+
+    LineExplanation.put(
+      merged,
+      LineExplanation.merge(LineExplanation.get(existing), LineExplanation.get(new_line))
+    )
   end
 
   # ---------------------------------------------------------------------------
@@ -1071,7 +1077,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   defp build_enriched_line(line, on_hand, shortfall, item) do
     base_price = item && StockLedger.to_decimal_or_nil(item.base_price)
 
-    %{
+    enriched = %{
       "item_uuid" => line["item_uuid"],
       "name" => line["name"],
       "sku" => line["sku"],
@@ -1083,5 +1089,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       "ordered_quantity" => shortfall,
       "base_price" => base_price
     }
+
+    LineExplanation.carry(enriched, line)
   end
 end

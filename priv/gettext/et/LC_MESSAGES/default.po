@@ -2118,3 +2118,13 @@ msgstr "Määrake esmalt lao seadetes vaikeladu."
 #, elixir-autogen, elixir-format
 msgid "External ref %{ref} is already used by a posted goods issue."
 msgstr "Väline viide %{ref} on juba kasutusel sisestatud kauba väljastamisel."
+
+#: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:29
+#, elixir-autogen, elixir-format
+msgid "Why"
+msgstr "Põhjendus"
+
+#: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:33
+#, elixir-autogen, elixir-format
+msgid "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
+msgstr "Tellimus on sisetellimuse vajadus miinus laoseis laokohas koostamise hetkel. Impordil lahutatakse ka see, mis on juba teistes tarnijatellimustes tellitud. Tarnija on kauba jaoks leitud tarnija: põhitarnija või tootja kaudu. Kaubad, millel pole ühte tarnijat, sellesse tellimusse ei satu. Kui tellimuse kogust on käsitsi muudetud, võib see arvutusest erineda."

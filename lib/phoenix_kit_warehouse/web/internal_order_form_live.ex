@@ -37,6 +37,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.Components.LineExplanations
   alias PhoenixKitWarehouse.Web.ItemSelectorScope
   alias PhoenixKitWarehouse.Web.TrashMessages
   alias PhoenixKitWarehouse.Web.UserNames
@@ -1199,6 +1200,11 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               names={@names}
               posted?={@read_only?}
               locale={@locale}
+            />
+            <LineExplanations.explanations
+              id="internal-order-explanations"
+              lines={@lines}
+              names={@names}
             />
           </div>
         </div>
