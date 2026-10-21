@@ -138,7 +138,7 @@ defmodule PhoenixKitWarehouse.GettextTest do
           "Units per package",
           "Show the late answer",
           "This place may have been photographed again since.",
-          "%{count} lines counted from photos will be lost.",
+          "Upload the photos of the place first.",
           "The photos are sent to an outside AI service: photograph the shelves, not people.",
           "Do not leave the page while the photos upload."
         ] do
@@ -153,8 +153,39 @@ defmodule PhoenixKitWarehouse.GettextTest do
     with_locale("en", fn -> assert t("Count from photos") == "Count from photos" end)
   end
 
+  test "the photo inventory's counts take the plural forms" do
+    n = fn count ->
+      Gettext.dngettext(
+        PhoenixKitWarehouse.Gettext,
+        "default",
+        "%{count} line counted from photos will be lost.",
+        "%{count} lines counted from photos will be lost.",
+        count
+      )
+    end
+
+    with_locale("en", fn ->
+      assert n.(1) == "1 line counted from photos will be lost."
+      assert n.(2) == "2 lines counted from photos will be lost."
+    end)
+
+    with_locale("ru", fn ->
+      assert n.(1) == "Строк, посчитанных по фото, будет потеряно: 1."
+      assert n.(5) == "Строк, посчитанных по фото, будет потеряно: 5."
+    end)
+
+    for locale <- ~w(et uk) do
+      with_locale(locale, fn -> refute n.(2) =~ "lines counted" end)
+    end
+
+    with_locale("et", fn ->
+      assert Gettext.dpgettext(PhoenixKitWarehouse.Gettext, "default", "line action", "Add") ==
+               "Liida"
+    end)
+  end
+
   describe "catalogues are complete" do
-    @catalogues for locale <- ~w(en et ru),
+    @catalogues for locale <- ~w(en et ru uk),
                     do:
                       {locale,
                        Path.join(["priv", "gettext", locale, "LC_MESSAGES", "default.po"])}
@@ -169,6 +200,14 @@ defmodule PhoenixKitWarehouse.GettextTest do
               do: IO.iodata_to_binary(msgid)
 
         assert incomplete == []
+
+        incomplete_plurals =
+          for %Expo.Message.Plural{msgid: msgid, msgstr: msgstr, flags: flags} <- messages,
+              Enum.any?(Map.values(msgstr), &(IO.iodata_to_binary(&1) == "")) or
+                Enum.any?(flags, &("fuzzy" in &1)),
+              do: IO.iodata_to_binary(msgid)
+
+        assert incomplete_plurals == []
       end
     end
   end

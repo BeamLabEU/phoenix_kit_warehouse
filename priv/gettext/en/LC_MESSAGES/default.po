@@ -2421,19 +2421,25 @@ msgstr "%{count} below the stock"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1455
 #, elixir-autogen, elixir-format
-msgid "%{count} items counted from photos are below the stock:"
-msgstr "%{count} items counted from photos are below the stock:"
+msgid "%{count} item counted from photos is below the stock:"
+msgid_plural "%{count} items counted from photos are below the stock:"
+msgstr[0] "%{count} item counted from photos is below the stock:"
+msgstr[1] "%{count} items counted from photos are below the stock:"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1499
 #, elixir-autogen, elixir-format
-msgid "%{count} lines counted from photos will be lost."
-msgstr "%{count} lines counted from photos will be lost."
+msgid "%{count} line counted from photos will be lost."
+msgid_plural "%{count} lines counted from photos will be lost."
+msgstr[0] "%{count} line counted from photos will be lost."
+msgstr[1] "%{count} lines counted from photos will be lost."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:934
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1052
 #, elixir-autogen, elixir-format
-msgid "%{count} photos"
-msgstr "%{count} photos"
+msgid "%{count} photo"
+msgid_plural "%{count} photos"
+msgstr[0] "%{count} photo"
+msgstr[1] "%{count} photos"
 
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:709
 #, elixir-autogen, elixir-format
@@ -2442,6 +2448,7 @@ msgstr "A photo could not be stored: upload it again."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1393
 #, elixir-autogen, elixir-format
+msgctxt "line action"
 msgid "Add"
 msgstr "Add"
 
@@ -2472,8 +2479,10 @@ msgstr "Applied"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:434
 #, elixir-autogen, elixir-format
-msgid "Applied to the count sheet: %{count} rows."
-msgstr "Applied to the count sheet: %{count} rows."
+msgid "Applied to the count sheet: %{count} row."
+msgid_plural "Applied to the count sheet: %{count} rows."
+msgstr[0] "Applied to the count sheet: %{count} row."
+msgstr[1] "Applied to the count sheet: %{count} rows."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1114
 #, elixir-autogen, elixir-format
@@ -2689,8 +2698,10 @@ msgstr "Show the late answer"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:914
 #, elixir-autogen, elixir-format
-msgid "The AI is looking at %{count} photos…"
-msgstr "The AI is looking at %{count} photos…"
+msgid "The AI is looking at %{count} photo…"
+msgid_plural "The AI is looking at %{count} photos…"
+msgstr[0] "The AI is looking at %{count} photo…"
+msgstr[1] "The AI is looking at %{count} photos…"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1504
 #, elixir-autogen, elixir-format
@@ -2782,10 +2793,17 @@ msgstr "Units per package"
 msgid "Unknown action."
 msgstr "Unknown action."
 
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:577
+#, elixir-autogen, elixir-format
+msgid "Upload the photos of the place first."
+msgstr "Upload the photos of the place first."
+
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:819
 #, elixir-autogen, elixir-format
-msgid "Up to %{count} photos, at most 20 MB each."
-msgstr "Up to %{count} photos, at most 20 MB each."
+msgid "Up to %{count} photo, at most 20 MB."
+msgid_plural "Up to %{count} photos, at most 20 MB each."
+msgstr[0] "Up to %{count} photo, at most 20 MB."
+msgstr[1] "Up to %{count} photos, at most 20 MB each."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1071
 #, elixir-autogen, elixir-format
@@ -2854,6 +2872,7 @@ msgstr "choose an item"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1283
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "count"
 msgstr "count"
 
@@ -2879,21 +2898,25 @@ msgstr "from photos"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1399
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "high"
 msgstr "high"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1282
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "item"
 msgstr "item"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1401
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "low"
 msgstr "low"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1400
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "medium"
 msgstr "medium"
 
@@ -2924,6 +2947,7 @@ msgstr "or enter the quantity"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1293
 #, elixir-autogen, elixir-format
+msgctxt "proposal row"
 msgid "stock"
 msgstr "stock"
 

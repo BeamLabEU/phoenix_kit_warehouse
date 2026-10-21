@@ -139,6 +139,11 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   @doc """
   The runs of a document, the newest first. A run left `running` for more
   than ten minutes is closed as interrupted first (`expire_stale_runs/1`).
+
+  The list is for showing the runs: it leaves out the large columns
+  `result`, `catalogue_map` and `late_result` (left at their defaults) and
+  says in `late_answer?` whether there is a late answer. `get_run/2` reads
+  a whole run.
   """
   @spec list_runs(Ecto.UUID.t()) :: [InventoryAIRun.t()]
   def list_runs(inventory_uuid) do
@@ -146,10 +151,15 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
     from(r in InventoryAIRun,
       where: r.inventory_uuid == ^inventory_uuid,
-      order_by: [desc: r.inserted_at, desc: r.uuid]
+      order_by: [desc: r.inserted_at, desc: r.uuid],
+      select: struct(r, ^listed_fields()),
+      select_merge: %{late_answer?: not is_nil(r.late_result)}
     )
     |> repo().all()
   end
+
+  defp listed_fields,
+    do: InventoryAIRun.__schema__(:fields) -- [:result, :catalogue_map, :late_result]
 
   # --- starting -----------------------------------------------------------------------
 
@@ -207,6 +217,36 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     end
   end
 
+  @doc """
+  The checks of `start_run/4` that need neither the photos nor the
+  document: the AI on, an endpoint chosen, no more photos than the
+  maximum, the place, the catalogues and how many items they hold. A caller
+  that stores the photos before it starts the run asks this first, so a
+  run that would be refused leaves the photos alone; `start_run/4` checks
+  it all again.
+
+  `attrs` (atom or string keys): `place_label` and `catalogue_uuids` as for
+  `start_run/4`, `photo_count`. The errors are `start_run/4`'s.
+  """
+  @spec check_start(map()) :: :ok | {:error, term()}
+  def check_start(attrs) do
+    place = attrs |> attr(:place_label) |> normalize_place()
+
+    with :ok <- check_ai(),
+         {:ok, _endpoint_uuid} <- endpoint(),
+         :ok <- check_photo_count(attr(attrs, :photo_count) || 0),
+         :ok <- check_place(place),
+         {:ok, catalogue_uuids} <-
+           attrs |> attr(:catalogue_uuids) |> List.wrap() |> cast_catalogues() do
+      check_catalogue(catalogue_uuids)
+    end
+  end
+
+  defp check_photo_count(count) do
+    max = Settings.max_photos()
+    if count > max, do: {:error, {:too_many_photos, count, max}}, else: :ok
+  end
+
   defp attr(attrs, key), do: Map.get(attrs, key) || Map.get(attrs, Atom.to_string(key))
 
   defp normalize_place(label) when is_binary(label) do
@@ -232,15 +272,10 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   defp check_photos([]), do: {:error, :no_photos}
 
   defp check_photos(photos) do
-    max = Settings.max_photos()
-
-    with {:ok, photos} <- cast_uuids(photos, :invalid_photos) do
-      photos = Enum.uniq(photos)
-
-      if length(photos) > max,
-        do: {:error, {:too_many_photos, length(photos), max}},
-        else: {:ok, photos}
-    end
+    with {:ok, photos} <- cast_uuids(photos, :invalid_photos),
+         photos = Enum.uniq(photos),
+         :ok <- check_photo_count(length(photos)),
+         do: {:ok, photos}
   end
 
   defp cast_uuids(values, error) do

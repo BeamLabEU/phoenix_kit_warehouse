@@ -3,8 +3,9 @@ defmodule PhoenixKitWarehouse.UkLocaleTest do
   Pins the Ukrainian (`uk`) catalog: no msgid that default.pot lacks, no empty
   or fuzzy entries, live `dgettext` output, and a correct plural-forms header.
 
-  The catalog has no plural msgids (nothing in lib/ calls `ngettext`), so the
-  plural rule is verified from the header the catalog declares.
+  The plural msgids (the photo inventory's counts, `dngettext`) are checked
+  like the others, every form filled; the plural rule is verified from the
+  header the catalog declares.
   """
 
   use ExUnit.Case, async: true
@@ -26,6 +27,10 @@ defmodule PhoenixKitWarehouse.UkLocaleTest do
     for %Expo.Message.Singular{msgid: msgid} <- messages, do: IO.iodata_to_binary(msgid)
   end
 
+  defp plural_ids(messages) do
+    for %Expo.Message.Plural{msgid: msgid} <- messages, do: IO.iodata_to_binary(msgid)
+  end
+
   defp bindings_by_msgid(messages) do
     for %Expo.Message.Singular{msgid: id, msgstr: str} <- messages, into: %{} do
       {IO.iodata_to_binary(id), %{msgid: bindings(id), msgstr: bindings(str)}}
@@ -44,6 +49,10 @@ defmodule PhoenixKitWarehouse.UkLocaleTest do
       assert MapSet.size(pot_ids) > 0
       assert MapSet.size(uk_ids) > 0
       assert MapSet.difference(uk_ids, pot_ids) == MapSet.new()
+
+      pot_plurals = @pot_path |> messages() |> plural_ids() |> MapSet.new()
+      uk_plurals = @uk_path |> messages() |> plural_ids() |> MapSet.new()
+      assert MapSet.difference(uk_plurals, pot_plurals) == MapSet.new()
     end
 
     test "translates every msgid of default.pot" do
@@ -51,22 +60,31 @@ defmodule PhoenixKitWarehouse.UkLocaleTest do
       uk_ids = @uk_path |> messages() |> singular_ids() |> MapSet.new()
 
       assert MapSet.difference(pot_ids, uk_ids) |> Enum.sort() == []
+
+      pot_plurals = @pot_path |> messages() |> plural_ids() |> MapSet.new()
+      uk_plurals = @uk_path |> messages() |> plural_ids() |> MapSet.new()
+      assert MapSet.difference(pot_plurals, uk_plurals) |> Enum.sort() == []
     end
 
     test "has no empty msgstr and no fuzzy entries" do
       uk_messages = messages(@uk_path)
-
-      assert Enum.all?(uk_messages, &match?(%Expo.Message.Singular{}, &1))
 
       empty =
         for %Expo.Message.Singular{msgid: id, msgstr: str} <- uk_messages,
             IO.iodata_to_binary(str) == "",
             do: IO.iodata_to_binary(id)
 
+      empty_plurals =
+        for %Expo.Message.Plural{msgid: id, msgstr: forms} <- uk_messages,
+            map_size(forms) != 3 or Enum.any?(Map.values(forms), &(IO.iodata_to_binary(&1) == "")),
+            do: IO.iodata_to_binary(id)
+
       fuzzy =
-        for %Expo.Message.Singular{msgid: id} = message <- uk_messages,
+        for %{msgid: id} = message <- uk_messages,
             Enum.any?(message.flags, &("fuzzy" in &1)),
             do: IO.iodata_to_binary(id)
+
+      assert empty_plurals == []
 
       assert empty == []
       assert fuzzy == []

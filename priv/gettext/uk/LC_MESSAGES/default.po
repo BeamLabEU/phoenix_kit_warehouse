@@ -2420,19 +2420,28 @@ msgstr "%{count} нижче обліку"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1455
 #, elixir-autogen, elixir-format
-msgid "%{count} items counted from photos are below the stock:"
-msgstr "Позицій, порахованих за фото, менше, ніж за обліком: %{count}"
+msgid "%{count} item counted from photos is below the stock:"
+msgid_plural "%{count} items counted from photos are below the stock:"
+msgstr[0] "Позицій, порахованих за фото, менше, ніж за обліком: %{count}"
+msgstr[1] "Позицій, порахованих за фото, менше, ніж за обліком: %{count}"
+msgstr[2] "Позицій, порахованих за фото, менше, ніж за обліком: %{count}"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1499
 #, elixir-autogen, elixir-format
-msgid "%{count} lines counted from photos will be lost."
-msgstr "Рядків, порахованих за фото, буде втрачено: %{count}."
+msgid "%{count} line counted from photos will be lost."
+msgid_plural "%{count} lines counted from photos will be lost."
+msgstr[0] "Рядків, порахованих за фото, буде втрачено: %{count}."
+msgstr[1] "Рядків, порахованих за фото, буде втрачено: %{count}."
+msgstr[2] "Рядків, порахованих за фото, буде втрачено: %{count}."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:934
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1052
 #, elixir-autogen, elixir-format
-msgid "%{count} photos"
-msgstr "Фото: %{count}"
+msgid "%{count} photo"
+msgid_plural "%{count} photos"
+msgstr[0] "Фото: %{count}"
+msgstr[1] "Фото: %{count}"
+msgstr[2] "Фото: %{count}"
 
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:709
 #, elixir-autogen, elixir-format
@@ -2441,6 +2450,7 @@ msgstr "Не вдалося зберегти фото: завантажте йо
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1393
 #, elixir-autogen, elixir-format
+msgctxt "line action"
 msgid "Add"
 msgstr "Додати"
 
@@ -2471,8 +2481,11 @@ msgstr "Застосовано"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:434
 #, elixir-autogen, elixir-format
-msgid "Applied to the count sheet: %{count} rows."
-msgstr "Застосовано до відомості рядків: %{count}."
+msgid "Applied to the count sheet: %{count} row."
+msgid_plural "Applied to the count sheet: %{count} rows."
+msgstr[0] "Застосовано до відомості рядків: %{count}."
+msgstr[1] "Застосовано до відомості рядків: %{count}."
+msgstr[2] "Застосовано до відомості рядків: %{count}."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1114
 #, elixir-autogen, elixir-format
@@ -2688,8 +2701,11 @@ msgstr "Показати пізню відповідь"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:914
 #, elixir-autogen, elixir-format
-msgid "The AI is looking at %{count} photos…"
-msgstr "ШІ переглядає фото: %{count}…"
+msgid "The AI is looking at %{count} photo…"
+msgid_plural "The AI is looking at %{count} photos…"
+msgstr[0] "ШІ переглядає фото: %{count}…"
+msgstr[1] "ШІ переглядає фото: %{count}…"
+msgstr[2] "ШІ переглядає фото: %{count}…"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1504
 #, elixir-autogen, elixir-format
@@ -2781,10 +2797,18 @@ msgstr "Скільки в упаковці"
 msgid "Unknown action."
 msgstr "Невідома дія."
 
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:577
+#, elixir-autogen, elixir-format
+msgid "Upload the photos of the place first."
+msgstr "Спочатку завантажте фото цього місця."
+
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:819
 #, elixir-autogen, elixir-format
-msgid "Up to %{count} photos, at most 20 MB each."
-msgstr "До %{count} фото, кожне до 20 МБ."
+msgid "Up to %{count} photo, at most 20 MB."
+msgid_plural "Up to %{count} photos, at most 20 MB each."
+msgstr[0] "До %{count} фото, кожне до 20 МБ."
+msgstr[1] "До %{count} фото, кожне до 20 МБ."
+msgstr[2] "До %{count} фото, кожне до 20 МБ."
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1071
 #, elixir-autogen, elixir-format
@@ -2853,6 +2877,7 @@ msgstr "виберіть позицію"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1283
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "count"
 msgstr "підрахунок"
 
@@ -2878,21 +2903,25 @@ msgstr "за фото"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1399
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "high"
 msgstr "висока"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1282
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "item"
 msgstr "позиція"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1401
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "low"
 msgstr "низька"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1400
 #, elixir-autogen, elixir-format
+msgctxt "confidence"
 msgid "medium"
 msgstr "середня"
 
@@ -2923,6 +2952,7 @@ msgstr "або введіть кількість"
 
 #: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1293
 #, elixir-autogen, elixir-format
+msgctxt "proposal row"
 msgid "stock"
 msgstr "облік"
 

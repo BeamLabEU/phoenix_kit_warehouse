@@ -48,6 +48,8 @@ defmodule PhoenixKitWarehouse.InventoryAIRun do
     field(:applied_by_uuid, Ecto.UUID)
     field(:late_result, :map)
     field(:applied_at, :utc_datetime)
+    # Set by `InventoryAI.list_runs/1`, which leaves `late_result` out.
+    field(:late_answer?, :boolean, virtual: true, default: false)
 
     timestamps(type: :utc_datetime)
   end

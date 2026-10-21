@@ -162,7 +162,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   defp retaken(runs) do
     runs
     |> Enum.with_index()
-    |> Enum.filter(fn {run, index} -> index > 0 and run.status == "error" and run.late_result end)
+    |> Enum.filter(fn {run, index} ->
+      index > 0 and run.status == "error" and run.late_answer?
+    end)
     |> MapSet.new(fn {run, _index} -> run.uuid end)
   end
 
@@ -238,27 +240,24 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
     end
   end
 
-  defp event("inventory_ai_change", params, socket, _on_written) do
-    known = MapSet.new(socket.assigns.ai.catalogues, & &1.uuid)
+  defp event("inventory_ai_change", params, socket, _on_written),
+    do: put_form(socket, params)
 
-    chosen =
-      params
-      |> Map.get("catalogue_uuids", [])
-      |> List.wrap()
-      |> Enum.filter(&MapSet.member?(known, &1))
-
-    place = params |> Map.get("place", socket.assigns.ai.place) |> to_string()
-    changed? = chosen != socket.assigns.ai.catalogue_uuids
-
-    socket = update_ai(socket, &%{&1 | place: place, catalogue_uuids: chosen})
-    if changed?, do: count_catalogue(socket), else: socket
+  # A ref the upload no longer has (a second click on the cross) is ignored.
+  defp event("inventory_ai_cancel_upload", %{"ref" => ref}, socket, _on_written)
+       when is_binary(ref) do
+    if Enum.any?(socket.assigns.uploads[@upload].entries, &(&1.ref == ref)),
+      do: cancel_upload(socket, @upload, ref),
+      else: socket
   end
 
-  defp event("inventory_ai_cancel_upload", %{"ref" => ref}, socket, _on_written),
-    do: cancel_upload(socket, @upload, ref)
+  # The place and the catalogues come with the submit: Enter in the place
+  # field drops the change still waiting for its debounce.
+  defp event("inventory_ai_run", params, socket, _on_written) do
+    socket = put_form(socket, params)
 
-  defp event("inventory_ai_run", _params, socket, _on_written) do
     with :ok <- ready(socket),
+         :ok <- check_start(socket),
          {:ok, doc} <- live_draft(socket),
          {:ok, photos} <- store_uploads(socket, doc),
          {:ok, run, pid} <-
@@ -324,7 +323,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   defp event("inventory_ai_choose", %{"row" => row, "no" => no}, socket, _on_written) do
     change_review(socket, row, fn review, key ->
-      with {number, ""} <- Integer.parse(to_string(no)),
+      with {:ok, number} <- parse_key(no),
            %{} = item <- Review.offered_item(review, key, number) do
         Review.choose(review, key, item)
       else
@@ -335,7 +334,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   defp event("inventory_ai_pick", %{"row" => row}, socket, _on_written) do
     with %{review: %{}} <- socket.assigns.ai,
-         {key, ""} <- Integer.parse(to_string(row)),
+         {:ok, key} <- parse_key(row),
          true <- Enum.any?(socket.assigns.ai.review.rows, &(&1.key == key)) do
       update_ai(socket, &%{&1 | picking: key})
     else
@@ -431,8 +430,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
               review: nil,
               picking: nil,
               notice:
-                dgettext("default", "Applied to the count sheet: %{count} rows.",
-                  count: summary.applied
+                dngettext(
+                  "default",
+                  "Applied to the count sheet: %{count} row.",
+                  "Applied to the count sheet: %{count} rows.",
+                  summary.applied
                 )
           }
         end)
@@ -467,13 +469,47 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   # A change of the open proposal's table, on the row the event names.
   defp change_review(socket, row, fun) do
     with %{review: %{} = review} <- socket.assigns.ai,
-         {key, ""} <- Integer.parse(to_string(row)),
+         {:ok, key} <- parse_key(row),
          {:ok, review} <- fun.(review, key) do
       update_ai(socket, &%{&1 | review: review})
     else
       {:error, reason} -> fail(socket, reason)
       _ -> fail(socket, :unknown_row)
     end
+  end
+
+  # A row's key or an alternative's number as the browser sends it.
+  defp parse_key(value) when is_integer(value), do: {:ok, value}
+
+  defp parse_key(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {key, ""} -> {:ok, key}
+      _ -> :error
+    end
+  end
+
+  defp parse_key(_value), do: :error
+
+  # The upload form's place and catalogues: a place that is not text keeps
+  # the one there is, a catalogue is one of those offered.
+  defp put_form(socket, params) do
+    ai = socket.assigns.ai
+    known = MapSet.new(ai.catalogues, & &1.uuid)
+
+    chosen =
+      params
+      |> Map.get("catalogue_uuids", [])
+      |> List.wrap()
+      |> Enum.filter(&(is_binary(&1) and MapSet.member?(known, &1)))
+
+    place =
+      case Map.get(params, "place") do
+        place when is_binary(place) -> place
+        _ -> ai.place
+      end
+
+    socket = update_ai(socket, &%{&1 | place: place, catalogue_uuids: chosen})
+    if chosen != ai.catalogue_uuids, do: count_catalogue(socket), else: socket
   end
 
   defp count_catalogue(socket) do
@@ -487,13 +523,25 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
     ai = socket.assigns.ai
 
     cond do
-      upload.entries == [] -> {:error, :no_photos}
+      upload.entries == [] -> {:error, :no_uploads}
       not Enum.all?(upload.entries, & &1.done?) -> {:error, :uploading}
       upload_errors(upload) != [] -> {:error, :upload_errors}
       Enum.any?(upload.entries, &(upload_errors(upload, &1) != [])) -> {:error, :upload_errors}
       Enum.any?(ai.runs, &(&1.status == "running")) -> {:error, :already_running}
       true -> :ok
     end
+  end
+
+  # What the run will be refused for without its photos, asked before the
+  # photos are taken from the upload: a refused run leaves them there.
+  defp check_start(socket) do
+    ai = socket.assigns.ai
+
+    InventoryAI.check_start(%{
+      "place_label" => ai.place,
+      "catalogue_uuids" => ai.catalogue_uuids,
+      "photo_count" => length(socket.assigns.uploads[@upload].entries)
+    })
   end
 
   # Every upload stored in the document's folder, in their order; one that
@@ -524,6 +572,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   defp message(:not_permitted),
     do: dgettext("default", "You may not change this stocktake.")
+
+  defp message(:no_uploads),
+    do: dgettext("default", "Upload the photos of the place first.")
 
   defp message(:uploading),
     do: dgettext("default", "Wait until every photo is uploaded.")
@@ -816,8 +867,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           >
             <.live_file_input upload={@upload} class="file-input file-input-sm w-full" />
             <span class="text-xs text-base-content/60">
-              {dgettext("default", "Up to %{count} photos, at most 20 MB each.",
-                count: @upload.max_entries
+              {dngettext(
+                "default",
+                "Up to %{count} photo, at most 20 MB.",
+                "Up to %{count} photos, at most 20 MB each.",
+                @upload.max_entries
               )}
             </span>
             <p :for={error <- upload_errors(@upload)} class="text-xs text-error">
@@ -911,8 +965,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           class="ml-2 text-xs text-base-content/60"
         >
           <span class="loading loading-spinner loading-xs" />
-          {dgettext("default", "The AI is looking at %{count} photos…",
-            count: length(run.photo_file_uuids)
+          {dngettext(
+            "default",
+            "The AI is looking at %{count} photo…",
+            "The AI is looking at %{count} photos…",
+            length(run.photo_file_uuids)
           )}
         </span>
       </summary>
@@ -931,7 +988,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           >
             <span class="font-medium">{place_text(run.place_label)}</span>
             <span class="text-xs text-base-content/60">
-              {dgettext("default", "%{count} photos", count: length(run.photo_file_uuids))}
+              {photo_count(run)}
             </span>
             <span class={["badge badge-sm", status_class(run.status)]}>{status_text(run.status)}</span>
             <span class="text-xs text-base-content/60">
@@ -968,7 +1025,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
               <.icon name="hero-arrow-path" class="w-3.5 h-3.5" />
               {dgettext("default", "Retry")}
             </button>
-            <span :if={run.status == "error" and run.late_result} class="flex items-center gap-2">
+            <span :if={run.status == "error" and run.late_answer?} class="flex items-center gap-2">
               <span
                 :if={MapSet.member?(@ai.retaken, run.uuid)}
                 id={"inventory-ai-late-warning-#{run.uuid}"}
@@ -1026,6 +1083,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   defp status_text("discarded"), do: dgettext("default", "Discarded")
   defp status_text(status), do: status
 
+  defp photo_count(run) do
+    count = length(run.photo_file_uuids)
+    dngettext("default", "%{count} photo", "%{count} photos", count)
+  end
+
   defp place_text(place) when is_binary(place) and place != "", do: place
   defp place_text(_place), do: dgettext("default", "no place given")
 
@@ -1049,7 +1111,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           <h3 class="font-semibold">
             {dgettext("default", "Proposal: %{place}", place: place_text(@run.place_label))}
             <span class="text-xs font-normal text-base-content/60 ml-2">
-              {dgettext("default", "%{count} photos", count: length(@run.photo_file_uuids))}
+              {photo_count(@run)}
               <span :if={@run.model}>· {@run.model}</span>
             </span>
           </h3>
@@ -1279,8 +1341,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
         <div :if={@row.ai_basis != ""} class="text-base-content/60">{@row.ai_basis}</div>
       </td>
       <td class="text-xs">
-        <div>{dgettext("default", "item")}: {confidence_text(@row.match_confidence)}</div>
-        <div>{dgettext("default", "count")}: {confidence_text(@row.count_confidence)}</div>
+        <div>
+          {dpgettext("default", "confidence", "item")}: {confidence_text(@row.match_confidence)}
+        </div>
+        <div>
+          {dpgettext("default", "confidence", "count")}: {confidence_text(@row.count_confidence)}
+        </div>
       </td>
       <td class="text-xs">
         <.line_now line={@row.line} />
@@ -1290,7 +1356,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           {StockLedger.format_quantity(@row.total)}
         </div>
         <div :if={@row.stock} class="text-base-content/60">
-          {dgettext("default", "stock")}: {StockLedger.format_quantity(@row.stock)}
+          {dpgettext("default", "proposal row", "stock")}: {StockLedger.format_quantity(@row.stock)}
         </div>
         <div :if={@row.starred?} class="text-base-content/60">★ {dgettext("default", "on this warehouse")}</div>
         <div :if={not @row.checked and @row.reasons != []} class="text-base-content/60 mt-1">
@@ -1390,15 +1456,15 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
 
   defp action_text("new"), do: dgettext("default", "New line")
   defp action_text("replace"), do: dgettext("default", "Replace")
-  defp action_text("add"), do: dgettext("default", "Add")
+  defp action_text("add"), do: dpgettext("default", "line action", "Add")
   defp action_text("replace_part"), do: dgettext("default", "Replace this place's part")
   defp action_text("add_part"), do: dgettext("default", "Add as another part")
   defp action_text("replace_all"), do: dgettext("default", "Replace all")
   defp action_text(action), do: action
 
-  defp confidence_text("high"), do: dgettext("default", "high")
-  defp confidence_text("medium"), do: dgettext("default", "medium")
-  defp confidence_text(_low), do: dgettext("default", "low")
+  defp confidence_text("high"), do: dpgettext("default", "confidence", "high")
+  defp confidence_text("medium"), do: dpgettext("default", "confidence", "medium")
+  defp confidence_text(_low), do: dpgettext("default", "confidence", "low")
 
   defp reason_text(:no_item), do: dgettext("default", "choose an item")
   defp reason_text(:low_match), do: dgettext("default", "the item is not certain")
@@ -1452,8 +1518,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
     >
       <div :if={@below != []} id="inventory-ai-below-stock" class="w-full">
         <div class="font-medium">
-          {dgettext("default", "%{count} items counted from photos are below the stock:",
-            count: length(@below)
+          {dngettext(
+            "default",
+            "%{count} item counted from photos is below the stock:",
+            "%{count} items counted from photos are below the stock:",
+            length(@below)
           )}
         </div>
         <ul class="list-disc pl-5">
@@ -1496,8 +1565,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
       class="alert alert-warning text-sm"
     >
       <span :if={@photo_lines > 0}>
-        {dgettext("default", "%{count} lines counted from photos will be lost.",
-          count: @photo_lines
+        {dngettext(
+          "default",
+          "%{count} line counted from photos will be lost.",
+          "%{count} lines counted from photos will be lost.",
+          @photo_lines
         )}
       </span>
       <span :if={@open != []}>

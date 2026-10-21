@@ -18,7 +18,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
   alias PhoenixKitWarehouse.InventoryAI.Settings
   alias PhoenixKitWarehouse.InventoryAIRun
   alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Test.InventoryAIStub
+  alias PhoenixKitWarehouse.Web.InventoryAIPanel
 
   @registry_key {PhoenixKit, :registered_modules}
   @fixture Path.expand("../../fixtures/inventory_ai/shelf.heic", __DIR__)
@@ -75,6 +77,27 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
 
   defp apply(lv), do: lv |> element("#inventory-ai-apply") |> render_click()
 
+  defp photo_input(lv, name \\ "shelf.jpg", content \\ "not really a photo") do
+    file_input(lv, "#inventory-ai-upload-form", :inventory_ai_photos, [
+      %{name: name, content: content, type: "image/jpeg"}
+    ])
+  end
+
+  defp heic_input(lv) do
+    file_input(lv, "#inventory-ai-upload-form", :inventory_ai_photos, [
+      %{name: "shelf.heic", content: File.read!(@fixture), type: "image/heic"}
+    ])
+  end
+
+  # A confirmed user whose one role holds only the permission `key`.
+  defp role_user!(key) do
+    {:ok, role} = Roles.create_role(%{name: "Only#{key}#{System.unique_integer([:positive])}"})
+    {:ok, _} = Permissions.grant_permission(role.uuid, key)
+    {:ok, user} = Auth.admin_confirm_user(user!())
+    {:ok, _} = Roles.assign_role(user, role.name)
+    user
+  end
+
   defp line(doc, item),
     do: Enum.find(Inventories.get_document!(doc.uuid).lines, &(&1["item_uuid"] == item.uuid))
 
@@ -127,26 +150,56 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       refute has_element?(open!(ctx), "#inventory-ai-open")
     end
 
-    test "not without the right to edit the draft; its events are refused", ctx do
-      {:ok, role} = Roles.create_role(%{name: "AiOnly#{System.unique_integer([:positive])}"})
-      {:ok, _} = Permissions.grant_permission(role.uuid, "ai")
-      {:ok, user} = Auth.admin_confirm_user(user!())
-      {:ok, _} = Roles.assign_role(user, role.name)
+    test "a person with only the warehouse permission sees it and may use it", ctx do
+      user = role_user!("warehouse")
       run = run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
 
-      case live(log_in(ctx.conn, user), items_path(ctx.doc)) do
-        {:ok, lv, _html} ->
-          refute has_element?(lv, "#inventory-ai-open")
-          refute has_element?(lv, "#inventory-ai-runs")
+      {:ok, lv, _html} = live(log_in(ctx.conn, user), items_path(ctx.doc))
+      assert has_element?(lv, "#inventory-ai-open")
 
-          render_click(lv, "inventory_ai_open_run", %{"run" => run.uuid})
-          render_click(lv, "inventory_ai_discard", %{"run" => run.uuid})
-          assert status(run) == "proposed"
+      open_run(lv, run)
+      apply(lv)
+      assert status(run) == "applied"
+      assert Decimal.eq?(counted(ctx.doc, ctx.hinge), 480)
+    end
 
-        {:error, {_redirect, _}} ->
-          # The admin gate itself keeps the person out.
-          assert status(run) == "proposed"
-      end
+    test "a person with only another permission is kept out by the page itself", ctx do
+      user = role_user!("ai")
+      assert {:error, {:redirect, _}} = live(log_in(ctx.conn, user), items_path(ctx.doc))
+    end
+
+    test "without the right to edit the draft the button is absent and the events are refused",
+         ctx do
+      run = run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
+      lv = open!(ctx) |> open_run(run)
+
+      # The page lets in only those who may edit a draft; the panel checks
+      # again on the server, so the flag is taken away here.
+      :sys.replace_state(lv.pid, fn state ->
+        update_in(state.socket.assigns.ai, &%{&1 | can_edit?: false})
+      end)
+
+      render_click(lv, "inventory_ai_apply", %{})
+      render_click(lv, "inventory_ai_discard", %{"run" => run.uuid})
+      render_click(lv, "inventory_ai_retry", %{"run" => run.uuid})
+      render_click(lv, "inventory_ai_run", %{})
+
+      assert status(run) == "proposed"
+      assert Decimal.eq?(counted(ctx.doc, ctx.hinge), 500)
+      assert [_one] = InventoryAI.list_runs(ctx.doc.uuid)
+      refute has_element?(lv, "#inventory-ai-open")
+      refute has_element?(lv, "#inventory-ai-runs")
+
+      ai = :sys.get_state(lv.pid).socket.assigns.ai
+      assert ai.error == "You may not change this stocktake."
+
+      refute render_component(&InventoryAIPanel.open_button/1, ai: ai, doc: ctx.doc) =~
+               "inventory-ai-open"
+
+      assert render_component(&InventoryAIPanel.open_button/1,
+               ai: %{ai | can_edit?: true},
+               doc: ctx.doc
+             ) =~ "inventory-ai-open"
     end
 
     test "the upload of the panel leaves the Files tab's own upload alone", ctx do
@@ -157,8 +210,58 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       assert uploads.media_files.max_entries == 10
       assert uploads.inventory_ai_photos.max_entries == Settings.max_photos()
 
-      html = render_patch(lv, Routes.path("/admin/warehouse/inventory/#{ctx.doc.uuid}/files"))
-      assert html =~ "loading" or html =~ "not available" or html =~ "media-browser"
+      render_patch(lv, Routes.path("/admin/warehouse/inventory/#{ctx.doc.uuid}/files"))
+      {:ok, folder} = StorageFolders.ensure_for_inventory(ctx.doc, ctx.admin.uuid)
+      send(lv.pid, {:files_folder_result, {:ok, folder}})
+      assert has_element?(lv, "#media-browser-inventory-#{ctx.doc.uuid}")
+
+      render_patch(lv, items_path(ctx.doc))
+      lv |> element("#inventory-ai-open") |> render_click()
+      assert render_upload(photo_input(lv), "shelf.jpg") =~ "100%"
+      refute has_element?(lv, "#inventory-ai-run[disabled]")
+    end
+  end
+
+  describe "the upload's events" do
+    test "removing an upload the panel does not have leaves the page alive", ctx do
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+      assert render_upload(photo_input(lv), "shelf.jpg") =~ "100%"
+      [entry] = :sys.get_state(lv.pid).socket.assigns.uploads.inventory_ai_photos.entries
+
+      render_click(lv, "inventory_ai_cancel_upload", %{"ref" => entry.ref})
+      render_click(lv, "inventory_ai_cancel_upload", %{"ref" => entry.ref})
+      render_click(lv, "inventory_ai_cancel_upload", %{"ref" => %{"x" => 1}})
+
+      assert has_element?(lv, "#inventory-ai-panel")
+      refute has_element?(lv, "#inventory-ai-entry-#{entry.ref}")
+    end
+
+    test "Propose without photos asks for them", ctx do
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+
+      assert render_click(lv, "inventory_ai_run", %{}) =~ "Upload the photos of the place first."
+    end
+
+    test "crafted values of the panel's fields are refused, the page stays", ctx do
+      run = run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
+      lv = open!(ctx) |> open_run(run)
+
+      for {event, params} <- [
+            {"inventory_ai_row", %{"row" => %{"a" => 1}}},
+            {"inventory_ai_check", %{"row" => ["1"]}},
+            {"inventory_ai_choose", %{"row" => "1", "no" => %{}}},
+            {"inventory_ai_pick", %{"row" => %{}}},
+            {"inventory_ai_unmerge", %{"row" => nil}},
+            {"inventory_ai_change", %{"place" => %{"a" => "b"}}},
+            {"inventory_ai_run", %{"place" => ["x"], "catalogue_uuids" => %{}}}
+          ] do
+        render_click(lv, event, params)
+        assert has_element?(lv, "#inventory-ai-proposal-#{run.uuid}"), event
+      end
+
+      assert status(run) == "proposed"
     end
   end
 
@@ -220,6 +323,55 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
 
       apply(lv)
       assert Decimal.eq?(counted(ctx.doc, ctx.hinge), 480)
+    end
+
+    test "Propose takes the place and the catalogues it submits, without a change before",
+         ctx do
+      InventoryAIStub.install()
+      local_bucket!()
+      InventoryAIStub.answer(answer([object(%{"catalogue_no" => 1, "loose_units" => 480})]))
+      other = catalogue!("Other")
+      :ok = InventoryAI.subscribe(ctx.doc.uuid)
+
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+      assert render_upload(heic_input(lv), "shelf.heic") =~ "100%"
+
+      # Enter in the place field: the debounced change never reaches the server.
+      lv
+      |> form("#inventory-ai-upload-form", %{
+        "place" => "Shelf 2",
+        "catalogue_uuids" => [ctx.catalogue.uuid]
+      })
+      |> render_submit()
+
+      assert_receive {:inventory_ai_run, %{run_uuid: uuid, status: "proposed"}}, 5_000
+      run = InventoryAI.get_run(ctx.doc.uuid, uuid)
+      assert run.place_label == "Shelf 2"
+      assert run.result["catalogue_uuids"] == [ctx.catalogue.uuid]
+      refute other.uuid in run.result["catalogue_uuids"]
+    end
+
+    test "a run refused before it starts keeps the uploads and stores no photo", ctx do
+      local_bucket!()
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+      assert render_upload(heic_input(lv), "shelf.heic") =~ "100%"
+
+      # The endpoint was taken away after the page opened.
+      :ok = Settings.set_endpoint_uuid(nil)
+      html = lv |> form("#inventory-ai-upload-form", %{"place" => "A"}) |> render_submit()
+
+      assert html =~ InventoryAI.error_message(:not_configured)
+      assert has_element?(lv, "#inventory-ai-uploads li")
+      assert InventoryAI.list_runs(ctx.doc.uuid) == []
+
+      %{rows: [[stored]]} =
+        repo().query!("SELECT count(*) FROM phoenix_kit_files WHERE user_uuid = $1", [
+          Ecto.UUID.dump!(ctx.admin.uuid)
+        ])
+
+      assert stored == 0
     end
   end
 
@@ -560,7 +712,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       |> render_change(%{"location_uuid" => site_b.uuid})
 
       assert has_element?(lv, "#inventory-ai-location-warning")
-      assert render(lv) =~ "1 lines counted from photos will be lost."
+      assert render(lv) =~ "1 line counted from photos will be lost."
 
       render_click(lv, "confirm_location_change", %{})
 

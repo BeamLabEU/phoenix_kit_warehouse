@@ -589,6 +589,36 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       assert [%{status: "running"}] = InventoryAI.list_runs(ctx.doc.uuid)
     end
 
+    test "the list leaves out the answer, the catalogue and the late answer; get_run has them",
+         ctx do
+      run = running!(ctx)
+
+      {1, _} =
+        Repo.update_all(from(r in InventoryAIRun, where: r.uuid == ^run.uuid),
+          set: [
+            status: "error",
+            result: %{"rows" => [%{"no" => 1}]},
+            catalogue_map: %{"1" => %{"item_uuid" => Ecto.UUID.generate()}},
+            late_result: %{"result" => %{"rows" => []}}
+          ]
+        )
+
+      bare = running!(ctx) |> Ecto.Changeset.change(status: "error") |> Repo.update!()
+
+      listed = Map.new(InventoryAI.list_runs(ctx.doc.uuid), &{&1.uuid, &1})
+
+      assert listed[run.uuid].status == "error"
+      assert is_nil(listed[run.uuid].result)
+      assert listed[run.uuid].catalogue_map == %{}
+      assert is_nil(listed[run.uuid].late_result)
+      assert listed[run.uuid].late_answer?
+      refute listed[bare.uuid].late_answer?
+
+      full = InventoryAI.get_run(ctx.doc.uuid, run.uuid)
+      assert full.result == %{"rows" => [%{"no" => 1}]}
+      assert full.late_result == %{"result" => %{"rows" => []}}
+    end
+
     test "and before a new run on the document", ctx do
       old = running!(ctx)
       age!(old, 11 * 60)
