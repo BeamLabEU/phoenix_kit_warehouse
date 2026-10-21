@@ -169,6 +169,39 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
       refute row.checked
     end
 
+    test "a tick set before a change of the rule or of the pack size follows the far-below rule" do
+      # The rule: a hand-counted line of 120, stock 150, a photo count of 30.
+      review = Review.new(run([object("A", %{"catalogue_no" => 1, "loose_units" => 30})]))
+      manual = [%{"item_uuid" => "item-1", "counted_quantity" => "120", "counted_by" => "manual"}]
+      stock = stock(%{"item-1" => "150"})
+
+      {:ok, review} = Review.set_checked(review, 1, true)
+      assert view_row(review, 1, manual, stock).checked
+
+      {:ok, review} = Review.set_inputs(review, 1, %{"action" => "replace_all"}, manual, stock)
+      row = view_row(review, 1, manual, stock)
+      assert Decimal.eq?(row.total, 30)
+      refute row.checked
+
+      # Back to adding: the total is fine again and the tick comes back.
+      {:ok, review} = Review.set_inputs(review, 1, %{"action" => "add"}, manual, stock)
+      assert view_row(review, 1, manual, stock).checked
+
+      # The pack size: 4 closed packages, pack size unknown, seeded 450.
+      packs = Review.new(run([object("A", %{"catalogue_no" => 1, "closed_packages" => 4})]))
+      seeded = [%{"item_uuid" => "item-1", "counted_quantity" => "450", "counted_by" => "stock"}]
+      stock = stock(%{"item-1" => "450"})
+
+      {:ok, packs} = Review.set_checked(packs, 1, true)
+      {:ok, packs} = Review.set_inputs(packs, 1, %{"package_size" => "1"}, seeded, stock)
+      row = view_row(packs, 1, seeded, stock)
+      assert Decimal.eq?(row.total, 4)
+      refute row.checked
+
+      {:ok, packs} = Review.set_inputs(packs, 1, %{"package_size" => "100"}, seeded, stock)
+      assert view_row(packs, 1, seeded, stock).checked
+    end
+
     test "the person's tick stands over the default" do
       review = Review.new(run([object("A", %{"catalogue_no" => 1, "loose_units" => 10})]))
       {:ok, review} = Review.set_checked(review, 1, true)

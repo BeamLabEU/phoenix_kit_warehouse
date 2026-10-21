@@ -208,7 +208,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
         |> then(fn entry ->
           case params do
             %{"package_size" => value} when is_binary(value) ->
-              %{entry | package_size: String.trim(value)}
+              changed(entry, :package_size, String.trim(value))
 
             _ ->
               entry
@@ -216,12 +216,28 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
         end)
         |> then(fn entry ->
           case params do
-            %{"action" => value} when is_binary(value) and value != "" -> %{entry | action: value}
-            _ -> entry
+            %{"action" => value} when is_binary(value) and value != "" ->
+              changed(entry, :action, value)
+
+            _ ->
+              entry
           end
         end)
 
       {:ok, replace(review, key, entry)}
+    end
+  end
+
+  # A change of the pack size or of the rule moves the total like a typed
+  # quantity: a tick the person set before it becomes a consent the view
+  # takes back while the row is far below the stock.
+  defp changed(entry, field, value) do
+    if Map.fetch!(entry, field) == value do
+      entry
+    else
+      entry
+      |> Map.put(field, value)
+      |> then(&if(&1.checked == true, do: %{&1 | checked: nil, accepted: true}, else: &1))
     end
   end
 
