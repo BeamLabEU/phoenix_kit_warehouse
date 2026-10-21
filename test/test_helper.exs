@@ -195,26 +195,31 @@ if repo_available do
 end
 
 # The photo inventory makes its photos with ImageMagick (`convert` and
-# `identify`, through core's ImageProcessor), and its fixture is a HEIC:
-# without an ImageMagick that reads HEIC those tests (`:imagemagick`) are
-# excluded instead of failing.
-imagemagick_heic? =
+# `identify`, through core's ImageProcessor): without it those tests
+# (`:imagemagick`) are excluded instead of failing; the few that read a HEIC
+# (`:heic`) also need an ImageMagick that reads HEIC.
+imagemagick_formats =
   try do
-    System.find_executable("identify") != nil and
-      case System.cmd("convert", ["-list", "format"], stderr_to_stdout: true) do
-        {formats, 0} -> formats =~ ~r/^\s*HEIC\*?\s+\S+\s+r/m
-        _ -> false
-      end
+    with true <- System.find_executable("identify") != nil,
+         {formats, 0} <- System.cmd("convert", ["-list", "format"], stderr_to_stdout: true) do
+      formats
+    else
+      _ -> nil
+    end
   rescue
     # `convert` not on PATH.
-    _ -> false
+    _ -> nil
   end
+
+imagemagick? = is_binary(imagemagick_formats)
+imagemagick_heic? = imagemagick? and imagemagick_formats =~ ~r/^\s*HEIC\*?\s+\S+\s+r/m
 
 # Core's API is optional for this package: the tests of the tools run only
 # against a core that has the executor.
 exclude =
   if(repo_available, do: [], else: [:integration]) ++
     if(Code.ensure_loaded?(PhoenixKit.API.Executor), do: [], else: [:core_api]) ++
-    if imagemagick_heic?, do: [], else: [:imagemagick]
+    if(imagemagick?, do: [], else: [:imagemagick]) ++
+    if imagemagick_heic?, do: [], else: [:heic]
 
 ExUnit.start(exclude: exclude)

@@ -7,7 +7,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.PhotosTest do
   # `Storage.retrieve_file/1` hands them over.
   use ExUnit.Case, async: true
 
-  # The photos are made with ImageMagick, the fixture is a HEIC.
+  # The photos are made with ImageMagick.
   @moduletag :imagemagick
 
   alias PhoenixKitWarehouse.InventoryAI.Photos
@@ -70,6 +70,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.PhotosTest do
     {format, String.to_integer(w), String.to_integer(h)}
   end
 
+  # Only an ImageMagick built with HEIC support reads the fixture.
+  @tag :heic
   test "a HEIC photo becomes a JPEG", %{dir: dir} do
     retrieve = retriever(dir, %{"heic" => Path.join(@fixtures, "shelf.heic")})
 

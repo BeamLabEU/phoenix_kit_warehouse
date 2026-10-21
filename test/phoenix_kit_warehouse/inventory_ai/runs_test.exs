@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
   # discard, retry, interrupted and stale runs. The AI is a Req.Test stub.
   use PhoenixKitWarehouse.DataCase, async: false
 
-  # The photos are made with ImageMagick, the fixture is a HEIC.
+  # The photos are made with ImageMagick (the fixture is a small JPEG).
   @moduletag :imagemagick
 
   import ExUnit.CaptureLog

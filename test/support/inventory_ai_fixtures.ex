@@ -160,14 +160,14 @@ defmodule PhoenixKitWarehouse.Test.InventoryAIFixtures do
 
     %Storage.File{}
     |> Storage.File.changeset(%{
-      original_file_name: "shelf.heic",
-      file_name: "shelf-#{checksum}.heic",
-      mime_type: "image/heic",
+      original_file_name: "shelf.jpg",
+      file_name: "shelf-#{checksum}.jpg",
+      mime_type: "image/jpeg",
       file_type: "image",
-      ext: "heic",
+      ext: "jpg",
       file_checksum: checksum,
       user_file_checksum: checksum,
-      size: 984,
+      size: 644,
       status: "active",
       user_uuid: user.uuid,
       folder_uuid: folder_uuid
@@ -175,11 +175,14 @@ defmodule PhoenixKitWarehouse.Test.InventoryAIFixtures do
     |> PhoenixKit.RepoHelper.repo().insert!()
   end
 
-  @doc "A `:retrieve` for the photos: each uuid gets a temporary copy of a fixture."
+  @doc """
+  A `:retrieve` for the photos: each uuid gets a temporary copy of a fixture,
+  a small JPEG unless `photos` names another file (or `:missing`).
+  """
   def retriever(photos \\ %{}) do
     fn uuid ->
-      case Map.get(photos, uuid, :heic) do
-        :heic -> copy(Path.join(@fixtures, "shelf.heic"), ".heic")
+      case Map.get(photos, uuid, :jpeg) do
+        :jpeg -> copy(Path.join(@fixtures, "shelf.jpg"), ".jpg")
         :missing -> {:error, "File not found"}
         path -> copy(path, Path.extname(path))
       end

@@ -23,7 +23,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
   alias PhoenixKitWarehouse.Web.InventoryAIPanel
 
   @registry_key {PhoenixKit, :registered_modules}
-  @fixture Path.expand("../../fixtures/inventory_ai/shelf.heic", __DIR__)
+  @fixture Path.expand("../../fixtures/inventory_ai/shelf.jpg", __DIR__)
 
   setup %{conn: conn} do
     # The permission keys `warehouse` and `ai` exist only for registered modules.
@@ -83,9 +83,10 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
     ])
   end
 
-  defp heic_input(lv) do
+  # A real photo, for a run that reads it.
+  defp jpeg_input(lv) do
     file_input(lv, "#inventory-ai-upload-form", :inventory_ai_photos, [
-      %{name: "shelf.heic", content: File.read!(@fixture), type: "image/heic"}
+      %{name: "shelf.jpg", content: File.read!(@fixture), type: "image/jpeg"}
     ])
   end
 
@@ -266,7 +267,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
   end
 
   describe "a batch from the upload to the proposal" do
-    # The photo is made with ImageMagick, the fixture is a HEIC.
+    # The photo is made with ImageMagick.
     @describetag :imagemagick
     # Storage says it cannot queue the variants: there is no Oban in the suite.
     @describetag :capture_log
@@ -281,12 +282,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       lv = open!(ctx)
       lv |> element("#inventory-ai-open") |> render_click()
 
-      photo =
-        file_input(lv, "#inventory-ai-upload-form", :inventory_ai_photos, [
-          %{name: "shelf.heic", content: File.read!(@fixture), type: "image/heic"}
-        ])
-
-      assert render_upload(photo, "shelf.heic") =~ "100%"
+      assert render_upload(jpeg_input(lv), "shelf.jpg") =~ "100%"
 
       lv
       |> form("#inventory-ai-upload-form", %{
@@ -335,7 +331,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
 
       lv = open!(ctx)
       lv |> element("#inventory-ai-open") |> render_click()
-      assert render_upload(heic_input(lv), "shelf.heic") =~ "100%"
+      assert render_upload(jpeg_input(lv), "shelf.jpg") =~ "100%"
 
       # Enter in the place field: the debounced change never reaches the server.
       lv
@@ -356,7 +352,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       local_bucket!()
       lv = open!(ctx)
       lv |> element("#inventory-ai-open") |> render_click()
-      assert render_upload(heic_input(lv), "shelf.heic") =~ "100%"
+      assert render_upload(jpeg_input(lv), "shelf.jpg") =~ "100%"
 
       # The endpoint was taken away after the page opened.
       :ok = Settings.set_endpoint_uuid(nil)
