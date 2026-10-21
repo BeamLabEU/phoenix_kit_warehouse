@@ -192,7 +192,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
               "nothing else is asked.",
           self_flag: true,
           auto_block_threshold: 0,
-          endpoints: {PhoenixKitWarehouse.InventoryAI.Guard, :endpoint_uuids, []}
+          endpoints: {PhoenixKitWarehouse.InventoryAI, :endpoint_uuids, []}
         }
       ]
     end

@@ -106,6 +106,27 @@ defmodule PhoenixKitWarehouse.GettextTest do
     with_locale("uk", fn -> assert t("Move to trash") == "У кошик" end)
   end
 
+  test "et, ru and uk translate the photo inventory's messages" do
+    for locale <- ~w(et ru uk),
+        msgid <- [
+          "Reading the photos was interrupted.",
+          "The answer did not fit: send fewer photos in one batch.",
+          "The photos do not look like a warehouse: %{reason}",
+          "The document was changed in another tab: reload the page.",
+          "Some ticked rows are not complete: check the marked fields.",
+          "entered by hand: %{quantity}"
+        ] do
+      with_locale(locale, fn ->
+        refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"
+      end)
+    end
+
+    with_locale("ru", fn -> assert t("No row is ticked.") == "Не отмечено ни одной строки." end)
+    with_locale("et", fn -> assert t("No row is ticked.") == "Ükski rida pole märgitud." end)
+    with_locale("uk", fn -> assert t("No row is ticked.") == "Не позначено жодного рядка." end)
+    with_locale("en", fn -> assert t("No row is ticked.") == "No row is ticked." end)
+  end
+
   describe "catalogues are complete" do
     @catalogues for locale <- ~w(en et ru),
                     do:

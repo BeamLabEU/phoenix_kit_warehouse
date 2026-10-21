@@ -2273,3 +2273,133 @@ msgstr "Ilma lõpp-punktita nuppu ei kuvata."
 #, elixir-autogen, elixir-format
 msgid "no longer offered"
 msgstr "enam pakkumisel pole"
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:491
+#, elixir-autogen, elixir-format
+msgid "Another batch of this document is being read."
+msgstr "Selle dokumendi teist partiid loetakse praegu."
+
+#: lib/phoenix_kit_warehouse/inventory_ai/apply.ex:368
+#, elixir-autogen, elixir-format
+msgid "entered by hand: %{quantity}"
+msgstr "käsitsi sisestatud: %{quantity}"
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:444
+#, elixir-autogen, elixir-format
+msgid "No AI endpoint is chosen for the inventory in the warehouse settings."
+msgstr "Lao seadetes pole inventuuri jaoks AI lõpp-punkti valitud."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:508
+#, elixir-autogen, elixir-format
+msgid "No row is ticked."
+msgstr "Ükski rida pole märgitud."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:446
+#, elixir-autogen, elixir-format
+msgid "None of the photos could be read."
+msgstr "Ühtegi fotot ei õnnestunud lugeda."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:503
+#, elixir-autogen, elixir-format
+msgid "Only a failed batch can be retried."
+msgstr "Uuesti saab proovida ainult ebaõnnestunud partiid."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:520
+#, elixir-autogen, elixir-format
+msgid "Reading the photos could not be started."
+msgstr "Fotode lugemist ei õnnestunud alustada."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:488
+#, elixir-autogen, elixir-format
+msgid "Reading the photos was interrupted."
+msgstr "Fotode lugemine katkes."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:517
+#, elixir-autogen, elixir-format
+msgid "Some ticked rows are not complete: check the marked fields."
+msgstr "Mõni märgitud rida pole täidetud: kontrollige esiletõstetud välju."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:483
+#, elixir-autogen, elixir-format
+msgid "The AI did not answer in the expected form."
+msgstr "AI ei vastanud oodatud kujul."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:440
+#, elixir-autogen, elixir-format
+msgid "The AI module is switched off."
+msgstr "AI moodul on välja lülitatud."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:480
+#, elixir-autogen, elixir-format
+msgid "The answer did not fit: send fewer photos in one batch."
+msgstr "Vastus ei mahtunud ära: saatke ühes partiis vähem fotosid."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:468
+#, elixir-autogen, elixir-format
+msgid "The chosen catalogues have no items."
+msgstr "Valitud kataloogides pole tooteid."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:460
+#, elixir-autogen, elixir-format
+msgid "The chosen catalogues hold %{count} items, more than %{max}: choose fewer catalogues."
+msgstr "Valitud kataloogides on %{count} toodet, rohkem kui %{max}: valige vähem katalooge."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:494
+#, elixir-autogen, elixir-format
+msgid "The document is in the trash."
+msgstr "Dokument on prügikastis."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:493
+#, elixir-autogen, elixir-format
+msgid "The document is not a draft."
+msgstr "Dokument ei ole mustand."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:497
+#, elixir-autogen, elixir-format
+msgid "The document was changed in another tab: reload the page."
+msgstr "Dokumenti muudeti teisel vahekaardil: laadige leht uuesti."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:514
+#, elixir-autogen, elixir-format
+msgid "The lines of the document cannot be read."
+msgstr "Dokumendi ridu ei saa lugeda."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:472
+#, elixir-autogen, elixir-format
+msgid "The photos are too large together (%{size} MB, at most %{max} MB): send fewer."
+msgstr "Fotod on kokku liiga suured (%{size} MB, lubatud kuni %{max} MB): saatke vähem."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:486
+#, elixir-autogen, elixir-format
+msgid "The photos do not look like a warehouse: %{reason}"
+msgstr "Fotod ei paista olevat laost: %{reason}"
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:456
+#, elixir-autogen, elixir-format
+msgid "The place is too long: at most 200 characters."
+msgstr "Koht on liiga pikk: kuni 200 märki."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:506
+#, elixir-autogen, elixir-format
+msgid "The warehouse of the document changed after this batch was read."
+msgstr "Dokumendi ladu muutus pärast selle partii lugemist."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:511
+#, elixir-autogen, elixir-format
+msgid "This batch belongs to another document."
+msgstr "See partii kuulub teisele dokumendile."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:500
+#, elixir-autogen, elixir-format
+msgid "This batch has been applied or discarded already."
+msgstr "See partii on juba rakendatud või tagasi lükatud."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:502
+#, elixir-autogen, elixir-format
+msgid "This batch is closed already."
+msgstr "See partii on juba suletud."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:450
+#, elixir-autogen, elixir-format
+msgid "Too many photos for one batch: %{count}, at most %{max}."
+msgstr "Liiga palju fotosid ühe partii jaoks: %{count}, lubatud kuni %{max}."
