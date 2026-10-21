@@ -181,17 +181,18 @@ defmodule PhoenixKitWarehouse.Inventories do
       the database; when they differ (another tab saved in between) nothing
       is written and the answer is `{:error, :stale}`. On success the
       returned document carries the fingerprint of what was written in
-      `:fingerprint`, the base of the caller's next save. Without the option
-      nothing is compared and `:fingerprint` stays `nil`.
+      `:fingerprint`, the base of the caller's next save. A base passed as
+      `nil` (a tab that has none) is refused as `:stale` too. Without the
+      option nothing is compared and `:fingerprint` stays `nil`.
   """
   def update_draft(%InventoryDocument{uuid: uuid}, attrs, opts \\ []) do
     new_location_uuid = Map.get(attrs, :location_uuid) || Map.get(attrs, "location_uuid")
-    base_fingerprint = Keyword.get(opts, :base_fingerprint)
+    base = Keyword.fetch(opts, :base_fingerprint)
 
     multi =
       uuid
       |> lock_status_step("draft", :not_draft)
-      |> check_fingerprint_step(base_fingerprint)
+      |> check_fingerprint_step(base)
       |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
         changeset = InventoryDocument.draft_changeset(locked, attrs)
 
@@ -204,9 +205,9 @@ defmodule PhoenixKitWarehouse.Inventories do
       end)
 
     multi =
-      if base_fingerprint,
-        do: Ecto.Multi.run(multi, :fingerprint, fn repo, _ -> {:ok, fingerprint(uuid, repo)} end),
-        else: multi
+      if base == :error,
+        do: multi,
+        else: Ecto.Multi.run(multi, :fingerprint, fn repo, _ -> {:ok, fingerprint(uuid, repo)} end)
 
     case repo().transaction(multi) do
       {:ok, %{update: updated} = changes} ->
@@ -217,11 +218,13 @@ defmodule PhoenixKitWarehouse.Inventories do
     end
   end
 
-  defp check_fingerprint_step(multi, nil), do: multi
+  # `:error` - the option was not passed. A passed `nil` never matches: the
+  # fingerprint of a live document is never `nil`.
+  defp check_fingerprint_step(multi, :error), do: multi
 
-  defp check_fingerprint_step(multi, base_fingerprint) do
+  defp check_fingerprint_step(multi, {:ok, base_fingerprint}) do
     Ecto.Multi.run(multi, :check_fingerprint, fn repo, %{lock_status: locked} ->
-      if fingerprint(locked.uuid, repo) == base_fingerprint,
+      if is_binary(base_fingerprint) and fingerprint(locked.uuid, repo) == base_fingerprint,
         do: {:ok, :same},
         else: {:error, :stale}
     end)

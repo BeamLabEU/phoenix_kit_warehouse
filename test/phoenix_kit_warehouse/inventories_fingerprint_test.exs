@@ -142,6 +142,19 @@ defmodule PhoenixKitWarehouse.InventoriesFingerprintTest do
              ) == {:error, :stale}
     end
 
+    test "a base passed as nil is refused, not taken as no option" do
+      {:ok, doc} = Inventories.create_draft(%{lines: [%{"a" => "1"}]})
+      {:ok, _} = Inventories.update_draft(doc, %{lines: [%{"a" => "2"}]})
+
+      assert Inventories.update_draft(doc, %{lines: [%{"a" => "nil tab"}], note: "z"},
+               base_fingerprint: nil
+             ) == {:error, :stale}
+
+      reloaded = Inventories.get_document!(doc.uuid)
+      assert [%{"a" => "2"}] = reloaded.lines
+      assert reloaded.note == nil
+    end
+
     test "without the option the save is as before: no check, no fingerprint" do
       {:ok, doc} = Inventories.create_draft(%{lines: [%{"a" => "1"}]})
       {:ok, _} = Inventories.update_draft(doc, %{lines: [%{"a" => "2"}]})
