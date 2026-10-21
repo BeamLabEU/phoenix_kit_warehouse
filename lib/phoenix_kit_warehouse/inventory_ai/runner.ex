@@ -6,7 +6,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.Runner do
 
   Everything runs under `try` with `rescue` and `catch :exit`: a crash, or
   the exit of a pool or a `GenServer.call`, closes the run as `error` at
-  once instead of leaving it `running`.
+  once instead of leaving it `running`. The log of such a failure names its
+  kind and where it happened, never the values it carried: the arguments
+  of a failed call inside the AI module include the endpoint (and its key)
+  and the photos.
 
   The result is written with one of two updates:
 
@@ -68,13 +71,13 @@ defmodule PhoenixKitWarehouse.InventoryAI.Runner do
       rescue
         exception ->
           Logger.error(
-            "[inventory ai] run #{context.run_uuid} crashed: #{Exception.format(:error, exception, __STACKTRACE__)}"
+            "[inventory ai] run #{context.run_uuid} crashed: #{failure_kind(exception)} at #{where(__STACKTRACE__)}"
           )
 
           {:error, InventoryAI.error_message(:interrupted), %{}}
       catch
         :exit, reason ->
-          Logger.error("[inventory ai] run #{context.run_uuid} exited: #{inspect(reason)}")
+          Logger.error("[inventory ai] run #{context.run_uuid} exited: #{failure_kind(reason)}")
           {:error, InventoryAI.error_message(:interrupted), %{}}
       end
 
@@ -322,7 +325,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Runner do
   # page catches it otherwise.
   defp failed_write(context, reason) do
     Logger.error(
-      "[inventory ai] run #{context.run_uuid}: the outcome could not be written: #{inspect(reason)}"
+      "[inventory ai] run #{context.run_uuid}: the outcome could not be written: #{failure_kind(reason)}"
     )
 
     InventoryAI.interrupt_run(context.run_uuid)
@@ -331,5 +334,34 @@ defmodule PhoenixKitWarehouse.InventoryAI.Runner do
     _ -> :ok
   catch
     :exit, _ -> :ok
+  end
+
+  # --- what a log line may say about a failure -----------------------------------------
+
+  # The kind of a failure without its values: an exception's module, an
+  # exit's shape (`{:timeout, ...}`), never the terms inside.
+  defp failure_kind(%{__exception__: true} = exception), do: inspect(exception.__struct__)
+  defp failure_kind(reason) when is_atom(reason), do: inspect(reason)
+
+  defp failure_kind({%{__exception__: true} = exception, _stacktrace}),
+    do: failure_kind(exception)
+
+  defp failure_kind(reason) when is_tuple(reason) and is_atom(elem(reason, 0)),
+    do: "{#{inspect(elem(reason, 0))}, ...}"
+
+  defp failure_kind(_reason), do: "an exit of another shape"
+
+  # The frames of a stacktrace as module, function and arity - a frame that
+  # carries the call's arguments is cut down to their count.
+  defp where(stacktrace) do
+    stacktrace
+    |> Enum.take(3)
+    |> Enum.map_join(" < ", fn
+      {module, fun, args, location} when is_list(args) ->
+        Exception.format_stacktrace_entry({module, fun, length(args), location})
+
+      entry ->
+        Exception.format_stacktrace_entry(entry)
+    end)
   end
 end

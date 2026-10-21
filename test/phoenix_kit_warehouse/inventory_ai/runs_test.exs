@@ -299,6 +299,50 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
     end
   end
 
+  describe "the log of a failed task" do
+    test "a crash names its kind and where, never the values it held", ctx do
+      {:ok, crashing} =
+        %InventoryAIRun{}
+        |> Ecto.Changeset.change(%{
+          inventory_uuid: ctx.doc.uuid,
+          location_uuid: ctx.location,
+          status: "running"
+        })
+        |> Repo.insert()
+
+      context =
+        Runner.context(crashing, locale: "en")
+        |> Map.put(:photo_file_uuids, {:api_key, "sk-SECRET-123"})
+
+      log = capture_log(fn -> assert Runner.run(context) == :ok end)
+
+      assert log =~ "crashed"
+      assert log =~ "Protocol.UndefinedError"
+      refute log =~ "sk-SECRET-123"
+      assert InventoryAI.get_run(ctx.doc.uuid, crashing.uuid).status == "error"
+    end
+
+    test "an exit (a pool, a GenServer.call) closes the run as error at once", ctx do
+      Req.Test.stub(Stub, fn _conn ->
+        exit({:timeout, {GenServer, :call, [:pool, %{api_key: "sk-SECRET-123"}]}})
+      end)
+
+      log =
+        capture_log(fn ->
+          {run, pid} = start!(ctx)
+          await_down(pid)
+          send(self(), {:run, InventoryAI.get_run(ctx.doc.uuid, run.uuid)})
+        end)
+
+      assert_received {:run, run}
+      assert run.status == "error"
+      assert run.error == InventoryAI.error_message(:interrupted)
+      assert log =~ "exited"
+      assert log =~ ":timeout"
+      refute log =~ "sk-SECRET-123"
+    end
+  end
+
   test "the endpoint the task declaration names is the one chosen", ctx do
     assert InventoryAI.endpoint_uuids() == [ctx.endpoint.uuid]
   end
