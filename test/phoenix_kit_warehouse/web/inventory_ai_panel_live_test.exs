@@ -386,6 +386,70 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
     end
   end
 
+  describe "photos stored for a run that was then refused" do
+    # The photo is made with ImageMagick.
+    @describetag :imagemagick
+    # Storage says it cannot queue the variants: there is no Oban in the suite.
+    @describetag :capture_log
+
+    # Another tab starts a run after this page read the runs: Propose stores
+    # the photo, then the run is refused.
+    defp refused_after_store!(ctx) do
+      local_bucket!()
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+      assert render_upload(jpeg_input(lv), "shelf.jpg") =~ "100%"
+
+      other =
+        %InventoryAIRun{}
+        |> Ecto.Changeset.change(%{
+          inventory_uuid: ctx.doc.uuid,
+          location_uuid: ctx.location,
+          photo_file_uuids: [Ecto.UUID.generate()],
+          status: "running"
+        })
+        |> repo().insert!()
+
+      html = lv |> form("#inventory-ai-upload-form", %{"place" => "A"}) |> render_submit()
+      assert html =~ InventoryAI.error_message(:already_running)
+      assert html =~ "The photos are kept in the Files tab"
+      refute has_element?(lv, "#inventory-ai-uploads li")
+      assert has_element?(lv, "#inventory-ai-stored")
+
+      [stored] = :sys.get_state(lv.pid).socket.assigns.ai.stored_photos
+      folder = Inventories.get_document!(ctx.doc.uuid).storage_folder_uuid
+      assert Storage.get_file(stored).folder_uuid == folder
+
+      {lv, stored, other}
+    end
+
+    test "Propose again sends them, without a new upload", ctx do
+      InventoryAIStub.install()
+      InventoryAIStub.answer(answer([object(%{"catalogue_no" => 1, "loose_units" => 480})]))
+      :ok = InventoryAI.subscribe(ctx.doc.uuid)
+      {lv, stored, other} = refused_after_store!(ctx)
+
+      other |> Ecto.Changeset.change(status: "error") |> repo().update!()
+      refute has_element?(lv, "#inventory-ai-run[disabled]")
+      lv |> form("#inventory-ai-upload-form", %{"place" => "A"}) |> render_submit()
+
+      assert_receive {:inventory_ai_run, %{run_uuid: uuid, status: "proposed"}}, 5_000
+      assert InventoryAI.get_run(ctx.doc.uuid, uuid).photo_file_uuids == [stored]
+      refute has_element?(lv, "#inventory-ai-stored")
+    end
+
+    test "Forget leaves them in the Files tab and sends them with no run", ctx do
+      {lv, stored, _other} = refused_after_store!(ctx)
+
+      lv |> element("#inventory-ai-forget-stored") |> render_click()
+
+      refute has_element?(lv, "#inventory-ai-stored")
+      assert has_element?(lv, "#inventory-ai-run[disabled]")
+      assert Storage.get_file(stored)
+      assert :sys.get_state(lv.pid).socket.assigns.ai.stored_photos == []
+    end
+  end
+
   describe "the proposal and Apply" do
     test "a seeded line is replaced, the others are not touched; the tab gets the written lines",
          ctx do

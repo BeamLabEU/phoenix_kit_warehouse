@@ -79,6 +79,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
       catalogue_count: nil,
       max_items: nil,
       runs: [],
+      stored_photos: [],
       users: %{},
       retaken: MapSet.new(),
       run: nil,
@@ -252,41 +253,26 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   end
 
   # The place and the catalogues come with the submit: Enter in the place
-  # field drops the change still waiting for its debounce.
+  # field drops the change still waiting for its debounce. The photos a
+  # refused run already stored go with the new uploads, and a refusal after
+  # the uploads were stored keeps them all for the next Propose.
   defp event("inventory_ai_run", params, socket, _on_written) do
     socket = put_form(socket, params)
 
     with :ok <- ready(socket),
          :ok <- check_start(socket),
-         {:ok, doc} <- live_draft(socket),
-         {:ok, photos} <- store_uploads(socket, doc),
-         {:ok, run, pid} <-
-           InventoryAI.start_run(
-             doc,
-             %{
-               "place_label" => socket.assigns.ai.place,
-               "photo_file_uuids" => photos,
-               "catalogue_uuids" => socket.assigns.ai.catalogue_uuids
-             },
-             socket.assigns.current_user,
-             locale: socket.assigns.locale
-           ) do
-      ref = Process.monitor(pid)
-
-      socket
-      |> update_ai(fn ai ->
-        %{
-          ai
-          | place: "",
-            started: MapSet.put(ai.started, run.uuid),
-            monitors: Map.put(ai.monitors, ref, run.uuid)
-        }
-      end)
-      |> reload_runs()
+         {:ok, doc} <- live_draft(socket) do
+      {stored, store_result} = store_uploads(socket, doc)
+      start(socket, doc, socket.assigns.ai.stored_photos ++ stored, store_result)
     else
       {:error, reason} -> fail(socket, reason)
     end
   end
+
+  # The photos stored for a refused run are not sent with the next one; they
+  # stay in the document's Files tab.
+  defp event("inventory_ai_forget_stored", _params, socket, _on_written),
+    do: update_ai(socket, &%{&1 | stored_photos: []})
 
   defp event("inventory_ai_open_run", %{"run" => uuid}, socket, _on_written) do
     case own_run(socket, uuid) do
@@ -528,7 +514,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
     ai = socket.assigns.ai
 
     cond do
-      upload.entries == [] -> {:error, :no_uploads}
+      upload.entries == [] and ai.stored_photos == [] -> {:error, :no_uploads}
       not Enum.all?(upload.entries, & &1.done?) -> {:error, :uploading}
       upload_errors(upload) != [] -> {:error, :upload_errors}
       Enum.any?(upload.entries, &(upload_errors(upload, &1) != [])) -> {:error, :upload_errors}
@@ -545,31 +531,79 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
     InventoryAI.check_start(%{
       "place_label" => ai.place,
       "catalogue_uuids" => ai.catalogue_uuids,
-      "photo_count" => length(socket.assigns.uploads[@upload].entries)
+      "photo_count" => length(ai.stored_photos) + length(socket.assigns.uploads[@upload].entries)
     })
   end
 
-  # Every upload stored in the document's folder, in their order; one that
-  # cannot be stored stops the run (the others stay in the folder).
+  # Every upload stored in the document's folder, in their order: the uuids
+  # of those stored, and `{:error, :not_stored}` when one could not be (that
+  # stops the run; the others stay in the folder).
   defp store_uploads(socket, doc) do
-    socket
-    |> consume_uploaded_entries(@upload, fn %{path: path}, entry ->
-      {:ok,
-       InventoryAI.store_photo(
-         doc,
-         %{path: path, client_name: entry.client_name, client_type: entry.client_type},
-         socket.assigns.current_user
-       )}
-    end)
-    |> Enum.reduce_while({:ok, []}, fn
-      {:ok, file}, {:ok, uuids} -> {:cont, {:ok, [file.uuid | uuids]}}
-      {:error, _reason}, _acc -> {:halt, {:error, :not_stored}}
-    end)
-    |> case do
-      {:ok, uuids} -> {:ok, Enum.reverse(uuids)}
-      error -> error
+    results =
+      consume_uploaded_entries(socket, @upload, fn %{path: path}, entry ->
+        {:ok,
+         InventoryAI.store_photo(
+           doc,
+           %{path: path, client_name: entry.client_name, client_type: entry.client_type},
+           socket.assigns.current_user
+         )}
+      end)
+
+    stored = for {:ok, file} <- results, do: file.uuid
+
+    if Enum.all?(results, &match?({:ok, _file}, &1)),
+      do: {stored, :ok},
+      else: {stored, {:error, :not_stored}}
+  end
+
+  defp start(socket, doc, photos, store_result) do
+    with :ok <- store_result,
+         {:ok, run, pid} <-
+           InventoryAI.start_run(
+             doc,
+             %{
+               "place_label" => socket.assigns.ai.place,
+               "photo_file_uuids" => photos,
+               "catalogue_uuids" => socket.assigns.ai.catalogue_uuids
+             },
+             socket.assigns.current_user,
+             locale: socket.assigns.locale
+           ) do
+      ref = Process.monitor(pid)
+
+      socket
+      |> update_ai(fn ai ->
+        %{
+          ai
+          | place: "",
+            stored_photos: [],
+            started: MapSet.put(ai.started, run.uuid),
+            monitors: Map.put(ai.monitors, ref, run.uuid)
+        }
+      end)
+      |> reload_runs()
+    else
+      {:error, reason} -> refused_with(socket, photos, reason)
     end
   end
+
+  # A run refused after its photos were stored: they are held for the next
+  # Propose, and the error says where they are.
+  defp refused_with(socket, [], reason), do: fail(socket, reason)
+
+  defp refused_with(socket, photos, reason) do
+    update_ai(
+      socket,
+      &%{&1 | stored_photos: photos, error: message(reason) <> " " <> kept_text()}
+    )
+  end
+
+  defp kept_text,
+    do:
+      dgettext(
+        "default",
+        "The photos are kept in the Files tab: Propose again sends them without a new upload."
+      )
 
   defp fail(socket, reason), do: update_ai(socket, &%{&1 | error: message(reason)})
 
@@ -804,7 +838,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
       |> assign(:too_many_items?, too_many_items?(ai))
       |> assign(
         :ready?,
-        entries != [] and Enum.all?(entries, & &1.done?) and upload_errors(upload) == [] and
+        (entries != [] or ai.stored_photos != []) and Enum.all?(entries, & &1.done?) and
+          upload_errors(upload) == [] and
           Enum.all?(entries, &(upload_errors(upload, &1) == [])) and
           not Enum.any?(ai.runs, &(&1.status == "running")) and not too_many_items?(ai)
       )
@@ -918,6 +953,30 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
                 </span>
               </li>
             </ul>
+          </div>
+
+          <div
+            :if={@ai.stored_photos != []}
+            id="inventory-ai-stored"
+            class="flex flex-wrap items-center gap-2 text-xs text-base-content/70"
+          >
+            <.icon name="hero-folder" class="w-3.5 h-3.5" />
+            <span>
+              {dngettext(
+                "default",
+                "%{count} photo stored in the Files tab goes with this batch.",
+                "%{count} photos stored in the Files tab go with this batch.",
+                length(@ai.stored_photos)
+              )}
+            </span>
+            <button
+              type="button"
+              id="inventory-ai-forget-stored"
+              phx-click="inventory_ai_forget_stored"
+              class="btn btn-ghost btn-xs"
+            >
+              {dgettext("default", "Do not send them")}
+            </button>
           </div>
 
           <p :if={@uploading?} id="inventory-ai-uploading" class="text-xs text-warning">

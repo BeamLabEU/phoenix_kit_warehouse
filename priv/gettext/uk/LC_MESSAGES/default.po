@@ -2990,3 +2990,21 @@ msgstr "два рядки цієї позиції"
 #, elixir-autogen, elixir-format
 msgid "— other proposed item —"
 msgstr "— інша запропонована позиція —"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:604
+#, elixir-autogen, elixir-format
+msgid "The photos are kept in the Files tab: Propose again sends them without a new upload."
+msgstr "Фото збережено на вкладці «Файли»: повторне «Запропонувати» надішле їх без нового завантаження."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:965
+#, elixir-autogen, elixir-format
+msgid "%{count} photo stored in the Files tab goes with this batch."
+msgid_plural "%{count} photos stored in the Files tab go with this batch."
+msgstr[0] "З цією партією піде %{count} фото, збережене на вкладці «Файли»."
+msgstr[1] "З цією партією підуть %{count} фото, збережені на вкладці «Файли»."
+msgstr[2] "З цією партією піде %{count} фото, збережених на вкладці «Файли»."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:978
+#, elixir-autogen, elixir-format
+msgid "Do not send them"
+msgstr "Не надсилати їх"

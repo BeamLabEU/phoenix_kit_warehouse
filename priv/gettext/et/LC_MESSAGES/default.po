@@ -2985,3 +2985,20 @@ msgstr "selle toote kaks rida"
 #, elixir-autogen, elixir-format
 msgid "— other proposed item —"
 msgstr "— muu pakutud toode —"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:604
+#, elixir-autogen, elixir-format
+msgid "The photos are kept in the Files tab: Propose again sends them without a new upload."
+msgstr "Fotod on vahekaardil Failid: uus „Paku välja“ saadab need ilma uue üleslaadimiseta."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:965
+#, elixir-autogen, elixir-format
+msgid "%{count} photo stored in the Files tab goes with this batch."
+msgid_plural "%{count} photos stored in the Files tab go with this batch."
+msgstr[0] "Vahekaardil Failid salvestatud fotosid läheb selle partiiga kaasa: %{count}."
+msgstr[1] "Vahekaardil Failid salvestatud fotosid läheb selle partiiga kaasa: %{count}."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:978
+#, elixir-autogen, elixir-format
+msgid "Do not send them"
+msgstr "Ära saada neid"

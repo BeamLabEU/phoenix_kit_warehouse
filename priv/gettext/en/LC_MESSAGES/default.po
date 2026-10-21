@@ -2985,3 +2985,20 @@ msgstr "two lines of this item"
 #, elixir-autogen, elixir-format
 msgid "— other proposed item —"
 msgstr "— other proposed item —"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:604
+#, elixir-autogen, elixir-format
+msgid "The photos are kept in the Files tab: Propose again sends them without a new upload."
+msgstr "The photos are kept in the Files tab: Propose again sends them without a new upload."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:965
+#, elixir-autogen, elixir-format
+msgid "%{count} photo stored in the Files tab goes with this batch."
+msgid_plural "%{count} photos stored in the Files tab go with this batch."
+msgstr[0] "%{count} photo stored in the Files tab goes with this batch."
+msgstr[1] "%{count} photos stored in the Files tab go with this batch."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:978
+#, elixir-autogen, elixir-format
+msgid "Do not send them"
+msgstr "Do not send them"
