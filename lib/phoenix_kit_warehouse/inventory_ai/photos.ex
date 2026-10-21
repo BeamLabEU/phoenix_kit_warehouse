@@ -18,6 +18,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.Photos do
 
   alias PhoenixKit.Modules.Storage
   alias PhoenixKit.Modules.Storage.ImageProcessor
+  alias PhoenixKit.Users.Auth
+  alias PhoenixKitWarehouse.InventoryDocument
+  alias PhoenixKitWarehouse.StorageFolders
 
   @max_edge 2000
   @max_total_bytes 80_000_000
@@ -76,6 +79,60 @@ defmodule PhoenixKitWarehouse.InventoryAI.Photos do
            file_uuids: Enum.map(ready, &elem(&1, 0)),
            skipped: Enum.reverse(skipped)
          }}
+    end
+  end
+
+  @doc """
+  Stores an uploaded photo as a Storage file of `user_uuid` in the
+  document's folder (`StorageFolders.ensure_for_inventory/2` makes it on
+  first use), the way the Files tab stores an upload: the same bytes the
+  person stored before come back as that file, linked into the folder.
+
+  `upload`: `%{path, client_name, client_type}` - the temporary file of the
+  upload and what the browser said of it. `{:ok, file}`, or
+  `{:error, reason}`.
+  """
+  @spec store(InventoryDocument.t(), map(), String.t() | nil) ::
+          {:ok, Storage.File.t()} | {:error, term()}
+  def store(%InventoryDocument{} = doc, %{path: path, client_name: name} = upload, user_uuid) do
+    mime_type = upload_mime(upload)
+
+    with {:ok, folder} <- StorageFolders.ensure_for_inventory(doc, user_uuid),
+         {:ok, file} <- store_file(path, name, mime_type, user_uuid),
+         {:ok, _file} <- Storage.attach_file_to_folder(file, folder.uuid) do
+      {:ok, Storage.get_file(file.uuid) || file}
+    end
+  rescue
+    exception ->
+      Logger.warning(
+        "[inventory ai] a photo could not be stored: #{inspect(exception.__struct__)}"
+      )
+
+      {:error, :not_stored}
+  catch
+    :exit, _reason ->
+      Logger.warning("[inventory ai] a photo could not be stored: exit")
+      {:error, :not_stored}
+  end
+
+  defp upload_mime(%{client_type: type}) when is_binary(type) and type != "", do: type
+  defp upload_mime(%{client_name: name}), do: MIME.from_path(name)
+
+  defp store_file(path, name, mime_type, user_uuid) do
+    ext = name |> Path.extname() |> String.trim_leading(".") |> String.downcase()
+
+    case Storage.store_file_in_buckets(
+           path,
+           Storage.determine_file_type(mime_type, name),
+           user_uuid,
+           Auth.calculate_file_hash(path),
+           ext,
+           name,
+           mime_type: mime_type
+         ) do
+      {:ok, file, :duplicate} -> {:ok, file}
+      {:ok, file} -> {:ok, file}
+      {:error, reason} -> {:error, reason}
     end
   end
 

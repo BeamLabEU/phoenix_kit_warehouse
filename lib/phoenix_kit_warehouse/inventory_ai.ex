@@ -26,6 +26,12 @@ defmodule PhoenixKitWarehouse.InventoryAI do
       interrupted, when the document's runs are listed and before a new run.
     * `apply_run/6` writes the ticked rows into the document's lines
       (`PhoenixKitWarehouse.InventoryAI.Apply`).
+    * `show_late_result/3` - a person shows the answer that came to a failed
+      run after it failed; `close_open_runs/3` - the warehouse of the
+      document changed, or it was posted: its running and proposed runs are
+      closed.
+    * `store_photo/3` - an uploaded photo goes into the document's Storage
+      folder, where `start_run/4` takes its photos from.
 
   A run is read and changed only through its document: `get_run/2` takes
   the document, and `discard_run/3`, `retry_run/3` and `apply_run/6` take it
@@ -49,6 +55,7 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   alias PhoenixKitWarehouse.InventoryAI.Apply
   alias PhoenixKitWarehouse.InventoryAI.CatalogueList
   alias PhoenixKitWarehouse.InventoryAI.Guard
+  alias PhoenixKitWarehouse.InventoryAI.Photos
   alias PhoenixKitWarehouse.InventoryAI.Runner
   alias PhoenixKitWarehouse.InventoryAI.Settings
   alias PhoenixKitWarehouse.InventoryAIRun
@@ -68,6 +75,18 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   @doc "The AI tasks this module declares (empty while the ai it was built against has none)."
   @spec ai_tasks() :: [struct()]
   defdelegate ai_tasks, to: Guard
+
+  # --- photos -------------------------------------------------------------------------
+
+  @doc """
+  Stores an uploaded photo in the document's Storage folder, as a file of
+  `actor` - see `PhoenixKitWarehouse.InventoryAI.Photos.store/3`. The photos
+  of a run are files of that folder (`start_run/4`).
+  """
+  @spec store_photo(InventoryDocument.t(), map(), term()) ::
+          {:ok, StorageFile.t()} | {:error, term()}
+  def store_photo(%InventoryDocument{} = doc, upload, actor),
+    do: Photos.store(doc, upload, actor_uuid(actor))
 
   # --- PubSub -------------------------------------------------------------------------
 
@@ -503,6 +522,82 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     runs
   end
 
+  @doc """
+  Shows the answer that came to a failed run after it failed: the run
+  becomes the proposal of that answer (`error -> proposed`). Only by a
+  person's action, only for a run in `error` that holds a `late_result` (a
+  run replaced by a retry is `discarded`, so its answer is never shown),
+  only while the document is a live draft. `{:error, :no_late_result}`
+  otherwise; `:not_draft`, `:deleted`, `:wrong_document` (`opts` must name
+  the run's document as `inventory_uuid:`).
+  """
+  @spec show_late_result(InventoryAIRun.t(), term(), keyword()) ::
+          {:ok, InventoryAIRun.t()} | {:error, term()}
+  def show_late_result(%InventoryAIRun{} = run, _actor, opts) do
+    with {:ok, run} <- own_run(run, opts) do
+      InventoryDocument
+      |> DraftTrash.lock_status_step(run.inventory_uuid, "draft", :not_draft)
+      |> Ecto.Multi.run(:shown, fn repo, _ -> show_late(repo, run) end)
+      |> repo().transaction()
+      |> case do
+        {:ok, %{shown: shown}} ->
+          broadcast(shown)
+          {:ok, shown}
+
+        {:error, _step, reason, _changes} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp show_late(repo, run) do
+    case repo.get(InventoryAIRun, run.uuid) do
+      %InventoryAIRun{status: "error", late_result: %{"result" => %{} = result} = late} ->
+        {1, [shown]} =
+          from(r in InventoryAIRun, where: r.uuid == ^run.uuid and r.status == "error", select: r)
+          |> repo.update_all(
+            set: [
+              status: "proposed",
+              result: result,
+              catalogue_map: late["catalogue_map"] || %{},
+              photo_file_uuids: late["photo_file_uuids"] || run.photo_file_uuids,
+              model: late["model"],
+              prompt_uuid: late["prompt_uuid"],
+              ai_request_uuid: late["ai_request_uuid"],
+              error: nil,
+              updated_at: now()
+            ]
+          )
+
+        {:ok, shown}
+
+      _ ->
+        {:error, :no_late_result}
+    end
+  end
+
+  @doc """
+  Closes the open runs of a document (`running` and `proposed`) as
+  `discarded`, with `reason` - the warehouse of the document changed
+  (`"location_changed"`: its lines were seeded again), or the document was
+  posted (`"posted"`). The task of a running run is not killed; its answer
+  goes to `late_result`. Returns how many were closed.
+  """
+  @spec close_open_runs(Ecto.UUID.t(), term(), String.t()) :: non_neg_integer()
+  def close_open_runs(inventory_uuid, actor, reason) do
+    {_count, runs} =
+      from(r in InventoryAIRun,
+        where: r.inventory_uuid == ^inventory_uuid and r.status in ["running", "proposed"],
+        select: r
+      )
+      |> repo().update_all(
+        set: [status: "discarded", decisions: discarded(actor, reason, nil), updated_at: now()]
+      )
+
+    Enum.each(runs, &broadcast/1)
+    length(runs)
+  end
+
   # --- applying -----------------------------------------------------------------------
 
   @doc """
@@ -598,6 +693,9 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
   def error_message(:nothing_to_apply), do: dgettext("default", "No row is ticked.")
 
+  def error_message(:no_late_result),
+    do: dgettext("default", "This batch has no late answer to show.")
+
   def error_message(:wrong_document),
     do: dgettext("default", "This batch belongs to another document.")
 
@@ -606,6 +704,9 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
   def error_message({:invalid_rows, _errors}),
     do: dgettext("default", "Some ticked rows are not complete: check the marked fields.")
+
+  def error_message(:not_stored),
+    do: dgettext("default", "A photo could not be stored: upload it again.")
 
   def error_message(:not_started),
     do: dgettext("default", "Reading the photos could not be started.")

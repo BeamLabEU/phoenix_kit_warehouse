@@ -99,6 +99,25 @@ defmodule PhoenixKitWarehouse.Test.InventoryAIFixtures do
     for _ <- 1..count, do: storage_file!(folder.uuid, user).uuid
   end
 
+  @doc """
+  A local Storage bucket in a temporary directory, so that uploads are
+  stored for real (removed when the test ends).
+  """
+  def local_bucket! do
+    dir = Path.join(System.tmp_dir!(), "invai-bucket-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(dir)
+    ExUnit.Callbacks.on_exit(fn -> File.rm_rf(dir) end)
+
+    {:ok, bucket} =
+      Storage.create_bucket(%{
+        name: "Local #{System.unique_integer([:positive])}",
+        provider: "local",
+        endpoint: dir
+      })
+
+    bucket
+  end
+
   @doc "A Storage file row in `folder_uuid` (`nil` - in no folder)."
   def storage_file!(folder_uuid, user) do
     checksum = "invai-#{System.unique_integer([:positive])}"
