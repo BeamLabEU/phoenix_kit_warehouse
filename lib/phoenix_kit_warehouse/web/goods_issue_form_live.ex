@@ -35,7 +35,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
-  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages, UserNames}
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages}
 
   alias PhoenixKit.Utils.Routes
 
@@ -174,16 +174,10 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       |> assign(:sub_order_ref, sub_order_ref)
       |> assign(:internal_order_ref, internal_order_ref)
       |> assign(:refs_by_kind, refs_by_kind(issue))
-      |> assign(:deleted_by_name, deleted_by_name(issue))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(issue))
       |> assign(:page_title, dgettext("default", "Goods Issue #%{number}", number: issue.number))
 
     if same_issue?, do: socket, else: assign_edit_buffer(socket, issue)
-  end
-
-  defp deleted_by_name(%{deleted_at: nil}), do: nil
-
-  defp deleted_by_name(issue) do
-    UserNames.label(UserNames.resolve([issue], [:deleted_by_uuid]), issue.deleted_by_uuid)
   end
 
   # Reads the issue again, buffer included: what the person had typed is not
@@ -199,11 +193,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
   # A write found the issue in the trash: say so and draw the stored issue,
   # not the unsaved buffer.
-  defp trashed_meanwhile(socket) do
-    socket
-    |> put_flash(:error, TrashMessages.moved_to_trash())
-    |> reload_issue()
-  end
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_issue/1)
 
   defp assign_edit_buffer(socket, issue) do
     socket
@@ -258,10 +248,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
   # The Files tab skipped the folder lookup while the issue was in the trash;
   # a restore makes up for it, so the tab does not stay empty.
-  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
-    do: maybe_start_files_folder_resolution(socket)
-
-  defp resume_files_tab(socket), do: socket
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
 
   defp maybe_start_files_folder_resolution(socket) do
     cond do
@@ -294,20 +282,10 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
   @impl true
   def handle_event(event, _params, %{assigns: %{issue: %{deleted_at: %DateTime{}}}} = socket)
-      when event in @trash_blocked do
-    # The socket may be a tab behind: the issue could have been restored
-    # meanwhile. Read it again; a live one is drawn as such and the event, which
-    # was meant for the form as it was, is not carried out.
-    socket = reload_issue(socket)
-
-    case socket.assigns.issue do
-      %{deleted_at: %DateTime{}} ->
-        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
-
-      _live ->
-        {:noreply, resume_files_tab(socket)}
-    end
-  end
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(socket, :issue, &reload_issue/1, &resume_files_tab/1)}
 
   # "Move to trash" of the form's own issue (TrashActions); the uuid is the
   # form's, not the browser's. After the move the form is drawn as trashed.
@@ -900,20 +878,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       </div>
 
       <%!-- Trashed issue: say so, offer the way back (drafts only) --%>
-      <div :if={@deleted?} id="gi-trash-banner" class="alert alert-warning">
-        <.icon name="hero-trash" class="w-5 h-5" />
-        <span>{TrashMessages.banner(@issue.deleted_at, @deleted_by_name)}</span>
-        <button
-          :if={@issue.status == "draft"}
-          type="button"
-          id="gi-restore"
-          phx-click="restore"
-          phx-disable-with={dgettext("default", "Restoring...")}
-          class="btn btn-sm btn-primary"
-        >
-          <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
-        </button>
-      </div>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="gi"
+        document={@issue}
+        deleted_by={@deleted_by_name}
+      />
 
       <%!-- Posted banner (non-admin) --%>
       <%= if @posted? and not @admin? do %>

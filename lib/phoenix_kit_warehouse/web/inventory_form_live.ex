@@ -35,7 +35,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
-  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages, UserNames}
+  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages}
 
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Utils.Routes
@@ -256,19 +256,13 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:selectable_users, selectable_users)
       |> assign(:location_name, resolve_location_name(doc.location_uuid))
       |> assign(:stock_map, StockLedger.stock_map_for_location(doc.location_uuid))
-      |> assign(:deleted_by_name, deleted_by_name(doc))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(doc))
       |> assign(:page_title, dgettext("default", "Stocktake #%{n}", n: doc.number))
 
     # Initialise the edit buffer only when first opening this document. Preserves
     # unsaved edits (Track value toggle, note, entered counts, added/removed
     # lines) across tab navigation within the same document.
     if same_doc?, do: socket, else: assign_edit_buffer(socket, doc, locale)
-  end
-
-  defp deleted_by_name(%{deleted_at: nil}), do: nil
-
-  defp deleted_by_name(doc) do
-    UserNames.label(UserNames.resolve([doc], [:deleted_by_uuid]), doc.deleted_by_uuid)
   end
 
   # Reads the stocktake again, buffer included: what the person had typed is
@@ -283,11 +277,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
   # A write found the stocktake in the trash: say so and draw the stored
   # stocktake, not the unsaved buffer.
-  defp trashed_meanwhile(socket) do
-    socket
-    |> put_flash(:error, TrashMessages.moved_to_trash())
-    |> reload_doc()
-  end
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_doc/1)
 
   # (Re)initialises the editable buffer from a document. Called on first open and
   # explicitly after repost (to pick up the freshly audited lines).
@@ -323,10 +313,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
   # The Files tab skipped the folder lookup while the stocktake was in the
   # trash; a restore makes up for it, so the tab does not stay empty.
-  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
-    do: maybe_start_files_folder_resolution(socket)
-
-  defp resume_files_tab(socket), do: socket
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
 
   defp maybe_start_files_folder_resolution(socket) do
     cond do
@@ -359,20 +347,15 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
   @impl true
   def handle_event(event, _params, %{assigns: %{doc: %{deleted_at: %DateTime{}}}} = socket)
-      when event in @trash_blocked do
-    # The socket may be a tab behind: the stocktake could have been restored
-    # meanwhile. Read it again; a live one is drawn as such and the event, which
-    # was meant for the form as it was, is not carried out.
-    socket = socket |> reset_location_confirm() |> reload_doc()
-
-    case socket.assigns.doc do
-      %{deleted_at: %DateTime{}} ->
-        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
-
-      _live ->
-        {:noreply, resume_files_tab(socket)}
-    end
-  end
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(
+           socket,
+           :doc,
+           &(&1 |> reset_location_confirm() |> reload_doc()),
+           &resume_files_tab/1
+         )}
 
   # "Move to trash" of the form's own stocktake (TrashActions); the uuid is
   # the form's, not the browser's. After the move the form is drawn as trashed.
@@ -990,20 +973,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       </div>
 
       <%!-- Trashed stocktake: say so, offer the way back (drafts only) --%>
-      <div :if={@deleted?} id="inv-trash-banner" class="alert alert-warning">
-        <.icon name="hero-trash" class="w-5 h-5" />
-        <span>{TrashMessages.banner(@doc.deleted_at, @deleted_by_name)}</span>
-        <button
-          :if={@doc.status == "draft"}
-          type="button"
-          id="inv-restore"
-          phx-click="restore"
-          phx-disable-with={dgettext("default", "Restoring...")}
-          class="btn btn-sm btn-primary"
-        >
-          <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
-        </button>
-      </div>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="inv"
+        document={@doc}
+        deleted_by={@deleted_by_name}
+      />
 
       <%!-- Posted info banner (non-admin only: admin can still edit) --%>
       <%= if @posted? and not @admin? and @active_tab == :general do %>

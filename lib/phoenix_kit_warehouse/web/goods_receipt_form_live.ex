@@ -35,7 +35,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
-  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages, UserNames}
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages}
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
@@ -179,7 +179,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       |> assign(:location_name, location_name)
       |> assign(:supplier_order_ref, supplier_order_ref)
       |> assign(:refs_by_kind, refs_by_kind(receipt))
-      |> assign(:deleted_by_name, deleted_by_name(receipt))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(receipt))
       |> assign(
         :page_title,
         dgettext("default", "Goods Receipt #%{number}", number: receipt.number)
@@ -187,12 +187,6 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
     socket = if same_receipt?, do: socket, else: assign_edit_buffer(socket, receipt)
     assign_price_proposals(socket)
-  end
-
-  defp deleted_by_name(%{deleted_at: nil}), do: nil
-
-  defp deleted_by_name(receipt) do
-    UserNames.label(UserNames.resolve([receipt], [:deleted_by_uuid]), receipt.deleted_by_uuid)
   end
 
   # Reads the receipt again, buffer included: what the person had typed is
@@ -207,11 +201,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
   # A write found the receipt in the trash: say so and draw the stored
   # receipt, not the unsaved buffer.
-  defp trashed_meanwhile(socket) do
-    socket
-    |> put_flash(:error, TrashMessages.moved_to_trash())
-    |> reload_receipt()
-  end
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_receipt/1)
 
   defp assign_edit_buffer(socket, receipt) do
     socket
@@ -285,10 +275,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
   # The Files tab skipped the folder lookup while the receipt was in the
   # trash; a restore makes up for it, so the tab does not stay empty.
-  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
-    do: maybe_start_files_folder_resolution(socket)
-
-  defp resume_files_tab(socket), do: socket
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
 
   defp maybe_start_files_folder_resolution(socket) do
     cond do
@@ -321,20 +309,10 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
   @impl true
   def handle_event(event, _params, %{assigns: %{receipt: %{deleted_at: %DateTime{}}}} = socket)
-      when event in @trash_blocked do
-    # The socket may be a tab behind: the receipt could have been restored
-    # meanwhile. Read it again; a live one is drawn as such and the event, which
-    # was meant for the form as it was, is not carried out.
-    socket = reload_receipt(socket)
-
-    case socket.assigns.receipt do
-      %{deleted_at: %DateTime{}} ->
-        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
-
-      _live ->
-        {:noreply, resume_files_tab(socket)}
-    end
-  end
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(socket, :receipt, &reload_receipt/1, &resume_files_tab/1)}
 
   # "Move to trash" of the form's own receipt (TrashActions); the uuid is the
   # form's, not the browser's. After the move the form is drawn as trashed.
@@ -1034,20 +1012,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       </div>
 
       <%!-- Trashed receipt: say so, offer the way back (drafts only) --%>
-      <div :if={@deleted?} id="gr-trash-banner" class="alert alert-warning">
-        <.icon name="hero-trash" class="w-5 h-5" />
-        <span>{TrashMessages.banner(@receipt.deleted_at, @deleted_by_name)}</span>
-        <button
-          :if={@receipt.status == "draft"}
-          type="button"
-          id="gr-restore"
-          phx-click="restore"
-          phx-disable-with={dgettext("default", "Restoring...")}
-          class="btn btn-sm btn-primary"
-        >
-          <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
-        </button>
-      </div>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="gr"
+        document={@receipt}
+        deleted_by={@deleted_by_name}
+      />
 
       <%!-- Posted banner (non-admin) --%>
       <%= if @posted? and not @admin? do %>

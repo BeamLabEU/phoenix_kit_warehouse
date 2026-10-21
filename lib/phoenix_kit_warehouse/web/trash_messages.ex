@@ -72,6 +72,22 @@ defmodule PhoenixKitWarehouse.Web.TrashMessages do
   @doc "The flash for a write that found the document in the trash."
   def moved_to_trash, do: dgettext("default", "Document moved to the trash")
 
+  @doc """
+  The Deleted / Deleted by fields a list card adds in the trash view (`[]` on
+  the active tab); `entry` carries `deleted_at` and the `deleted_by` label.
+  """
+  def card_fields("trash", entry) do
+    [
+      %{label: dgettext("default", "Deleted"), value: fmt_date(entry.deleted_at)},
+      %{label: dgettext("default", "Deleted by"), value: entry.deleted_by}
+    ]
+  end
+
+  def card_fields(_view, _entry), do: []
+
+  defp fmt_date(nil), do: "—"
+  defp fmt_date(dt), do: Calendar.strftime(dt, "%d.%m.%Y")
+
   @doc "The banner text of a trashed document's form."
   def banner(deleted_at, user_label) do
     dgettext("default", "This document is in the trash (deleted %{date} by %{user}).",

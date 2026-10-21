@@ -157,8 +157,10 @@ defmodule PhoenixKitWarehouse.DraftTrash do
   @doc """
   The first step of a status-gated write: an `Ecto.Multi` that locks the row
   of `schema` FOR UPDATE under `:lock_status` while it is in `expected_status`.
-  A draft must also be out of the trash; a miss on a trashed draft answers
-  `:deleted`, any other miss the caller's `error`. Other statuses are not
+  A draft must also be out of the trash. When a draft was expected, a miss on
+  a row that is in the trash answers `:deleted`, whatever its status (a
+  posted document trashed by older code included); any other miss answers the
+  caller's `error`. Other expected statuses are not
   checked against the trash, so a legacy document trashed in another status
   can still finish its way.
   """

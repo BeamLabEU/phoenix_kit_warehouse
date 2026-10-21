@@ -65,7 +65,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     WarehouseBrowser
   }
 
-  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages, UserNames}
+  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages}
 
   # Events that change the transfer or its links. A transfer in the trash
   # answers none of them; the buttons are hidden, this is for a stale event.
@@ -76,6 +76,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   # Cancel and Receive serve a draft and a transfer in transit alike. Only a
   # trashed draft refuses them: a transfer in transit that sits in the trash
   # (legacy) must still be received or cancelled, or its goods stay on the road.
+  # `cancel` is guarded twice: `Transfers.cancel_transfer/2` answers a trashed
+  # draft `:deleted` too, with the same flash, so no test tells this entry
+  # from the context's check.
   @trashed_draft_blocked ~w(open_cancel_confirm cancel receive)
 
   # ---------------------------------------------------------------------------
@@ -208,19 +211,13 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
         resolve_location_name(transfer.destination_location_uuid)
       )
       |> assign(:source_refs, source_refs)
-      |> assign(:deleted_by_name, deleted_by_name(transfer))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(transfer))
       |> assign(
         :page_title,
         dgettext("default", "Transfer #%{number}", number: transfer.number)
       )
 
     if same_transfer?, do: socket, else: assign_edit_buffer(socket, transfer, locale)
-  end
-
-  defp deleted_by_name(%{deleted_at: nil}), do: nil
-
-  defp deleted_by_name(transfer) do
-    UserNames.label(UserNames.resolve([transfer], [:deleted_by_uuid]), transfer.deleted_by_uuid)
   end
 
   # Reads the transfer again, buffer included: what the person had typed is
@@ -235,28 +232,18 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
 
   # A write found the transfer in the trash: say so and draw the stored
   # transfer, not the unsaved buffer.
-  defp trashed_meanwhile(socket) do
-    socket
-    |> put_flash(:error, TrashMessages.moved_to_trash())
-    |> reload_transfer()
-  end
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_transfer/1)
 
-  # The socket may be a tab behind: the transfer could have been restored
-  # meanwhile. Read it again; a live one is drawn as such and the event, which
-  # was meant for the form as it was, is not carried out.
+  # A write event on a trashed transfer (TrashActions.refuse_trashed/4); the
+  # cancel confirmation closes either way.
   defp refuse_trashed(socket) do
-    socket =
-      socket
-      |> assign(:show_cancel_confirm_modal, false)
-      |> reload_transfer()
-
-    case socket.assigns.transfer do
-      %{deleted_at: %DateTime{}} ->
-        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
-
-      _live ->
-        {:noreply, resume_files_tab(socket)}
-    end
+    {:noreply,
+     TrashActions.refuse_trashed(
+       socket,
+       :transfer,
+       &(&1 |> assign(:show_cancel_confirm_modal, false) |> reload_transfer()),
+       &resume_files_tab/1
+     )}
   end
 
   defp assign_edit_buffer(socket, transfer, locale) do
@@ -925,20 +912,12 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
       </div>
 
       <%!-- Trashed transfer: say so, offer the way back (drafts only) --%>
-      <div :if={@deleted?} id="tr-trash-banner" class="alert alert-warning">
-        <.icon name="hero-trash" class="w-5 h-5" />
-        <span>{TrashMessages.banner(@transfer.deleted_at, @deleted_by_name)}</span>
-        <button
-          :if={@transfer.status == "draft"}
-          type="button"
-          id="tr-restore"
-          phx-click="restore"
-          phx-disable-with={dgettext("default", "Restoring...")}
-          class="btn btn-sm btn-primary"
-        >
-          <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
-        </button>
-      </div>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="tr"
+        document={@transfer}
+        deleted_by={@deleted_by_name}
+      />
 
       <%!-- Status info banner (non-admin only) --%>
       <%= if @transfer && @transfer.status != "draft" and not @admin? do %>
@@ -1342,10 +1321,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
 
   # The Files tab skipped the folder lookup while the transfer was in the
   # trash; a restore makes up for it, so the tab does not stay empty.
-  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
-    do: maybe_start_files_folder_resolution(socket)
-
-  defp resume_files_tab(socket), do: socket
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
 
   defp maybe_start_files_folder_resolution(socket) do
     cond do

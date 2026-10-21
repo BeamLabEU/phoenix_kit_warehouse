@@ -71,7 +71,9 @@ flash names the internal orders the issues now exceed
 For a draft transfer, *Cancel* and *Move to trash* differ: *Cancel* closes it
 for good as a `cancelled` transfer that stays in the list, *Move to trash* hides
 the draft and *Restore* brings it back as a draft. A transfer in transit is
-cancelled (which credits the stock back to the source), not trashed.
+cancelled (which credits the stock back to the source), not trashed. A transfer
+in transit that older code moved to the trash can still be received or
+cancelled, so its goods do not stay on the road.
 
 Hosts that want **one draft per source** use these functions:
 

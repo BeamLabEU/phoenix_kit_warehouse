@@ -54,7 +54,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
     WarehouseHeader
   }
 
-  alias PhoenixKitWarehouse.Web.{TrashActions, UserNames}
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages, UserNames}
 
   # Opt out of PhoenixKit's auto admin-chrome layout (applied to external Andi
   # views via `socket.private[:live_layout]`) so this view self-wraps with
@@ -197,7 +197,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
         number: doc.number,
         status: doc.status,
         status_label: status_label(doc.status),
-        trash_reason: TrashActions.blocked_reason(doc),
+        blocked_reason: TrashActions.blocked_reason(doc),
         inserted_at: doc.inserted_at,
         posted_at: doc.posted_at,
         note: doc.note,
@@ -327,7 +327,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
               Enum.map(@selected_columns, fn col ->
                 %{label: column_label(meta_map, col), value: render_card_value(col, entry)}
-              end) ++ trash_card_fields(@view, entry)
+              end) ++ TrashMessages.card_fields(@view, entry)
             end
           }
         >
@@ -407,11 +407,12 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
           <:card_actions :let={entry}>
             <div class="relative z-10">
-              <.row_menu
+              <TrashAction.row_menu
                 id_prefix="inv-card"
                 menu_id={"inv-card-menu-#{entry.uuid}"}
                 entry={entry}
                 view={@view}
+                href={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{entry.uuid}")}
               />
             </div>
           </:card_actions>
@@ -500,11 +501,12 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
                   </.table_default_cell>
                 <% end %>
                 <.table_default_cell class="relative z-10 w-12">
-                  <.row_menu
+                  <TrashAction.row_menu
                     id_prefix="inv"
                     menu_id={"doc-menu-#{doc.uuid}"}
                     entry={doc}
                     view={@view}
+                    href={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{doc.uuid}")}
                   />
                 </.table_default_cell>
               </.table_default_row>
@@ -524,40 +526,6 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
         <TrashAction.trash_confirm id_prefix="inv" candidate={@trash_candidate} />
       </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
-    """
-  end
-
-  # The ⋮ menu of a row; the card view renders it again under its own ids, so
-  # no id repeats on the page. The table keeps its old menu id (`doc-menu-`).
-  attr(:id_prefix, :string, required: true)
-  attr(:menu_id, :string, required: true)
-  attr(:entry, :map, required: true)
-  attr(:view, :string, required: true)
-
-  defp row_menu(assigns) do
-    ~H"""
-    <.table_row_menu id={@menu_id}>
-      <.table_row_menu_link
-        navigate={PhoenixKit.Utils.Routes.path("/admin/warehouse/inventory/#{@entry.uuid}")}
-        icon={if @view == "trash", do: "hero-eye", else: "hero-pencil-square"}
-        label={
-          if @view == "trash",
-            do: dgettext("default", "Open"),
-            else: dgettext("default", "Edit")
-        }
-      />
-      <TrashAction.trash_menu_item
-        :if={@view == "active"}
-        id_prefix={@id_prefix}
-        uuid={@entry.uuid}
-        reason={@entry.trash_reason}
-      />
-      <TrashAction.restore_menu_item
-        :if={@view == "trash" and @entry.status == "draft"}
-        id_prefix={@id_prefix}
-        uuid={@entry.uuid}
-      />
-    </.table_row_menu>
     """
   end
 
@@ -637,15 +605,6 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
   defp render_card_value("created_by", entry), do: entry.created_by
   defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"
-
-  defp trash_card_fields("trash", entry) do
-    [
-      %{label: dgettext("default", "Deleted"), value: fmt_date(entry.deleted_at)},
-      %{label: dgettext("default", "Deleted by"), value: entry.deleted_by}
-    ]
-  end
-
-  defp trash_card_fields(_view, _entry), do: []
 
   defp fmt_date(nil), do: "—"
   defp fmt_date(dt), do: Calendar.strftime(dt, "%d.%m.%Y")

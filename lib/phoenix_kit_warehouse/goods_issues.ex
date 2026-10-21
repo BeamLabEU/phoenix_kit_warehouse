@@ -620,7 +620,9 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
 
   This is a known approximation: a legacy ref without `"lines"` counts every
   line of its goods issue against the internal order, so the warning can be
-  a false one for such documents.
+  a false one for such documents. Likewise, an item on several lines of the
+  internal order is compared against its first line only (`uniq_by` over the
+  item, as the import's remaining lines do), which can warn falsely too.
   """
   @spec overcommitted_internal_orders(GoodsIssue.t()) :: [InternalOrder.t()]
   def overcommitted_internal_orders(%GoodsIssue{source_refs: refs}) do

@@ -1,8 +1,10 @@
 defmodule PhoenixKitWarehouse.Web.TrashActions do
   @moduledoc """
   "Move to trash" for the lists and forms of the warehouse documents: the
-  document kinds, the reason a document cannot go to the trash, and the three
-  events behind the confirmation.
+  document kinds, the reason a document cannot go to the trash, the three
+  events behind the confirmation, the restore, and what a form does while its
+  document is in the trash (`refuse_trashed/4`, `trashed_meanwhile/2`,
+  `resume_files_tab/2`, `deleted_by_name/1`).
 
   A LiveView keeps `:trash_candidate` (the document waiting for the
   confirmation, `nil` otherwise), renders the pieces of
@@ -47,7 +49,7 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
     Transfers
   }
 
-  alias PhoenixKitWarehouse.Web.TrashMessages
+  alias PhoenixKitWarehouse.Web.{TrashMessages, UserNames}
 
   @type kind_name ::
           :internal_order
@@ -57,6 +59,8 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
           | :inventory
           | :transfer
 
+  @typep socket_fun :: (Phoenix.LiveView.Socket.t() -> Phoenix.LiveView.Socket.t())
+
   @type kind :: %{
           required(:get) => (Ecto.UUID.t() -> {:ok, struct()} | {:error, :not_found}),
           required(:soft_delete) => (struct(), Ecto.UUID.t() | nil ->
@@ -64,6 +68,9 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
           optional(:restore) => (struct(), Ecto.UUID.t() | nil ->
                                    {:ok, struct()} | {:error, atom()})
         }
+
+  # The kinds restored without a swap: the ones with `restore` in `kind/1`.
+  @restorable_kinds [:goods_receipt, :goods_issue, :inventory, :transfer]
 
   # The kinds whose documents are posted (a transfer moves through its own
   # statuses instead).
@@ -206,7 +213,7 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
           term(),
           (Phoenix.LiveView.Socket.t() -> Phoenix.LiveView.Socket.t())
         ) :: Phoenix.LiveView.Socket.t()
-  def restore(socket, kind_name, uuid, reload) do
+  def restore(socket, kind_name, uuid, reload) when kind_name in @restorable_kinds do
     kind = kind(kind_name)
 
     with {:ok, uuid} <- cast_uuid(uuid),
@@ -230,6 +237,59 @@ defmodule PhoenixKitWarehouse.Web.TrashActions do
   @doc "The `cancel_trash` event: closes the confirmation."
   @spec cancel_trash(Phoenix.LiveView.Socket.t()) :: Phoenix.LiveView.Socket.t()
   def cancel_trash(socket), do: assign(socket, :trash_candidate, nil)
+
+  @doc """
+  Who moved `document` to the trash, as a label for the form's banner; `nil`
+  for a live document.
+  """
+  @spec deleted_by_name(struct()) :: String.t() | nil
+  def deleted_by_name(%{deleted_at: nil}), do: nil
+
+  def deleted_by_name(document) do
+    UserNames.label(UserNames.resolve([document], [:deleted_by_uuid]), document.deleted_by_uuid)
+  end
+
+  @doc """
+  A form's answer to a write event while its document (`socket.assigns[key]`)
+  is in the trash. The socket may be a tab behind: the document could have
+  been restored meanwhile, so `reload` reads it again. A trashed one gets the
+  "moved to the trash" flash; a live one is drawn as such and `resume` picks
+  the Files tab up again. Either way the event, meant for the form as it was,
+  is not carried out.
+  """
+  @spec refuse_trashed(Phoenix.LiveView.Socket.t(), atom(), socket_fun(), socket_fun()) ::
+          Phoenix.LiveView.Socket.t()
+  def refuse_trashed(socket, key, reload, resume) do
+    socket = reload.(socket)
+
+    case socket.assigns[key] do
+      %{deleted_at: %DateTime{}} -> put_flash(socket, :error, TrashMessages.moved_to_trash())
+      _live -> resume.(socket)
+    end
+  end
+
+  @doc """
+  A write of a form found its document in the trash (moved there meanwhile):
+  says so, and `reload` draws the stored document rather than the unsaved
+  buffer.
+  """
+  @spec trashed_meanwhile(Phoenix.LiveView.Socket.t(), socket_fun()) ::
+          Phoenix.LiveView.Socket.t()
+  def trashed_meanwhile(socket, reload) do
+    socket
+    |> put_flash(:error, TrashMessages.moved_to_trash())
+    |> reload.()
+  end
+
+  @doc """
+  After a restore: the Files tab skipped the folder lookup while the document
+  was in the trash, so `start` (the form's folder lookup) runs when that tab is
+  open, and the tab does not stay empty.
+  """
+  @spec resume_files_tab(Phoenix.LiveView.Socket.t(), socket_fun()) ::
+          Phoenix.LiveView.Socket.t()
+  def resume_files_tab(%{assigns: %{active_tab: :files}} = socket, start), do: start.(socket)
+  def resume_files_tab(socket, _start), do: socket
 
   defp refuse(socket, message, reload) do
     socket

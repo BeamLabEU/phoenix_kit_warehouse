@@ -1,8 +1,8 @@
 defmodule PhoenixKitWarehouse.Web.Components.TrashAction do
   @moduledoc """
   The "Move to trash" pieces of the warehouse document lists and forms: the
-  row menu item, the form button, the Restore item of the trash view and the
-  confirmation. The events they send are handled by
+  row menu with its items, the form button, the banner of a trashed document
+  and the confirmation. The events they send are handled by
   `PhoenixKitWarehouse.Web.TrashActions`.
 
   `id_prefix` keeps the ids apart: the document kind (`io`, `so`, `gr`, `gi`,
@@ -15,9 +15,68 @@ defmodule PhoenixKitWarehouse.Web.Components.TrashAction do
 
   import PhoenixKitWeb.Components.Core.Icon, only: [icon: 1]
   import PhoenixKitWeb.Components.Core.Modal, only: [confirm_modal: 1]
-  import PhoenixKitWeb.Components.Core.TableRowMenu, only: [table_row_menu_button: 1]
+
+  import PhoenixKitWeb.Components.Core.TableRowMenu,
+    only: [table_row_menu: 1, table_row_menu_button: 1, table_row_menu_link: 1]
 
   alias PhoenixKitWarehouse.Web.TrashMessages
+
+  attr(:id_prefix, :string,
+    required: true,
+    doc: "e.g. \"io\" in a table row, \"io-card\" in a card"
+  )
+
+  attr(:menu_id, :string,
+    default: nil,
+    doc: "the menu's id; `<id_prefix>-menu-<uuid>` when nil"
+  )
+
+  attr(:href, :string, required: true, doc: "the document's form, for Edit / Open")
+  attr(:view, :string, required: true, doc: "the list's tab: \"active\" or \"trash\"")
+
+  attr(:entry, :map,
+    required: true,
+    doc: "the list entry: `uuid`, `status` and `blocked_reason` (`TrashActions.blocked_reason/1`)"
+  )
+
+  @doc """
+  The ⋮ menu of a list row: Edit (Open in the trash view), then Move to trash
+  on the active tab or, for a trashed draft, Restore. The card view renders it
+  again under its own `id_prefix`, so no id repeats on the page.
+  """
+  def row_menu(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :menu_id,
+        assigns.menu_id || "#{assigns.id_prefix}-menu-#{assigns.entry.uuid}"
+      )
+
+    ~H"""
+    <.table_row_menu id={@menu_id}>
+      <.table_row_menu_link
+        navigate={@href}
+        icon={if @view == "trash", do: "hero-eye", else: "hero-pencil-square"}
+        label={
+          if @view == "trash",
+            do: dgettext("default", "Open"),
+            else: dgettext("default", "Edit")
+        }
+      />
+      <.trash_menu_item
+        :if={@view == "active"}
+        id_prefix={@id_prefix}
+        uuid={@entry.uuid}
+        reason={@entry.blocked_reason}
+      />
+      <.restore_menu_item
+        :if={@view == "trash" and @entry.status == "draft"}
+        id_prefix={@id_prefix}
+        uuid={@entry.uuid}
+      />
+    </.table_row_menu>
+    """
+  end
 
   attr(:id_prefix, :string,
     required: true,
@@ -141,6 +200,34 @@ defmodule PhoenixKitWarehouse.Web.Components.TrashAction do
       </button>
       <span id={"#{@id_prefix}-trash-reason"} class="sr-only">{@reason}</span>
     </span>
+    """
+  end
+
+  attr(:id_prefix, :string, required: true, doc: "the document kind, e.g. \"io\"")
+  attr(:document, :map, required: true, doc: "the trashed document of the form")
+  attr(:deleted_by, :string, default: nil, doc: "who moved it to the trash, as a label")
+
+  @doc """
+  The banner of a trashed document's form (`#<id_prefix>-trash-banner`): when
+  and by whom it was deleted, and for a draft the Restore button
+  (`#<id_prefix>-restore`), which sends `restore`.
+  """
+  def trash_banner(assigns) do
+    ~H"""
+    <div id={"#{@id_prefix}-trash-banner"} class="alert alert-warning">
+      <.icon name="hero-trash" class="w-5 h-5" />
+      <span>{TrashMessages.banner(@document.deleted_at, @deleted_by)}</span>
+      <button
+        :if={@document.status == "draft"}
+        type="button"
+        id={"#{@id_prefix}-restore"}
+        phx-click="restore"
+        phx-disable-with={dgettext("default", "Restoring...")}
+        class="btn btn-sm btn-primary"
+      >
+        <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
+      </button>
+    </div>
     """
   end
 

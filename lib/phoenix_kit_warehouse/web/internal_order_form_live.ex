@@ -47,7 +47,6 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   alias PhoenixKitWarehouse.Web.ItemSelectorScope
   alias PhoenixKitWarehouse.Web.TrashActions
   alias PhoenixKitWarehouse.Web.TrashMessages
-  alias PhoenixKitWarehouse.Web.UserNames
 
   # Events that change the document, its links or what is made from it. A
   # document in the trash answers none of them; the buttons are hidden, this
@@ -198,7 +197,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       |> assign(:child_supplier_order_refs, child_supplier_order_refs)
       |> assign(:child_goods_issue_refs, child_goods_issue_refs)
       |> assign(:source_refs, source_refs)
-      |> assign(:deleted_by_name, deleted_by_name(order))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(order))
       |> assign(:replaceable_drafts, replaceable_drafts(order))
       |> assign(
         :page_title,
@@ -206,12 +205,6 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       )
 
     if same_order?, do: socket, else: assign_edit_buffer(socket, order, locale)
-  end
-
-  defp deleted_by_name(%{deleted_at: nil}), do: nil
-
-  defp deleted_by_name(order) do
-    UserNames.label(UserNames.resolve([order], [:deleted_by_uuid]), order.deleted_by_uuid)
   end
 
   # The live supplier-order drafts a generation may send to the trash; only
@@ -266,20 +259,10 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
         _params,
         %{assigns: %{order: %{deleted_at: %DateTime{}}}} = socket
       )
-      when event in @trash_blocked do
-    # The socket may be a tab behind: the document could have been restored
-    # meanwhile. Read it again; a live one is drawn as such and the event, which
-    # was meant for the form as it was, is not carried out.
-    socket = reload_order(socket)
-
-    case socket.assigns.order do
-      %{deleted_at: %DateTime{}} ->
-        {:noreply, put_flash(socket, :error, TrashMessages.moved_to_trash())}
-
-      _live ->
-        {:noreply, resume_files_tab(socket)}
-    end
-  end
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(socket, :order, &reload_order/1, &resume_files_tab/1)}
 
   # "Move to trash" of the form's own document (TrashActions); the uuid is the
   # form's, not the browser's. After the move the form is drawn as trashed.
@@ -1004,20 +987,12 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
       </div>
 
       <%!-- Trashed document: say so, offer the way back (drafts only) --%>
-      <div :if={@deleted?} id="io-trash-banner" class="alert alert-warning">
-        <.icon name="hero-trash" class="w-5 h-5" />
-        <span>{TrashMessages.banner(@order.deleted_at, @deleted_by_name)}</span>
-        <button
-          :if={@order.status == "draft"}
-          type="button"
-          id="io-restore"
-          phx-click="restore"
-          phx-disable-with={dgettext("default", "Restoring...")}
-          class="btn btn-sm btn-primary"
-        >
-          <.icon name="hero-arrow-uturn-left" class="w-4 h-4" /> {dgettext("default", "Restore")}
-        </button>
-      </div>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="io"
+        document={@order}
+        deleted_by={@deleted_by_name}
+      />
 
       <%!-- Posted info banner (non-admin only) --%>
       <%= if @posted? and not @admin? do %>
@@ -1379,10 +1354,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
 
   # The Files tab skipped the folder lookup while the document was in the
   # trash; a restore makes up for it, so the tab does not stay empty.
-  defp resume_files_tab(%{assigns: %{active_tab: :files}} = socket),
-    do: maybe_start_files_folder_resolution(socket)
-
-  defp resume_files_tab(socket), do: socket
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
 
   defp maybe_start_files_folder_resolution(socket) do
     cond do
@@ -1493,11 +1466,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
 
   # The save found the document in the trash (someone replaced it meanwhile):
   # say so and draw the stored document, not the unsaved buffer.
-  defp trashed_meanwhile(socket) do
-    socket
-    |> put_flash(:error, TrashMessages.moved_to_trash())
-    |> reload_order()
-  end
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_order/1)
 
   defp ensure_saved(%PhoenixKitWarehouse.InternalOrder{status: "draft"} = order, attrs) do
     InternalOrders.update_draft(order, attrs)
