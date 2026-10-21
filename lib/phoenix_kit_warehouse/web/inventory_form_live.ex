@@ -1201,8 +1201,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       <%= if @active_tab == :items do %>
         <div class="card bg-base-100 shadow-sm">
           <div class="card-body p-4">
-            <div class="flex items-center justify-between gap-2 mb-2">
-              <h2 class="card-title text-base">
+            <div id="inventory-items-header" class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <h2 class="card-title text-base min-w-0 break-words">
                 {dgettext("default", "Count sheet")}
                 <span
                   :if={@track_value}

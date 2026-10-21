@@ -463,6 +463,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       refute options =~ "()"
     end
 
+    test "the Items header wraps: the buttons go under a long title on a narrow screen", ctx do
+      lv = open!(ctx)
+      assert has_element?(lv, "#inventory-items-header.flex-wrap")
+      assert has_element?(lv, "#inventory-items-header h2.min-w-0.break-words")
+    end
+
     test "the catalogues to narrow the photos to are checkboxes", ctx do
       lv = open!(ctx)
       lv |> element("#inventory-ai-open") |> render_click()
