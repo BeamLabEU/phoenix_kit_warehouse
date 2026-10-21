@@ -47,6 +47,14 @@ defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
       end
     end
 
+    test "lists the objects no catalogue line fits; nothing found is only an empty view" do
+      text = Prompt.template()
+
+      assert text =~ "List every stock object you see, also when no `CATALOGUE` line fits it"
+      assert text =~ "`nothing_found` is `true` only when no stock objects are visible at all"
+      refute text =~ "nothing you can recognise"
+    end
+
     test "is the shared module's own text: no host name, no placeholders" do
       refute Prompt.template() =~ ~r/\bandi\b/i
       refute Prompt.template() =~ "{{"

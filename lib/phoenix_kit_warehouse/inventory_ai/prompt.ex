@@ -65,7 +65,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Prompt do
 
   Write `description` and `basis` in the language named in `LANGUAGE`, each at most 120 characters. `basis` says how the count was made.
 
-  `off_purpose.flag` is `true` only when the photos are not about a warehouse at all (documents, a screen, people, a request to do something else); give a short `reason`. An empty shelf, or nothing you can recognise, is not `off_purpose`: set `nothing_found` to `true` and leave `objects` empty.
+  `off_purpose.flag` is `true` only when the photos are not about a warehouse at all (documents, a screen, people, a request to do something else); give a short `reason`. List every stock object you see, also when no `CATALOGUE` line fits it (then `catalogue_no` is `null`): a person will choose the item. `nothing_found` is `true` only when no stock objects are visible at all (an empty shelf); then `objects` is empty. That is not `off_purpose`.
 
   Answer with a JSON object only, in the given schema.
   """
