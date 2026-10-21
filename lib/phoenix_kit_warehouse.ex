@@ -154,6 +154,12 @@ defmodule PhoenixKitWarehouse do
   # function up by name, so it is collected on any core that ships the engine.
   def media_reorganizer, do: PhoenixKitWarehouse.MediaReorganizer
 
+  # `ai_tasks/0`, the callback the phoenix_kit_ai task guard collects from
+  # the registered modules by name (as `media_reorganizer/0` above): the AI
+  # tasks this module declares. No `@impl` - core has no such callback yet.
+  # `[]` while the ai this is built against has no `PhoenixKitAI.TaskSpec`.
+  defdelegate ai_tasks, to: PhoenixKitWarehouse.InventoryAI.Guard
+
   @impl PhoenixKit.Module
   def children, do: [{Task.Supervisor, name: PhoenixKitWarehouse.TaskSupervisor}]
 

@@ -22,7 +22,12 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
     {:cont, put_in(socket.private[:live_layout], {PhoenixKitWeb.Layouts, :app})}
   end
 
+  alias PhoenixKit.Users.Auth.Scope
+  alias PhoenixKit.Users.Role
+  alias PhoenixKit.Utils.Number
   alias PhoenixKitLocations.Locations
+  alias PhoenixKitWarehouse.InventoryAI.Guard
+  alias PhoenixKitWarehouse.InventoryAI.Settings, as: InventoryAISettings
   alias PhoenixKitWarehouse.StockLedger
 
   @impl true
@@ -52,7 +57,132 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
     {:noreply, load(socket)}
   end
 
+  # The photo inventory block. The endpoint is a choice of where money goes,
+  # so the check is made here as well as in `render/1`: an event sent to a
+  # page that does not show the block is refused.
+  @impl true
+  def handle_event("save_inventory_ai", %{"inventory_ai" => params}, socket) do
+    if inventory_ai_access?(socket) do
+      {:noreply, save_inventory_ai(socket, params)}
+    else
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         dgettext("default", "Only a holder of the AI module can change these settings.")
+       )}
+    end
+  end
+
   # ---------------------------------------------------------------------------
+
+  # A holder of the `ai` module or an administrator (Admin or Owner role) -
+  # not `can_access_admin_area?/1`, which any holder of a single permission,
+  # the warehouse's own included, passes.
+  defp inventory_ai_access?(%{assigns: assigns}) do
+    case assigns[:phoenix_kit_current_scope] do
+      nil -> false
+      scope -> inventory_ai_access_for?(scope)
+    end
+  end
+
+  defp inventory_ai_access_for?(scope) do
+    Scope.has_module_access?(scope, "ai") or Scope.owner?(scope) or
+      Scope.has_role?(scope, Role.system_roles().admin)
+  end
+
+  defp save_inventory_ai(socket, params) do
+    options = socket.assigns.inventory_ai_options
+
+    with {:ok, endpoint_uuid} <- parse_endpoint(params["endpoint_uuid"], options),
+         {:ok, max_photos} <-
+           parse_whole(params["max_photos"], InventoryAISettings.max_photos_limit()),
+         {:ok, max_items} <-
+           parse_whole(params["max_items"], InventoryAISettings.max_items_limit()),
+         :ok <- InventoryAISettings.set_endpoint_uuid(endpoint_uuid),
+         :ok <- InventoryAISettings.set_max_photos(max_photos),
+         :ok <- InventoryAISettings.set_max_items(max_items) do
+      socket |> load_inventory_ai() |> assign(:inventory_ai_saved?, true)
+    else
+      {:error, :endpoint} ->
+        assign(
+          socket,
+          :inventory_ai_error,
+          dgettext("default", "Choose one of the listed endpoints, or none.")
+        )
+
+      {:error, {:number, limit}} ->
+        assign(
+          socket,
+          :inventory_ai_error,
+          dgettext("default", "Enter whole numbers from 1 up to %{limit}.", limit: limit)
+        )
+
+      {:error, _reason} ->
+        assign(
+          socket,
+          :inventory_ai_error,
+          dgettext("default", "The settings could not be saved.")
+        )
+    end
+  end
+
+  # Empty clears; otherwise one of the offered endpoints, or the one saved
+  # already (it may have been switched off since: saving the page must not
+  # drop it behind the person's back).
+  defp parse_endpoint(raw, _options) when raw in [nil, ""], do: {:ok, nil}
+
+  defp parse_endpoint(raw, options) when is_binary(raw) do
+    if raw in Enum.map(options, & &1.uuid), do: {:ok, raw}, else: {:error, :endpoint}
+  end
+
+  defp parse_endpoint(_raw, _options), do: {:error, :endpoint}
+
+  defp parse_whole(raw, limit) do
+    with {:ok, decimal} <- Number.parse_decimal(raw, min: 1, max: limit),
+         true <- Decimal.integer?(decimal) do
+      {:ok, Decimal.to_integer(decimal)}
+    else
+      _ -> {:error, {:number, limit}}
+    end
+  end
+
+  defp load_inventory_ai(socket) do
+    if inventory_ai_access?(socket) do
+      saved = InventoryAISettings.endpoint_uuid()
+      offered = Guard.endpoint_options()
+
+      options =
+        if saved && not Enum.any?(offered, &(&1.uuid == saved)),
+          do: offered ++ [%{uuid: saved, name: nil, model: nil, fit: nil}],
+          else: offered
+
+      socket
+      |> assign(:inventory_ai_visible?, true)
+      |> assign(:inventory_ai_options, options)
+      |> assign(:inventory_ai_endpoint_uuid, saved)
+      |> assign(:inventory_ai_max_photos, InventoryAISettings.max_photos())
+      |> assign(:inventory_ai_max_items, InventoryAISettings.max_items())
+      |> assign(:inventory_ai_prompt_path, prompt_path())
+      |> assign(:inventory_ai_error, nil)
+      |> assign(:inventory_ai_saved?, false)
+    else
+      socket
+      |> assign(:inventory_ai_visible?, false)
+      |> assign(:inventory_ai_options, [])
+    end
+  end
+
+  defp prompt_path do
+    uuid = InventoryAISettings.prompt_uuid()
+
+    if uuid && PhoenixKitAI.get_prompt(uuid),
+      do: "/admin/ai/prompts/#{uuid}/edit",
+      else: "/admin/ai/prompts"
+  end
+
+  defp endpoint_label(%{name: nil}), do: dgettext("default", "Unavailable endpoint")
+  defp endpoint_label(%{name: name, model: model}), do: "#{name} (#{model})"
 
   defp load(socket) do
     type_uuid = StockLedger.warehouse_location_type_uuid()
@@ -63,6 +193,7 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
     |> assign(:warehouse_type_uuid, type_uuid)
     |> assign(:locations, locations_for_type(type_uuid))
     |> assign(:default_location_uuid, StockLedger.default_location_uuid())
+    |> load_inventory_ai()
   end
 
   defp locations_for_type(nil), do: []
@@ -130,6 +261,79 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
             <span :if={@warehouse_type_uuid == nil} class="text-xs text-base-content/50">
               {dgettext("default", "Select a warehouse location type first.")}
             </span>
+          </form>
+        </div>
+      </div>
+
+      <div :if={@inventory_ai_visible?} id="inventory-ai-settings" class="card bg-base-100 shadow-sm">
+        <div class="card-body p-4 gap-4">
+          <div>
+            <h2 class="text-base font-semibold">
+              {dgettext("default", "AI: inventory from photos")}
+            </h2>
+            <p class="text-sm text-base-content/60">
+              {dgettext(
+                "default",
+                "A stocktake draft can suggest the items and counts seen on photos. The photos go to the AI provider of the chosen endpoint."
+              )}
+            </p>
+          </div>
+
+          <form
+            id="inventory-ai-settings-form"
+            phx-submit="save_inventory_ai"
+            class="flex flex-col gap-3 max-w-md"
+          >
+            <div class="flex flex-col gap-1">
+              <.select
+                id="inventory-ai-endpoint"
+                name="inventory_ai[endpoint_uuid]"
+                label={dgettext("default", "AI endpoint")}
+                prompt={dgettext("default", "Not set")}
+                value={@inventory_ai_endpoint_uuid}
+                options={for o <- @inventory_ai_options, do: {endpoint_label(o), o.uuid}}
+                class="select-sm"
+              />
+              <span id="inventory-ai-endpoint-hint" class="text-xs text-base-content/50">
+                {dgettext("default", "Pick a model that can read photos.")}
+                {dgettext("default", "Without an endpoint the button is not shown.")}
+              </span>
+            </div>
+
+            <.decimal_input
+              id="inventory-ai-max-photos"
+              name="inventory_ai[max_photos]"
+              label={dgettext("default", "Photos in one batch")}
+              value={@inventory_ai_max_photos}
+              class="input-sm"
+            />
+
+            <.decimal_input
+              id="inventory-ai-max-items"
+              name="inventory_ai[max_items]"
+              label={dgettext("default", "Most catalogue lines in one request")}
+              value={@inventory_ai_max_items}
+              class="input-sm"
+            />
+
+            <p class="text-xs text-base-content/50">
+              <.pk_link id="inventory-ai-prompt-link" navigate={@inventory_ai_prompt_path} class="link">
+                {dgettext("default", "Edit the prompt")}
+              </.pk_link>
+            </p>
+
+            <p :if={@inventory_ai_error} id="inventory-ai-settings-error" class="text-sm text-error">
+              {@inventory_ai_error}
+            </p>
+            <p :if={@inventory_ai_saved?} id="inventory-ai-settings-saved" class="text-sm text-success">
+              {dgettext("default", "Saved.")}
+            </p>
+
+            <div>
+              <.button type="submit" variant="primary" size="sm">
+                {dgettext("default", "Save")}
+              </.button>
+            </div>
           </form>
         </div>
       </div>

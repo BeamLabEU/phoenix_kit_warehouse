@@ -19,6 +19,7 @@ defmodule PhoenixKitWarehouse.MixProject do
         list_unused_filters: true,
         plt_add_apps: [
           :phoenix_kit,
+          :phoenix_kit_ai,
           :phoenix_kit_billing,
           :phoenix_kit_catalogue,
           :phoenix_kit_comments,
@@ -37,6 +38,7 @@ defmodule PhoenixKitWarehouse.MixProject do
       extra_applications: [
         :logger,
         :phoenix_kit,
+        :phoenix_kit_ai,
         :phoenix_kit_billing,
         :phoenix_kit_catalogue,
         :phoenix_kit_comments,
@@ -114,6 +116,13 @@ defmodule PhoenixKitWarehouse.MixProject do
       # Sibling PhoenixKit modules the warehouse UI/contexts build on:
       # comments embeds, catalogue products, locations, and billing currency.
       pk_dep(:phoenix_kit_billing, "~> 0.7"),
+      # Photo inventory (`PhoenixKitWarehouse.InventoryAI`): `describe_image/3`
+      # and the AI prompts, written against 0.25.5 (`describe_image/3` with a
+      # strict `schema:`). The catalogue already requires `~> 0.24`, so this
+      # adds no new package. A direct dep, NOT in `required_modules/0`:
+      # without the ai module switched on the inventory button is simply not
+      # shown.
+      pk_dep(:phoenix_kit_ai, "~> 0.25"),
       # 0.18.0 is the floor: `ItemSelectorModal` (the three "Add item" flows)
       # first shipped there. `~> 0.13` would still resolve 0.13–0.17, which
       # compile-fail on `PhoenixKitCatalogue.Web.Components.ItemSelectorModal`.
