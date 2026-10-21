@@ -129,6 +129,30 @@ defmodule PhoenixKitWarehouse.GettextTest do
     with_locale("en", fn -> assert t("No row is ticked.") == "No row is ticked." end)
   end
 
+  test "et, ru and uk translate the photo inventory panel" do
+    for locale <- ~w(et ru uk),
+        msgid <- [
+          "Count from photos",
+          "Propose",
+          "Undo the merge",
+          "Units per package",
+          "Show the late answer",
+          "This place may have been photographed again since.",
+          "%{count} lines counted from photos will be lost.",
+          "The photos are sent to an outside AI service: photograph the shelves, not people.",
+          "Do not leave the page while the photos upload."
+        ] do
+      with_locale(locale, fn ->
+        refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"
+      end)
+    end
+
+    with_locale("ru", fn -> assert t("Count from photos") == "Посчитать по фото" end)
+    with_locale("et", fn -> assert t("Count from photos") == "Loenda fotodelt" end)
+    with_locale("uk", fn -> assert t("Count from photos") == "Порахувати за фото" end)
+    with_locale("en", fn -> assert t("Count from photos") == "Count from photos" end)
+  end
+
   describe "catalogues are complete" do
     @catalogues for locale <- ~w(en et ru),
                     do:

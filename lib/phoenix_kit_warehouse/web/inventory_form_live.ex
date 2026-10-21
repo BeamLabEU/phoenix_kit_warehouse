@@ -5,7 +5,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   Handles:
   - `:new`      — creates a draft and push_navigate to :edit path.
   - `:edit`     — loads an existing document; :general tab.
-  - `:items`    — count sheet + catalogue ItemSelectorModal (draft only).
+  - `:items`    — count sheet + catalogue ItemSelectorModal (draft only), and
+                  the photo inventory (`PhoenixKitWarehouse.Web.InventoryAIPanel`,
+                  which this view only delegates to).
   - `:files`    — MediaBrowser; storage folder resolved asynchronously.
   - `:comments` — inventory comments thread.
 
@@ -32,10 +34,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.Comments
   alias PhoenixKitWarehouse.Inventories
+  alias PhoenixKitWarehouse.InventoryAI
+  alias PhoenixKitWarehouse.InventoryAI.Lines
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
-  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages}
+  alias PhoenixKitWarehouse.Web.{InventoryAIPanel, ItemSelectorScope, TrashActions, TrashMessages}
 
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Utils.Routes
@@ -92,7 +96,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:page_title, dgettext("default", "Stocktake"))
       |> assign(:deleted_by_name, nil)
       |> assign(:trash_candidate, nil)
+      # The fingerprint of the lines the edit buffer started from (spec §11.1):
+      # taken only together with the buffer, passed to every write of the lines.
+      |> assign(:base_fingerprint, nil)
       |> MediaBrowser.setup_uploads()
+      # After MediaBrowser's: its setup does nothing once `uploads` exists.
+      |> InventoryAIPanel.mount()
 
     {:ok, socket}
   end
@@ -230,8 +239,15 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   # and the warehouse location name. The edit buffer (lines/track_value/note) is
   # only (re)initialised when first opening a document — see assign_edit_buffer/3.
   defp load_doc_into_socket(socket, uuid, locale) do
-    doc = Inventories.get_document!(uuid)
     same_doc? = match?(%{uuid: ^uuid}, socket.assigns[:doc])
+
+    # The buffer is initialised below only when the document is first opened:
+    # its fingerprint is read then, in the same query as its lines, and never
+    # on a later tab switch, when the buffer is the old one.
+    doc =
+      if same_doc?,
+        do: Inventories.get_document!(uuid),
+        else: get_document_with_fingerprint!(uuid)
 
     selectable_users =
       if socket.assigns.admin? do
@@ -262,7 +278,18 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     # Initialise the edit buffer only when first opening this document. Preserves
     # unsaved edits (Track value toggle, note, entered counts, added/removed
     # lines) across tab navigation within the same document.
-    if same_doc?, do: socket, else: assign_edit_buffer(socket, doc, locale)
+    socket = if same_doc?, do: socket, else: assign_edit_buffer(socket, doc, locale)
+    InventoryAIPanel.load(socket)
+  end
+
+  defp get_document_with_fingerprint!(uuid) do
+    case Inventories.get_document_with_fingerprint(uuid) do
+      {:ok, doc} ->
+        doc
+
+      {:error, :not_found} ->
+        raise Ecto.NoResultsError, queryable: PhoenixKitWarehouse.InventoryDocument
+    end
   end
 
   # Reads the stocktake again, buffer included: what the person had typed is
@@ -280,9 +307,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_doc/1)
 
   # (Re)initialises the editable buffer from a document. Called on first open and
-  # explicitly after repost (to pick up the freshly audited lines).
+  # explicitly after repost (to pick up the freshly audited lines). The base
+  # fingerprint comes with the lines (`nil` for a document read without one).
   defp assign_edit_buffer(socket, doc, locale) do
     socket
+    |> assign(:base_fingerprint, doc.fingerprint)
     |> assign(:lines, doc.lines)
     |> assign(:track_value, doc.track_value)
     |> assign(:note, doc.note || "")
@@ -364,6 +393,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
   end
 
+  def handle_event("inventory_ai_" <> _ = event, params, socket) do
+    if socket.assigns.doc && socket.assigns.doc.deleted_at do
+      {:noreply,
+       TrashActions.refuse_trashed(
+         socket,
+         :doc,
+         &(&1 |> reset_location_confirm() |> reload_doc()),
+         &resume_files_tab/1
+       )}
+    else
+      InventoryAIPanel.handle_event(event, params, socket, &apply_written/2)
+    end
+  end
+
   def handle_event("request_trash", _params, socket) do
     {:noreply,
      TrashActions.request_trash(socket, :inventory, socket.assigns.doc.uuid, &reload_doc/1)}
@@ -436,6 +479,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> StockLedger.to_decimal()
       |> clamp_non_negative()
 
+    # A number typed by a person is their count (spec §10.4): `manual`, the
+    # base of the line, the parts of the photo runs kept as history only.
     lines =
       socket.assigns.lines
       |> List.update_at(index, fn line ->
@@ -447,7 +492,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
             else: nil
 
         line
-        |> Map.put("counted_quantity", qty)
+        |> Lines.manual_edit(qty)
         |> Map.put("_sum", sum)
       end)
 
@@ -550,20 +595,31 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   def handle_event("confirm_location_change", _params, socket) do
     locale = socket.assigns.locale
 
-    case Inventories.update_draft(socket.assigns.doc, %{
-           location_uuid: socket.assigns.pending_location_uuid,
-           locale: locale
-         }) do
+    # The new seed is the most destructive write of the lines: from a tab
+    # whose lines are old it is refused, and the photo runs read for the old
+    # warehouse are closed after it (spec §11.1, §11.5).
+    case Inventories.update_draft(
+           socket.assigns.doc,
+           %{location_uuid: socket.assigns.pending_location_uuid, locale: locale},
+           base_fingerprint: socket.assigns.base_fingerprint
+         ) do
       {:ok, updated_doc} ->
         {:noreply,
          socket
          |> load_doc_into_socket(updated_doc.uuid, locale)
          |> assign_edit_buffer(updated_doc, locale)
+         |> InventoryAIPanel.close_open_runs("location_changed")
          |> reset_location_confirm()
          |> put_flash(:info, dgettext("default", "Warehouse changed — count sheet re-seeded"))}
 
       {:error, :deleted} ->
         {:noreply, socket |> reset_location_confirm() |> trashed_meanwhile()}
+
+      {:error, :stale} ->
+        {:noreply,
+         socket
+         |> reset_location_confirm()
+         |> put_flash(:error, InventoryAI.error_message(:stale))}
 
       {:error, _changeset} ->
         {:noreply,
@@ -632,17 +688,24 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       %PhoenixKitWarehouse.InventoryDocument{status: "draft"} = doc ->
         changes = diff_doc_changes(doc, attrs)
 
-        case Inventories.update_draft(doc, attrs) do
+        case Inventories.update_draft(doc, attrs,
+               base_fingerprint: socket.assigns.base_fingerprint
+             ) do
           {:ok, updated_doc} ->
             ActivityLog.log_draft_saved(updated_doc, changes, actor: socket.assigns.current_user)
 
+            # The buffer is what was written: its fingerprint is the new base.
             {:noreply,
              socket
              |> assign(:doc, updated_doc)
+             |> assign(:base_fingerprint, updated_doc.fingerprint)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
 
           {:error, :deleted} ->
             {:noreply, trashed_meanwhile(socket)}
+
+          {:error, :stale} ->
+            {:noreply, put_flash(socket, :error, InventoryAI.error_message(:stale))}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
@@ -671,9 +734,13 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
     doc = socket.assigns.doc
 
-    with {:ok, saved_doc} <- ensure_saved(doc, save_attrs, user_uuid),
+    with {:ok, saved_doc} <-
+           ensure_saved(doc, save_attrs, user_uuid, socket.assigns.base_fingerprint),
          {:ok, posted_doc} <- Inventories.post_document(saved_doc, user_uuid) do
       ActivityLog.log_posted(posted_doc, actor: current_user)
+
+      # The photo runs still open are closed: the document is no draft now.
+      InventoryAI.close_open_runs(posted_doc.uuid, current_user, "posted")
 
       {:noreply,
        socket
@@ -686,6 +753,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
       {:error, :deleted} ->
         {:noreply, trashed_meanwhile(socket)}
+
+      {:error, :stale} ->
+        {:noreply, put_flash(socket, :error, InventoryAI.error_message(:stale))}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to conduct stocktake"))}
@@ -834,6 +904,21 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     {:noreply, assign(socket, :show_item_selector, false)}
   end
 
+  # The photo inventory's messages: a run's broadcast, the monitor of a run's
+  # task, the item picker of a proposal row.
+  def handle_info({:inventory_ai_run, _payload} = msg, socket),
+    do: InventoryAIPanel.handle_info(msg, socket)
+
+  def handle_info({:item_picker_select, "inventory-ai-picker-" <> _, _item} = msg, socket),
+    do: InventoryAIPanel.handle_info(msg, socket)
+
+  def handle_info({:DOWN, _ref, :process, _pid, _reason} = msg, socket) do
+    case InventoryAIPanel.handle_info(msg, socket) do
+      :unhandled -> {:noreply, socket}
+      reply -> reply
+    end
+  end
+
   # Catch-all: silently drop any unmatched process message (e.g. stale PubSub
   # broadcasts, unexpected CommentsComponent payloads after a library upgrade).
   # Prevents a FunctionClauseError from crashing the LiveView.
@@ -937,6 +1022,15 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           </span>
         <% end %>
       </div>
+
+      <%!-- Before Conduct: what the photos counted below the stock, open batches --%>
+      <InventoryAIPanel.conduct_summary
+        :if={!@read_only? and @active_tab in [:general, :items]}
+        lines={@lines}
+        stock_map={@stock_map}
+        names={@names}
+        ai={@ai}
+      />
 
       <%!-- Tab navigation --%>
       <div class="tabs tabs-border">
@@ -1134,12 +1228,25 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
                 </span>
               </h2>
               <%!-- Add item button (draft or admin on posted) — in the header row --%>
-              <%= if @editable? do %>
-                <button type="button" phx-click="open_item_selector" class="btn btn-primary btn-sm">
-                  <.icon name="hero-plus" class="w-4 h-4" />
-                  {dgettext("default", "Add item")}
-                </button>
-              <% end %>
+              <div class="flex flex-wrap items-center gap-2">
+                <InventoryAIPanel.open_button ai={@ai} doc={@doc} />
+                <%= if @editable? do %>
+                  <button type="button" phx-click="open_item_selector" class="btn btn-primary btn-sm">
+                    <.icon name="hero-plus" class="w-4 h-4" />
+                    {dgettext("default", "Add item")}
+                  </button>
+                <% end %>
+              </div>
+            </div>
+            <div class="mb-3">
+              <InventoryAIPanel.panel
+                ai={@ai}
+                doc={@doc}
+                uploads={@uploads}
+                lines={@lines}
+                stock_map={@stock_map}
+                locale={@locale}
+              />
             </div>
             <WarehouseBrowser.count_sheet
               lines={@lines}
@@ -1227,6 +1334,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
             "Switching the warehouse resets the counted quantities to the current stock of the new warehouse. Continue?"
           )}
         </p>
+        <InventoryAIPanel.location_warning lines={@lines} ai={@ai} />
         <:actions>
           <button type="button" phx-click="cancel_location_change" class="btn btn-sm btn-ghost">
             {dgettext("default", "Cancel")}
@@ -1286,7 +1394,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
               "catalogue_uuid" => item.catalogue_uuid,
               "unit" => item.unit,
               "counted_quantity" => StockLedger.to_decimal(qty),
-              "unit_value" => unit_value
+              "unit_value" => unit_value,
+              "counted_by" => "manual"
             }
 
             lines ++ [new_line]
@@ -1351,13 +1460,25 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   defp ensure_saved(
          %PhoenixKitWarehouse.InventoryDocument{status: "draft"} = doc,
          attrs,
-         _user_uuid
+         _user_uuid,
+         base_fingerprint
        ) do
-    Inventories.update_draft(doc, attrs)
+    Inventories.update_draft(doc, attrs, base_fingerprint: base_fingerprint)
   end
 
-  defp ensure_saved(%PhoenixKitWarehouse.InventoryDocument{} = doc, _attrs, _user_uuid) do
+  defp ensure_saved(%PhoenixKitWarehouse.InventoryDocument{} = doc, _attrs, _user_uuid, _base) do
     {:ok, doc}
+  end
+
+  # The photo inventory applied a proposal (`InventoryAI.apply_run/6` read the
+  # document back): the written lines are the new buffer, their fingerprint
+  # the new base - together.
+  defp apply_written(socket, doc) do
+    socket
+    |> assign(:doc, doc)
+    |> assign(:lines, doc.lines)
+    |> assign(:names, build_names_map(doc.lines, socket.assigns.locale))
+    |> assign(:base_fingerprint, doc.fingerprint)
   end
 
   # Produces a compact change-map comparing submitted attrs vs current doc fields.

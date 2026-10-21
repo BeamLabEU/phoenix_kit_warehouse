@@ -2413,3 +2413,551 @@ msgstr "Эта партия уже закрыта."
 #, elixir-autogen, elixir-format
 msgid "Too many photos for one batch: %{count}, at most %{max}."
 msgstr "Слишком много фото для одной партии: %{count}, не более %{max}."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:944
+#, elixir-autogen, elixir-format
+msgid "%{count} below the stock"
+msgstr "%{count} ниже учёта"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1455
+#, elixir-autogen, elixir-format
+msgid "%{count} items counted from photos are below the stock:"
+msgstr "Позиций, посчитанных по фото, меньше, чем по учёту: %{count}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1499
+#, elixir-autogen, elixir-format
+msgid "%{count} lines counted from photos will be lost."
+msgstr "Строк, посчитанных по фото, будет потеряно: %{count}."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:934
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1052
+#, elixir-autogen, elixir-format
+msgid "%{count} photos"
+msgstr "Фото: %{count}"
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:709
+#, elixir-autogen, elixir-format
+msgid "A photo could not be stored: upload it again."
+msgstr "Не удалось сохранить фото: загрузите его ещё раз."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1393
+#, elixir-autogen, elixir-format
+msgid "Add"
+msgstr "Добавить"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1395
+#, elixir-autogen, elixir-format
+msgid "Add as another part"
+msgstr "Добавить отдельным вкладом"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1337
+#, elixir-autogen, elixir-format
+msgid "Already %{total}: %{parts}"
+msgstr "Уже %{total}: %{parts}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:878
+#, elixir-autogen, elixir-format
+msgid "Another batch is being read."
+msgstr "Другая партия ещё распознаётся."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1212
+#, elixir-autogen, elixir-format
+msgid "Another item"
+msgstr "Другая позиция"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1025
+#, elixir-autogen, elixir-format
+msgid "Applied"
+msgstr "Применена"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:434
+#, elixir-autogen, elixir-format
+msgid "Applied to the count sheet: %{count} rows."
+msgstr "Применено к ведомости строк: %{count}."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1114
+#, elixir-autogen, elixir-format
+msgid "Apply ticked rows (%{count})"
+msgstr "Применить отмеченные строки (%{count})"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1088
+#, elixir-autogen, elixir-format
+msgid "Becomes"
+msgstr "Станет"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1328
+#, elixir-autogen, elixir-format
+msgid "By the stock at seeding: %{seeded}, now %{stock}; not counted."
+msgstr "По учёту на момент заполнения: %{seeded}, сейчас %{stock}; не посчитано."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1333
+#, elixir-autogen, elixir-format
+msgid "By the stock; not counted."
+msgstr "По учёту; не посчитано."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1262
+#, elixir-autogen, elixir-format
+msgid "Check the quantity"
+msgstr "Проверьте количество"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1170
+#, elixir-autogen, elixir-format
+msgid "Choose an item"
+msgstr "Выберите позицию"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1086
+#, elixir-autogen, elixir-format
+msgid "Confidence"
+msgstr "Уверенность"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:674
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:752
+#, elixir-autogen, elixir-format
+msgid "Count from photos"
+msgstr "Посчитать по фото"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1343
+#, elixir-autogen, elixir-format
+msgid "Counted by hand: %{quantity}"
+msgstr "Посчитано вручную: %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:997
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1123
+#, elixir-autogen, elixir-format
+msgid "Discard"
+msgstr "Отклонить"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1026
+#, elixir-autogen, elixir-format
+msgid "Discarded"
+msgstr "Отклонена"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:855
+#, elixir-autogen, elixir-format
+msgid "Do not leave the page while the photos upload."
+msgstr "Не уходите со страницы, пока идёт загрузка фото."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1251
+#, elixir-autogen, elixir-format
+msgid "Enter the quantity"
+msgstr "Введите количество"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1421
+#, elixir-autogen, elixir-format
+msgid "Enter the quantity as a number."
+msgstr "Введите количество числом."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1424
+#, elixir-autogen, elixir-format
+msgid "Enter the units per package as a number above 0."
+msgstr "Введите число штук в упаковке — больше 0."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1024
+#, elixir-autogen, elixir-format
+msgid "Failed"
+msgstr "Ошибка"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1057
+#, elixir-autogen, elixir-format
+msgid "Hide"
+msgstr "Скрыть"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1085
+#, elixir-autogen, elixir-format
+msgid "How it was counted"
+msgstr "Как посчитано"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1087
+#, elixir-autogen, elixir-format
+msgid "In the sheet now"
+msgstr "Сейчас в ведомости"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1391
+#, elixir-autogen, elixir-format
+msgid "New line"
+msgstr "Новая строка"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1062
+#, elixir-autogen, elixir-format
+msgid "No warehouse items were found on the photos."
+msgstr "На фото не найдено складских позиций."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:807
+#, elixir-autogen, elixir-format
+msgid "None chosen: every catalogue."
+msgstr "Ничего не выбрано — все каталоги."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:755
+#, elixir-autogen, elixir-format
+msgid "One upload is one batch of one place."
+msgstr "Одна загрузка — одна партия одного места."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:894
+#, elixir-autogen, elixir-format
+msgid "Only photos can be uploaded."
+msgstr "Можно загружать только фото."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:907
+#, elixir-autogen, elixir-format
+msgid "Photo batches (%{count})"
+msgstr "Партии фото (%{count})"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1472
+#, elixir-autogen, elixir-format
+msgid "Photo batches still open: %{count}. Conducting closes them without applying."
+msgstr "Открытых партий фото: %{count}. Проведение закроет их без применения."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1081
+#, elixir-autogen, elixir-format
+msgid "Photos"
+msgstr "Фото"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1066
+#, elixir-autogen, elixir-format
+msgid "Photos that could not be read and were left out: %{count}"
+msgstr "Фото, которые не удалось прочитать и которые пропущены: %{count}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:775
+#, elixir-autogen, elixir-format
+msgid "Place"
+msgstr "Место"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1050
+#, elixir-autogen, elixir-format
+msgid "Proposal: %{place}"
+msgstr "Предложение: %{place}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:875
+#, elixir-autogen, elixir-format
+msgid "Propose"
+msgstr "Предложить"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1023
+#, elixir-autogen, elixir-format
+msgid "Proposed"
+msgstr "Предложена"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1084
+#, elixir-autogen, elixir-format
+msgid "Quantity"
+msgstr "Количество"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1022
+#, elixir-autogen, elixir-format
+msgid "Reading"
+msgstr "Распознаётся"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:921
+#, elixir-autogen, elixir-format
+msgid "Reading takes 20-40 seconds as a rule. The page may be closed: the answer is kept and shown here."
+msgstr "Распознавание обычно занимает 20–40 секунд. Страницу можно закрыть: ответ сохранится и будет показан здесь."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:532
+#, elixir-autogen, elixir-format
+msgid "Remove the photos that cannot be uploaded first."
+msgstr "Сначала уберите фото, которые нельзя загрузить."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1392
+#, elixir-autogen, elixir-format
+msgid "Replace"
+msgstr "Заменить"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1396
+#, elixir-autogen, elixir-format
+msgid "Replace all"
+msgstr "Заменить всё"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1394
+#, elixir-autogen, elixir-format
+msgid "Replace this place's part"
+msgstr "Заменить вклад этого места"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:969
+#, elixir-autogen, elixir-format
+msgid "Retry"
+msgstr "Повторить"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:782
+#, elixir-autogen, elixir-format
+msgid "Shelf 2, top (optional)"
+msgstr "Стеллаж 2, верх (необязательно)"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:986
+#, elixir-autogen, elixir-format
+msgid "Show the late answer"
+msgstr "Показать поздний ответ"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:914
+#, elixir-autogen, elixir-format
+msgid "The AI is looking at %{count} photos…"
+msgstr "ИИ смотрит фото: %{count}…"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1504
+#, elixir-autogen, elixir-format
+msgid "The open photo batches (%{count}) will be closed."
+msgstr "Открытые партии фото (%{count}) будут закрыты."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:899
+#, elixir-autogen, elixir-format
+msgid "The photo cannot be uploaded."
+msgstr "Это фото нельзя загрузить."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:893
+#, elixir-autogen, elixir-format
+msgid "The photo is larger than 20 MB."
+msgstr "Фото больше 20 МБ."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:761
+#, elixir-autogen, elixir-format
+msgid "The photos are sent to an outside AI service: photograph the shelves, not people."
+msgstr "Фото отправляются внешнему сервису ИИ: снимайте полки, не людей."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1419
+#, elixir-autogen, elixir-format
+msgid "The quantity cannot be negative."
+msgstr "Количество не может быть отрицательным."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:697
+#, elixir-autogen, elixir-format
+msgid "This batch has no late answer to show."
+msgstr "У этой партии нет позднего ответа."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1427
+#, elixir-autogen, elixir-format
+msgid "This item cannot be applied: choose another."
+msgstr "Эту позицию нельзя применить: выберите другую."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:540
+#, elixir-autogen, elixir-format
+msgid "This item is not active in the catalogue."
+msgstr "Эта позиция не активна в каталоге."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:537
+#, elixir-autogen, elixir-format
+msgid "This item is not offered for the row."
+msgstr "Эта позиция не предлагалась для строки."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:977
+#, elixir-autogen, elixir-format
+msgid "This place may have been photographed again since."
+msgstr "Возможно, это место уже снято заново."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1430
+#, elixir-autogen, elixir-format
+msgid "This row cannot be applied."
+msgstr "Эту строку нельзя применить."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:534
+#, elixir-autogen, elixir-format
+msgid "This row is not in the proposal."
+msgstr "Этой строки нет в предложении."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1429
+#, elixir-autogen, elixir-format
+msgid "This rule does not fit the line."
+msgstr "Это правило не подходит для строки."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:897
+#, elixir-autogen, elixir-format
+msgid "Too many photos for one batch."
+msgstr "Слишком много фото для одной партии."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1315
+#, elixir-autogen, elixir-format
+msgid "Two lines of this item in the sheet: remove one first."
+msgstr "В ведомости две строки этой позиции: сначала удалите одну."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1224
+#, elixir-autogen, elixir-format
+msgid "Undo the merge"
+msgstr "Вернуть как было"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1237
+#, elixir-autogen, elixir-format
+msgid "Units per package"
+msgstr "Сколько в упаковке"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:542
+#, elixir-autogen, elixir-format
+msgid "Unknown action."
+msgstr "Неизвестное действие."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:819
+#, elixir-autogen, elixir-format
+msgid "Up to %{count} photos, at most 20 MB each."
+msgstr "До %{count} фото, каждое до 20 МБ."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1071
+#, elixir-autogen, elixir-format
+msgid "Values of the answer corrected by the check: %{count}"
+msgstr "Значений ответа, исправленных проверкой: %{count}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:529
+#, elixir-autogen, elixir-format
+msgid "Wait until every photo is uploaded."
+msgstr "Дождитесь загрузки всех фото."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:790
+#, elixir-autogen, elixir-format
+msgid "What is on these photos (optional)"
+msgstr "Что на этих фото (необязательно)"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1082
+#, elixir-autogen, elixir-format
+msgid "What the AI sees"
+msgstr "Что видит ИИ"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:526
+#, elixir-autogen, elixir-format
+msgid "You may not change this stocktake."
+msgstr "У вас нет права изменять эту инвентаризацию."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1098
+#, elixir-autogen, elixir-format
+msgid "Your edits in this table are kept until Apply; after a reload the proposal is shown again as the AI made it."
+msgstr "Ваши правки в таблице живут до «Применить»; после перезагрузки страницы предложение покажется заново, как его сделал ИИ."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1412
+#, elixir-autogen, elixir-format
+msgid "a new item, not held on this warehouse"
+msgstr "новая позиция, которой нет на этом складе"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1381
+#, elixir-autogen, elixir-format
+msgid "by hand"
+msgstr "вручную"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1369
+#, elixir-autogen, elixir-format
+msgid "by hand %{quantity}"
+msgstr "вручную %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1380
+#, elixir-autogen, elixir-format
+msgid "by the stock"
+msgstr "по учёту"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1366
+#, elixir-autogen, elixir-format
+msgid "by the stock %{quantity}"
+msgstr "по учёту %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1406
+#, elixir-autogen, elixir-format
+msgid "check the quantity"
+msgstr "проверьте количество"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1403
+#, elixir-autogen, elixir-format
+msgid "choose an item"
+msgstr "выберите позицию"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1283
+#, elixir-autogen, elixir-format
+msgid "count"
+msgstr "счёт"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1345
+#, elixir-autogen, elixir-format
+msgid "earlier from photos: %{parts}"
+msgstr "раньше по фото: %{parts}"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1407
+#, elixir-autogen, elixir-format
+msgid "enter the quantity"
+msgstr "введите количество"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1409
+#, elixir-autogen, elixir-format
+msgid "far below the stock"
+msgstr "намного ниже учёта"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1382
+#, elixir-autogen, elixir-format
+msgid "from photos"
+msgstr "по фото"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1399
+#, elixir-autogen, elixir-format
+msgid "high"
+msgstr "высокая"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1282
+#, elixir-autogen, elixir-format
+msgid "item"
+msgstr "позиция"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1401
+#, elixir-autogen, elixir-format
+msgid "low"
+msgstr "низкая"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1400
+#, elixir-autogen, elixir-format
+msgid "medium"
+msgstr "средняя"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1030
+#, elixir-autogen, elixir-format
+msgid "no place given"
+msgstr "место не указано"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1308
+#, elixir-autogen, elixir-format
+msgid "not in the sheet"
+msgstr "нет в ведомости"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1383
+#, elixir-autogen, elixir-format
+msgid "not marked"
+msgstr "без отметки"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1295
+#, elixir-autogen, elixir-format
+msgid "on this warehouse"
+msgstr "на этом складе"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1250
+#, elixir-autogen, elixir-format
+msgid "or enter the quantity"
+msgstr "или введите количество"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1293
+#, elixir-autogen, elixir-format
+msgid "stock"
+msgstr "учёт"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1461
+#, elixir-autogen, elixir-format
+msgid "stock %{stock}, counted %{counted} (%{places})"
+msgstr "по учёту %{stock}, посчитано %{counted} (%{places})"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1405
+#, elixir-autogen, elixir-format
+msgid "the count is not certain"
+msgstr "счёт неточный"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1404
+#, elixir-autogen, elixir-format
+msgid "the item is not certain"
+msgstr "позиция не точна"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1414
+#, elixir-autogen, elixir-format
+msgid "the line was counted by hand"
+msgstr "строка посчитана вручную"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1408
+#, elixir-autogen, elixir-format
+msgid "the quantity was typed"
+msgstr "количество введено вручную"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1415
+#, elixir-autogen, elixir-format
+msgid "two lines of this item"
+msgstr "две строки этой позиции"
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex:1180
+#, elixir-autogen, elixir-format
+msgid "— other proposed item —"
+msgstr "— другая предложенная позиция —"
