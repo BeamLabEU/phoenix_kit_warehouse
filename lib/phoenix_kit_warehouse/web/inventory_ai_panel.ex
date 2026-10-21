@@ -304,8 +304,13 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   defp event("inventory_ai_close_proposal", _params, socket, _on_written),
     do: update_ai(socket, &%{&1 | run: nil, review: nil, picking: nil})
 
-  defp event("inventory_ai_row", %{"row" => row} = params, socket, _on_written),
-    do: change_review(socket, row, &Review.set_inputs(&1, &2, params))
+  defp event("inventory_ai_row", %{"row" => row} = params, socket, _on_written) do
+    change_review(
+      socket,
+      row,
+      &Review.set_inputs(&1, &2, params, socket.assigns.lines, socket.assigns.stock_map)
+    )
+  end
 
   defp event("inventory_ai_check", %{"row" => row}, socket, _on_written) do
     change_review(socket, row, fn review, key ->

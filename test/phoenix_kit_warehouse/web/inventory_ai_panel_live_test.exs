@@ -487,6 +487,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       assert Decimal.eq?(counted(ctx.doc, ctx.hinge), 150)
     end
 
+    test "a quantity corrected in a row ticked by default is applied: the correction accepts it",
+         ctx do
+      run = run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
+      lv = open!(ctx) |> open_run(run)
+      assert checked?(lv, 1)
+
+      set_inputs(lv, 1, %{"quantity" => "490"})
+      assert checked?(lv, 1)
+      apply(lv)
+
+      assert status(run) == "applied"
+      assert Decimal.eq?(counted(ctx.doc, ctx.hinge), 490)
+    end
+
     test "a blank or unreadable quantity is an error of the field, never 0", ctx do
       run = run!(ctx, "A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])
       lv = open!(ctx) |> open_run(run)

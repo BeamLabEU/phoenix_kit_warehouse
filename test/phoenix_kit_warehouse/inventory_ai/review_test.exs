@@ -109,12 +109,16 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
     test "the units per package typed count the row; the quantity typed wins over the count" do
       review = Review.new(run([object("A", %{"catalogue_no" => 4, "closed_packages" => 2})]))
 
-      {:ok, review} = Review.set_inputs(review, 1, %{"package_size" => "50"})
+      {:ok, review} =
+        Review.set_inputs(review, 1, %{"package_size" => "50"}, [], stock(%{"item-4" => "0"}))
+
       row = view_row(review, 1, [], stock(%{"item-4" => "0"}))
       assert {row.kind, row.quantity} == {:counted, "100"}
       assert row.formulas == ["2×50 + ⌊0×50×0.35⌋ = 100"]
 
-      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "97"})
+      {:ok, review} =
+        Review.set_inputs(review, 1, %{"quantity" => "97"}, [], stock(%{"item-4" => "0"}))
+
       row = view_row(review, 1, [], stock(%{"item-4" => "0"}))
       assert {row.kind, row.quantity} == {:typed, "97"}
       assert :typed in row.reasons
@@ -123,7 +127,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
     test "an unknown row is refused" do
       review = Review.new(run([object("A", %{"catalogue_no" => 1, "loose_units" => 1})]))
 
-      assert Review.set_inputs(review, 9, %{"quantity" => "1"}) == {:error, :unknown_row}
+      assert Review.set_inputs(review, 9, %{"quantity" => "1"}, [], %{}) == {:error, :unknown_row}
       assert Review.choose(review, 9, info(2)) == {:error, :unknown_row}
       assert Review.set_checked(review, 9, true) == {:error, :unknown_row}
       assert Review.unmerge(review, 9) == {:error, :unknown_row}
@@ -173,6 +177,37 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
       {:ok, review} = Review.set_checked(review, 1, false)
       refute view_row(review, 1, [], stock(%{"item-1" => "10"})).checked
     end
+
+    test "a quantity typed into a row keeps the tick the row showed: a correction accepts it" do
+      review =
+        Review.new(
+          run([
+            object("A", %{"catalogue_no" => 1, "loose_units" => 10}),
+            object("B", %{"catalogue_no" => 2, "loose_units" => 5})
+          ])
+        )
+
+      stock = stock(%{"item-1" => "12"})
+      assert view_row(review, 1, [], stock).checked
+      refute view_row(review, 2, [], stock).checked
+
+      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "11"}, [], stock)
+      {:ok, review} = Review.set_inputs(review, 2, %{"quantity" => "6"}, [], stock)
+
+      row = view_row(review, 1, [], stock)
+      assert {row.kind, row.quantity, row.checked} == {:typed, "11", true}
+      refute view_row(review, 2, [], stock).checked
+
+      # A tick the person set stands through a later edit.
+      {:ok, review} = Review.set_checked(review, 2, true)
+      {:ok, review} = Review.set_inputs(review, 2, %{"quantity" => "7"}, [], stock)
+      assert view_row(review, 2, [], stock).checked
+
+      # The quantity the row shows, sent again, is no edit: the tick stays the default.
+      fresh = Review.new(run([object("A", %{"catalogue_no" => 1, "loose_units" => 10})]))
+      {:ok, fresh} = Review.set_inputs(fresh, 1, %{"quantity" => "10"}, [], stock)
+      assert hd(fresh.rows).checked == nil
+    end
   end
 
   describe "the line in the sheet" do
@@ -195,11 +230,21 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
       assert Decimal.eq?(row.line.seeded, 500)
       assert Decimal.eq?(row.line.stock, 600)
 
-      {:ok, review} = Review.set_inputs(review, 1, %{"action" => "add"})
+      {:ok, review} =
+        Review.set_inputs(review, 1, %{"action" => "add"}, seeded, stock(%{"item-1" => "600"}))
+
       assert Decimal.eq?(view_row(review, 1, seeded, stock(%{"item-1" => "600"})).total, 530)
 
       # An action the line does not offer is the default.
-      {:ok, review} = Review.set_inputs(review, 1, %{"action" => "replace_part"})
+      {:ok, review} =
+        Review.set_inputs(
+          review,
+          1,
+          %{"action" => "replace_part"},
+          seeded,
+          stock(%{"item-1" => "600"})
+        )
+
       assert view_row(review, 1, seeded, stock(%{"item-1" => "600"})).action == "replace"
     end
 
@@ -283,7 +328,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
           ])
         )
 
-      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "11"})
+      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "11"}, [], %{})
       {:ok, review} = Review.choose(review, 2, info(1))
 
       assert [row] = Review.view(review, [], %{})
@@ -292,7 +337,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
 
     test "choosing another item resets the typed values and the switch" do
       review = Review.new(run([object("A", %{"catalogue_no" => 1, "loose_units" => 10})]))
-      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "3", "action" => "new"})
+
+      {:ok, review} =
+        Review.set_inputs(review, 1, %{"quantity" => "3", "action" => "new"}, [], %{})
+
       {:ok, review} = Review.choose(review, 1, info(2))
 
       row = view_row(review, 1)
@@ -324,7 +372,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
         )
 
       {:ok, review} = Review.choose(review, 2, info(1))
-      {:ok, review} = Review.set_inputs(review, 3, %{"package_size" => "50"})
+      {:ok, review} = Review.set_inputs(review, 3, %{"package_size" => "50"}, [], %{})
       {:ok, review} = Review.set_checked(review, 3, true)
 
       lines = [%{"item_uuid" => "item-1", "counted_quantity" => "9", "counted_by" => "stock"}]

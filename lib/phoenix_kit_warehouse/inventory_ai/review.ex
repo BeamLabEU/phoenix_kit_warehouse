@@ -171,9 +171,15 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
   @doc """
   The inputs of a row as its form sends them: `"quantity"` (typed only when
   it differs from what the row shows), `"package_size"`, `"action"`.
+
+  A quantity typed is a person's correction, and so their consent: a row
+  still on its default tick keeps the tick it showed before the edit (in
+  the view against `lines` and `stock_map`), rather than the default of a
+  typed row, which is never ticked.
   """
-  @spec set_inputs(t(), pos_integer(), map()) :: {:ok, t()} | {:error, :unknown_row}
-  def set_inputs(review, key, params) do
+  @spec set_inputs(t(), pos_integer(), map(), [map()], map()) ::
+          {:ok, t()} | {:error, :unknown_row}
+  def set_inputs(review, key, params, lines, stock_map) do
     with {:ok, entry} <- fetch(review, key) do
       shown = display_quantity(review, entry)
 
@@ -182,7 +188,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
         |> then(fn entry ->
           case params do
             %{"quantity" => value} when is_binary(value) and value != shown ->
-              %{entry | quantity: String.trim(value)}
+              %{
+                entry
+                | quantity: String.trim(value),
+                  checked: shown_tick(review, entry, lines, stock_map)
+              }
 
             _ ->
               entry
@@ -207,6 +217,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
       {:ok, replace(review, key, entry)}
     end
   end
+
+  defp shown_tick(_review, %{checked: checked}, _lines, _stock_map) when is_boolean(checked),
+    do: checked
+
+  defp shown_tick(review, entry, lines, stock_map),
+    do: view_row(review, entry, lines, stock_map).checked
 
   @doc "Ticks or unticks a row (a row without an item stays unticked)."
   @spec set_checked(t(), pos_integer(), boolean()) :: {:ok, t()} | {:error, :unknown_row}
