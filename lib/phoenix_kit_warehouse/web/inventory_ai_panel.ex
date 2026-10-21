@@ -591,6 +591,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   # Propose, and the error says where they are.
   defp refused_with(socket, [], reason), do: fail(socket, reason)
 
+  # A held photo that no longer passes (trashed or moved out of the folder
+  # since) would meet the same refusal on every Propose: nothing is held.
+  defp refused_with(socket, _photos, :invalid_photos) do
+    update_ai(socket, &%{&1 | stored_photos: [], error: message(:invalid_photos)})
+  end
+
   defp refused_with(socket, photos, reason) do
     update_ai(
       socket,
@@ -1441,6 +1447,12 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
         <div :if={@row.starred?} class="text-base-content/60">★ {dgettext("default", "on this warehouse")}</div>
         <div :if={not @row.checked and @row.reasons != []} class="text-base-content/60 mt-1">
           {Enum.map_join(@row.reasons, "; ", &reason_text/1)}
+        </div>
+        <div
+          :if={@row.checked and :sharply_below_stock in @row.reasons}
+          class="text-warning mt-1"
+        >
+          {reason_text(:sharply_below_stock)}
         </div>
       </td>
     </tr>

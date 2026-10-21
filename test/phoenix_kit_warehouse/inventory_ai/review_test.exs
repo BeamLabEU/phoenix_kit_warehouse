@@ -203,6 +203,17 @@ defmodule PhoenixKitWarehouse.InventoryAI.ReviewTest do
       {:ok, review} = Review.set_inputs(review, 2, %{"quantity" => "7"}, [], stock)
       assert view_row(review, 2, [], stock).checked
 
+      # A typed quantity far below the stock (a dropped digit, a 0) is not
+      # accepted silently: the row is unticked, a tick the person set included.
+      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "4"}, [], stock)
+      row = view_row(review, 1, [], stock)
+      refute row.checked
+      assert :sharply_below_stock in row.reasons
+
+      {:ok, review} = Review.set_checked(review, 1, true)
+      {:ok, review} = Review.set_inputs(review, 1, %{"quantity" => "0"}, [], stock)
+      refute view_row(review, 1, [], stock).checked
+
       # The quantity the row shows, sent again, is no edit: the tick stays the default.
       fresh = Review.new(run([object("A", %{"catalogue_no" => 1, "loose_units" => 10})]))
       {:ok, fresh} = Review.set_inputs(fresh, 1, %{"quantity" => "10"}, [], stock)

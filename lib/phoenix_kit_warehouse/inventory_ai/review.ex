@@ -188,11 +188,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
         |> then(fn entry ->
           case params do
             %{"quantity" => value} when is_binary(value) and value != shown ->
-              %{
-                entry
-                | quantity: String.trim(value),
-                  checked: shown_tick(review, entry, lines, stock_map)
-              }
+              edited = %{entry | quantity: String.trim(value)}
+              %{edited | checked: tick_after_edit(review, entry, edited, lines, stock_map)}
 
             _ ->
               entry
@@ -216,6 +213,13 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
 
       {:ok, replace(review, key, entry)}
     end
+  end
+
+  # A typed quantity keeps the tick the row showed, unless it is far below
+  # the stock (a dropped digit, a 0): such a number is never accepted silently.
+  defp tick_after_edit(review, entry, edited, lines, stock_map) do
+    shown_tick(review, entry, lines, stock_map) and
+      :sharply_below_stock not in view_row(review, %{edited | checked: nil}, lines, stock_map).reasons
   end
 
   defp shown_tick(_review, %{checked: checked}, _lines, _stock_map) when is_boolean(checked),
