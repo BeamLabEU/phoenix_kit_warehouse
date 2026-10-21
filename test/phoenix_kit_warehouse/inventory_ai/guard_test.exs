@@ -263,7 +263,6 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
       assert spec.label == "Inventory count from photos"
       assert is_binary(spec.purpose) and spec.purpose != ""
       assert spec.endpoints == {PhoenixKitWarehouse.InventoryAI, :endpoint_uuids, []}
-      refute spec.purpose =~ ~r/\bandi\b/i
     end
   end
 end

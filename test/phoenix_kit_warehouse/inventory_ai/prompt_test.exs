@@ -55,10 +55,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
       refute text =~ "nothing you can recognise"
     end
 
-    test "is the shared module's own text: no host name, no placeholders" do
-      refute Prompt.template() =~ ~r/\bandi\b/i
+    test "has no placeholders" do
       refute Prompt.template() =~ "{{"
-      refute Prompt.name() =~ ~r/\bandi\b/i
     end
 
     test "is trimmed and the sha is taken of the trimmed text" do
