@@ -42,6 +42,8 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
   require Logger
 
+  alias PhoenixKit.Modules.Storage.File, as: StorageFile
+  alias PhoenixKit.Modules.Storage.FolderLink
   alias PhoenixKit.PubSubHelper
   alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.InventoryAI.Apply
@@ -137,15 +139,22 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   `:uuid`).
 
   `attrs` (atom or string keys): `place_label` (optional, at most 200
-  characters), `photo_file_uuids` (the Storage files, in their order),
-  `catalogue_uuids` (optional; none is every catalogue).
+  characters), `photo_file_uuids` (the Storage files, in their order; a
+  file given twice is sent once), `catalogue_uuids` (optional; none is
+  every catalogue).
+
+  Every photo must be a file of the document's Storage folder (its home
+  folder, or linked into it) - the photos go to a third-party model, and
+  only those uploaded to this document may. That is checked under the
+  document's row lock.
 
   `{:ok, run, task_pid}` - the caller may monitor the task and call
   `interrupt_run/1` when it goes down. Errors: `:ai_disabled`,
-  `:not_configured` (no endpoint chosen), `:no_photos`,
+  `:not_configured` (no endpoint chosen), `:no_photos`, `:invalid_photos`
+  (not a uuid, or not a file of the document's folder),
   `{:too_many_photos, count, max}`, `:place_too_long`,
-  `{:too_many_items, count, max}`, `:not_draft`, `:deleted`,
-  `:already_running`.
+  `:invalid_catalogues`, `{:too_many_items, count, max}`, `:not_draft`,
+  `:deleted`, `:already_running`.
 
   Options: `:locale` (the language of the answer's texts and of the run's
   error; the caller's Gettext locale by default).
@@ -159,17 +168,22 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
     with :ok <- check_ai(),
          {:ok, endpoint_uuid} <- endpoint(),
-         :ok <- check_photos(photos),
+         {:ok, photos} <- check_photos(photos),
          :ok <- check_place(place),
+         {:ok, catalogue_uuids} <- cast_catalogues(catalogue_uuids),
          :ok <- check_catalogue(catalogue_uuids),
          {:ok, run} <-
-           insert_run(doc.uuid, %{
-             place_label: place,
-             photo_file_uuids: photos,
-             endpoint_uuid: endpoint_uuid,
-             created_by_uuid: actor_uuid(actor),
-             result: scope(catalogue_uuids, opts)
-           }) do
+           insert_run(
+             doc.uuid,
+             %{
+               place_label: place,
+               photo_file_uuids: photos,
+               endpoint_uuid: endpoint_uuid,
+               created_by_uuid: actor_uuid(actor),
+               result: scope(catalogue_uuids, opts)
+             },
+             &document_photos(&1, &2, photos)
+           ) do
       launch(run, opts)
     end
   end
@@ -201,11 +215,45 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   defp check_photos(photos) do
     max = Settings.max_photos()
 
-    cond do
-      length(photos) > max -> {:error, {:too_many_photos, length(photos), max}}
-      Enum.all?(photos, &match?({:ok, _}, Ecto.UUID.cast(&1))) -> :ok
-      true -> {:error, :no_photos}
+    with {:ok, photos} <- cast_uuids(photos, :invalid_photos) do
+      photos = Enum.uniq(photos)
+
+      if length(photos) > max,
+        do: {:error, {:too_many_photos, length(photos), max}},
+        else: {:ok, photos}
     end
+  end
+
+  defp cast_uuids(values, error) do
+    values
+    |> Enum.reduce_while({:ok, []}, fn value, {:ok, cast} ->
+      case Ecto.UUID.cast(value) do
+        {:ok, uuid} -> {:cont, {:ok, [uuid | cast]}}
+        :error -> {:halt, {:error, error}}
+      end
+    end)
+    |> case do
+      {:ok, cast} -> {:ok, Enum.reverse(cast)}
+      error -> error
+    end
+  end
+
+  # The photos are files of the document's folder: their home folder, or a
+  # link into it.
+  defp document_photos(_repo, %InventoryDocument{storage_folder_uuid: nil}, _photos),
+    do: {:error, :invalid_photos}
+
+  defp document_photos(repo, %InventoryDocument{storage_folder_uuid: folder}, photos) do
+    found =
+      from(f in StorageFile,
+        left_join: l in FolderLink,
+        on: l.file_uuid == f.uuid and l.folder_uuid == ^folder,
+        where: f.uuid in ^photos and (f.folder_uuid == ^folder or not is_nil(l.uuid)),
+        select: count(f.uuid, :distinct)
+      )
+      |> repo.one()
+
+    if found == length(photos), do: :ok, else: {:error, :invalid_photos}
   end
 
   defp check_place(nil), do: :ok
@@ -214,6 +262,11 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     if String.length(place) <= InventoryAIRun.column_widths().place_label,
       do: :ok,
       else: {:error, :place_too_long}
+  end
+
+  defp cast_catalogues(catalogue_uuids) do
+    with {:ok, uuids} <- cast_uuids(catalogue_uuids, :invalid_catalogues),
+         do: {:ok, Enum.uniq(uuids)}
   end
 
   defp check_catalogue(catalogue_uuids) do
@@ -235,14 +288,15 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     do: Keyword.get_lazy(opts, :locale, fn -> Gettext.get_locale(PhoenixKitWarehouse.Gettext) end)
 
   # Under the document's row lock: a live draft, stale runs closed, the
-  # caller's own step (a retry closes the run it replaces), no other run
-  # running - the partial unique index stands behind that check.
-  defp insert_run(inventory_uuid, attrs, before_insert \\ fn _repo -> :ok end) do
+  # caller's own step (a start checks its photos against the document, a
+  # retry closes the run it replaces), no other run running - the partial
+  # unique index stands behind that check.
+  defp insert_run(inventory_uuid, attrs, before_insert) do
     InventoryDocument
     |> DraftTrash.lock_status_step(inventory_uuid, "draft", :not_draft)
     |> Ecto.Multi.run(:stale, fn _repo, _ -> {:ok, expire_stale(inventory_uuid)} end)
-    |> Ecto.Multi.run(:before_insert, fn repo, _ ->
-      with :ok <- before_insert.(repo), do: {:ok, :done}
+    |> Ecto.Multi.run(:before_insert, fn repo, %{lock_status: doc} ->
+      with :ok <- before_insert.(repo, doc), do: {:ok, :done}
     end)
     |> Ecto.Multi.run(:none_running, fn _repo, _ -> none_running(inventory_uuid) end)
     |> Ecto.Multi.insert(:run, fn %{lock_status: doc} ->
@@ -358,7 +412,7 @@ defmodule PhoenixKitWarehouse.InventoryAI do
                created_by_uuid: actor_uuid(actor),
                result: scope(catalogue_uuids, opts)
              },
-             fn _repo -> close_failed(run, discarded(actor, "retried", new_uuid)) end
+             fn _repo, _doc -> close_failed(run, discarded(actor, "retried", new_uuid)) end
            ) do
       broadcast(%{run | status: "discarded"})
       launch(new_run, opts)
@@ -480,6 +534,9 @@ defmodule PhoenixKitWarehouse.InventoryAI do
 
   def error_message(:no_photos), do: dgettext("default", "None of the photos could be read.")
 
+  def error_message(:invalid_photos),
+    do: dgettext("default", "Some of the photos are not files of this document.")
+
   def error_message({:too_many_photos, count, max}),
     do:
       dgettext("default", "Too many photos for one batch: %{count}, at most %{max}.",
@@ -499,6 +556,9 @@ defmodule PhoenixKitWarehouse.InventoryAI do
         max: max
       )
 
+  def error_message(:invalid_catalogues),
+    do: dgettext("default", "Some of the chosen catalogues cannot be found.")
+
   def error_message(:empty_catalogue),
     do: dgettext("default", "The chosen catalogues have no items.")
 
@@ -507,7 +567,7 @@ defmodule PhoenixKitWarehouse.InventoryAI do
       dgettext(
         "default",
         "The photos are too large together (%{size} MB, at most %{max} MB): send fewer.",
-        size: div(bytes, 1_000_000),
+        size: div(bytes + 999_999, 1_000_000),
         max: div(max, 1_000_000)
       )
 

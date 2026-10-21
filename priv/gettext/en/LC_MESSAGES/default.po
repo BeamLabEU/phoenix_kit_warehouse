@@ -2299,6 +2299,11 @@ msgstr "No row is ticked."
 msgid "None of the photos could be read."
 msgstr "None of the photos could be read."
 
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:538
+#, elixir-autogen, elixir-format
+msgid "Some of the photos are not files of this document."
+msgstr "Some of the photos are not files of this document."
+
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:503
 #, elixir-autogen, elixir-format
 msgid "Only a failed batch can be retried."
@@ -2338,6 +2343,11 @@ msgstr "The answer did not fit: send fewer photos in one batch."
 #, elixir-autogen, elixir-format
 msgid "The chosen catalogues have no items."
 msgstr "The chosen catalogues have no items."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:560
+#, elixir-autogen, elixir-format
+msgid "Some of the chosen catalogues cannot be found."
+msgstr "Some of the chosen catalogues cannot be found."
 
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:460
 #, elixir-autogen, elixir-format

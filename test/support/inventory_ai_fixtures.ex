@@ -5,6 +5,7 @@ defmodule PhoenixKitWarehouse.Test.InventoryAIFixtures do
   retrieve, the model's answer and a proposed run.
   """
 
+  alias PhoenixKit.Modules.Storage
   alias PhoenixKit.Users.Auth
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.Inventories
@@ -14,6 +15,7 @@ defmodule PhoenixKitWarehouse.Test.InventoryAIFixtures do
   alias PhoenixKitWarehouse.InventoryAI.Settings
   alias PhoenixKitWarehouse.InventoryAIRun
   alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.StorageFolders
 
   @fixtures Path.expand("../fixtures/inventory_ai", __DIR__)
 
@@ -86,6 +88,36 @@ defmodule PhoenixKitWarehouse.Test.InventoryAIFixtures do
       })
 
     doc
+  end
+
+  @doc """
+  `count` photos of `doc`: Storage files in the document's folder (the rows
+  only - the bytes come through `retriever/1`), uploaded by `user`.
+  """
+  def photos!(doc, user, count \\ 2) do
+    {:ok, folder} = StorageFolders.ensure_for_inventory(doc, user.uuid)
+    for _ <- 1..count, do: storage_file!(folder.uuid, user).uuid
+  end
+
+  @doc "A Storage file row in `folder_uuid` (`nil` - in no folder)."
+  def storage_file!(folder_uuid, user) do
+    checksum = "invai-#{System.unique_integer([:positive])}"
+
+    %Storage.File{}
+    |> Storage.File.changeset(%{
+      original_file_name: "shelf.heic",
+      file_name: "shelf-#{checksum}.heic",
+      mime_type: "image/heic",
+      file_type: "image",
+      ext: "heic",
+      file_checksum: checksum,
+      user_file_checksum: checksum,
+      size: 984,
+      status: "active",
+      user_uuid: user.uuid,
+      folder_uuid: folder_uuid
+    })
+    |> PhoenixKit.RepoHelper.repo().insert!()
   end
 
   @doc "A `:retrieve` for the photos: each uuid gets a temporary copy of a fixture."

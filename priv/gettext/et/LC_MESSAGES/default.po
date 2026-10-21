@@ -2299,6 +2299,11 @@ msgstr "Ükski rida pole märgitud."
 msgid "None of the photos could be read."
 msgstr "Ühtegi fotot ei õnnestunud lugeda."
 
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:538
+#, elixir-autogen, elixir-format
+msgid "Some of the photos are not files of this document."
+msgstr "Mõni foto ei ole selle dokumendi fail."
+
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:503
 #, elixir-autogen, elixir-format
 msgid "Only a failed batch can be retried."
@@ -2338,6 +2343,11 @@ msgstr "Vastus ei mahtunud ära: saatke ühes partiis vähem fotosid."
 #, elixir-autogen, elixir-format
 msgid "The chosen catalogues have no items."
 msgstr "Valitud kataloogides pole tooteid."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:560
+#, elixir-autogen, elixir-format
+msgid "Some of the chosen catalogues cannot be found."
+msgstr "Mõnda valitud kataloogi ei leitud."
 
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:460
 #, elixir-autogen, elixir-format

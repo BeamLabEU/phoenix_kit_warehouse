@@ -2298,6 +2298,11 @@ msgstr "Не позначено жодного рядка."
 msgid "None of the photos could be read."
 msgstr "Не вдалося прочитати жодного фото."
 
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:538
+#, elixir-autogen, elixir-format
+msgid "Some of the photos are not files of this document."
+msgstr "Деякі фото не є файлами цього документа."
+
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:503
 #, elixir-autogen, elixir-format
 msgid "Only a failed batch can be retried."
@@ -2337,6 +2342,11 @@ msgstr "Відповідь не вмістилася: надішліть мен�
 #, elixir-autogen, elixir-format
 msgid "The chosen catalogues have no items."
 msgstr "У вибраних каталогах немає позицій."
+
+#: lib/phoenix_kit_warehouse/inventory_ai.ex:560
+#, elixir-autogen, elixir-format
+msgid "Some of the chosen catalogues cannot be found."
+msgstr "Деякі вибрані каталоги не знайдено."
 
 #: lib/phoenix_kit_warehouse/inventory_ai.ex:460
 #, elixir-autogen, elixir-format

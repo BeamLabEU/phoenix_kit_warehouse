@@ -114,7 +114,9 @@ defmodule PhoenixKitWarehouse.GettextTest do
           "The photos do not look like a warehouse: %{reason}",
           "The document was changed in another tab: reload the page.",
           "Some ticked rows are not complete: check the marked fields.",
-          "entered by hand: %{quantity}"
+          "entered by hand: %{quantity}",
+          "Some of the photos are not files of this document.",
+          "Some of the chosen catalogues cannot be found."
         ] do
       with_locale(locale, fn ->
         refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"

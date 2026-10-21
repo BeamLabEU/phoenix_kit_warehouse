@@ -25,6 +25,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
     screw = item!(catalogue, %{name: "Screw 4x30", sku: "S-430"})
     stock!(screw, location, "512")
     doc = draft!(location)
+    photos = photos!(doc, user)
     :ok = InventoryAI.subscribe(doc.uuid)
 
     %{
@@ -34,7 +35,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       catalogue: catalogue,
       hinge: hinge,
       screw: screw,
-      doc: doc
+      doc: doc,
+      photos: photos
     }
   end
 
@@ -42,7 +44,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
     Map.merge(
       %{
         "place_label" => "Shelf 2, top",
-        "photo_file_uuids" => [Ecto.UUID.generate(), Ecto.UUID.generate()],
+        "photo_file_uuids" => ctx.photos,
         "catalogue_uuids" => [ctx.catalogue.uuid]
       },
       extra
@@ -168,7 +170,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
 
     test "a photo that cannot be read is skipped; the numbering is of those left", ctx do
       Stub.answer(answer([object()]))
-      [missing, kept] = [Ecto.UUID.generate(), Ecto.UUID.generate()]
+      [missing, kept] = ctx.photos
 
       {run, _pid} =
         start!(ctx, %{"photo_file_uuids" => [missing, kept]},
@@ -257,7 +259,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
 
     test "no photo can be read: an error, and no call", ctx do
       Stub.answer(answer([object()]))
-      [a] = [Ecto.UUID.generate()]
+      [a] = photos!(ctx.doc, ctx.user, 1)
 
       {run, _pid} =
         start!(ctx, %{"photo_file_uuids" => [a]}, retrieve: retriever(%{a => :missing}))
@@ -343,6 +345,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
     end
   end
 
+  test "the size of too large photos is rounded up, so it never reads as the limit" do
+    message = InventoryAI.error_message({:too_large, 80_500_000, 80_000_000})
+    assert message =~ "81 MB"
+    assert message =~ "at most 80 MB"
+  end
+
   test "the endpoint the task declaration names is the one chosen", ctx do
     assert InventoryAI.endpoint_uuids() == [ctx.endpoint.uuid]
   end
@@ -393,6 +401,71 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       assert InventoryAI.start_run(posted, attrs(ctx), ctx.user) == {:error, :not_draft}
     end
 
+    test "photos that are not files of this document's folder", ctx do
+      other = draft!(ctx.location)
+      foreign = photos!(other, ctx.user, 1)
+      loose = storage_file!(nil, ctx.user).uuid
+
+      for photos <- [foreign, [loose], [Ecto.UUID.generate()], ["nope"], [hd(ctx.photos), nil]] do
+        assert InventoryAI.start_run(
+                 ctx.doc,
+                 attrs(ctx, %{"photo_file_uuids" => photos}),
+                 ctx.user
+               ) ==
+                 {:error, :invalid_photos}
+      end
+
+      # A document without a folder has no photos at all.
+      bare = draft!(ctx.location)
+
+      assert InventoryAI.start_run(bare, attrs(ctx, %{"photo_file_uuids" => [loose]}), ctx.user) ==
+               {:error, :invalid_photos}
+
+      assert InventoryAI.list_runs(ctx.doc.uuid) == []
+      refute_received {:ai_request, _}
+    end
+
+    test "a file linked into the document's folder is one of its photos", ctx do
+      Stub.answer(answer([object()]))
+      linked = storage_file!(nil, ctx.user)
+
+      {:ok, folder} =
+        PhoenixKitWarehouse.StorageFolders.ensure_for_inventory(ctx.doc, ctx.user.uuid)
+
+      %PhoenixKit.Modules.Storage.FolderLink{}
+      |> PhoenixKit.Modules.Storage.FolderLink.changeset(%{
+        folder_uuid: folder.uuid,
+        file_uuid: linked.uuid
+      })
+      |> Repo.insert!()
+
+      {run, _pid} = start!(ctx, %{"photo_file_uuids" => [linked.uuid]})
+      assert run.photo_file_uuids == [linked.uuid]
+      assert await(run).status == "proposed"
+    end
+
+    test "the same photo twice is sent once", ctx do
+      Stub.answer(answer([object()]))
+      [photo | _] = ctx.photos
+      :ok = Settings.set_max_photos(1)
+
+      {run, _pid} = start!(ctx, %{"photo_file_uuids" => [photo, photo]})
+      assert run.photo_file_uuids == [photo]
+
+      assert_receive {:ai_request, body}, 5_000
+      [%{"content" => [_text | images]}] = body["messages"]
+      assert length(images) == 1
+      _ = await(run)
+    end
+
+    test "catalogues that are not uuids", ctx do
+      assert InventoryAI.start_run(
+               ctx.doc,
+               attrs(ctx, %{"catalogue_uuids" => [ctx.catalogue.uuid, "nope"]}),
+               ctx.user
+             ) == {:error, :invalid_catalogues}
+    end
+
     test "no run is left behind by a refusal", ctx do
       :ok = Settings.set_max_items(1)
       {:error, _} = InventoryAI.start_run(ctx.doc, attrs(ctx), ctx.user)
@@ -417,7 +490,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.RunsTest do
       Stub.answer(answer([object()]))
 
       {:ok, other_run, pid} =
-        InventoryAI.start_run(other, attrs(ctx), ctx.user, retrieve: retriever())
+        InventoryAI.start_run(
+          other,
+          attrs(ctx, %{"photo_file_uuids" => photos!(other, ctx.user)}),
+          ctx.user,
+          retrieve: retriever()
+        )
 
       await_down(pid)
       assert InventoryAI.get_run(other.uuid, other_run.uuid).status == "proposed"
