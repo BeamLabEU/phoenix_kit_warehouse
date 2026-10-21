@@ -130,10 +130,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
     {:counted, total, formula}
   end
 
-  # The terms of a formula that count something: a zero term (no open
-  # packages, say) is left out; with every term zero the formula reads 0.
-  defp terms(terms) do
-    case Enum.filter(terms, & &1) do
+  # The terms of a formula without the zero ones (no open packages, say).
+  # The callers come here only with closed or open packages, so one term is
+  # always there; "0" only guards the join.
+  defp terms(parts) do
+    case Enum.filter(parts, & &1) do
       [] -> "0"
       shown -> Enum.join(shown, " + ")
     end

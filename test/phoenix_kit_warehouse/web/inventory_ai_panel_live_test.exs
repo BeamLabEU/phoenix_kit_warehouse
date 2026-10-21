@@ -475,6 +475,22 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       refute has_element?(lv, "#inventory-ai-catalogues select")
     end
 
+    test "a ticked catalogue stays ticked, and none ticked is every catalogue again", ctx do
+      lv = open!(ctx)
+      lv |> element("#inventory-ai-open") |> render_click()
+      ticked = ~s(#inventory-ai-catalogues input[value="#{ctx.catalogue.uuid}"][checked])
+
+      lv
+      |> form("#inventory-ai-upload-form", %{"catalogue_uuids" => [ctx.catalogue.uuid]})
+      |> render_change()
+
+      assert has_element?(lv, ticked)
+
+      # An unticked checkbox sends no key at all.
+      render_change(lv, "inventory_ai_change", %{"place" => ""})
+      refute has_element?(lv, ticked)
+    end
+
     test "a seeded line is replaced, the others are not touched; the tab gets the written lines",
          ctx do
       stock!(ctx.screw, ctx.location, "40")
