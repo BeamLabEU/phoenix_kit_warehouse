@@ -503,10 +503,6 @@ defmodule PhoenixKitWarehouse.InventoryAI do
     runs
   end
 
-  @doc "How long a run may stay `running` before it is taken as interrupted, in seconds."
-  @spec stale_after_seconds() :: pos_integer()
-  def stale_after_seconds, do: @stale_after_seconds
-
   # --- applying -----------------------------------------------------------------------
 
   @doc """

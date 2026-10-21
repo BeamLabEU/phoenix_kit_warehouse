@@ -32,14 +32,6 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
           | {:measured, Decimal.t(), String.t()}
           | {:needs, :package_size | :quantity}
 
-  @doc "The units counted in whole things (packages may hold them)."
-  @spec piece_units() :: [String.t()]
-  def piece_units, do: @piece_units
-
-  @doc "The measured units: the model's quantity, always checked by a person."
-  @spec measured_units() :: [String.t()]
-  def measured_units, do: @measured_units
-
   @doc """
   The quantity of one checked object (see `PhoenixKitWarehouse.InventoryAI.Response`)
   in `unit`; `package_size` is the units per package a person typed for the

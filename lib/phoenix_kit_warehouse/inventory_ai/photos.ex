@@ -28,10 +28,6 @@ defmodule PhoenixKitWarehouse.InventoryAI.Photos do
           skipped: [%{String.t() => String.t()}]
         }
 
-  @doc "The long side of a prepared photo, in pixels."
-  @spec max_edge() :: pos_integer()
-  def max_edge, do: @max_edge
-
   @doc "The most bytes the prepared photos of one run may sum to."
   @spec max_total_bytes() :: pos_integer()
   def max_total_bytes, do: @max_total_bytes
