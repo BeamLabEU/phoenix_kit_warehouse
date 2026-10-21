@@ -1,6 +1,6 @@
 defmodule PhoenixKitWarehouse.Web.Components.TrashTabs do
   @moduledoc """
-  The "Active / Trash (N)" tabs of the internal and supplier order lists.
+  The "Active / Trash (N)" tabs of the warehouse document lists.
 
   The Trash tab shows while the trash holds something (`trash_count > 0`) or
   while the list is showing it, so the way back is never hidden. A click sends

@@ -57,8 +57,29 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.Transfer
   alias PhoenixKitWarehouse.Transfers
-  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, RelatedDocuments, WarehouseBrowser}
-  alias PhoenixKitWarehouse.Web.ItemSelectorScope
+
+  alias PhoenixKitWarehouse.Web.Components.{
+    CommentsPanel,
+    RelatedDocuments,
+    TrashAction,
+    WarehouseBrowser
+  }
+
+  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages}
+
+  # Events that change the transfer or its links. A transfer in the trash
+  # answers none of them; the buttons are hidden, this is for a stale event.
+  @trash_blocked ~w(open_item_selector open_link_picker source_picker_confirm remove_source_ref
+                    remove_line set_transfer_qty set_source_location set_destination_location
+                    save_draft ship save_correction)
+
+  # Cancel and Receive serve a draft and a transfer in transit alike. Only a
+  # trashed draft refuses them: a transfer in transit that sits in the trash
+  # (legacy) must still be received or cancelled, or its goods stay on the road.
+  # `cancel` is guarded twice: `Transfers.cancel_transfer/2` answers a trashed
+  # draft `:deleted` too, with the same flash, so no test tells this entry
+  # from the context's check.
+  @trashed_draft_blocked ~w(open_cancel_confirm cancel receive)
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -102,6 +123,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
       |> assign(:source_picker_selected, MapSet.new())
       |> assign(:source_picker_selected_meta, %{})
       |> assign(:source_picker_query, "")
+      |> assign(:deleted_by_name, nil)
+      |> assign(:trash_candidate, nil)
       |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
@@ -188,12 +211,39 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
         resolve_location_name(transfer.destination_location_uuid)
       )
       |> assign(:source_refs, source_refs)
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(transfer))
       |> assign(
         :page_title,
         dgettext("default", "Transfer #%{number}", number: transfer.number)
       )
 
     if same_transfer?, do: socket, else: assign_edit_buffer(socket, transfer, locale)
+  end
+
+  # Reads the transfer again, buffer included: what the person had typed is
+  # not what the stored (possibly trashed) transfer holds.
+  defp reload_transfer(socket) do
+    uuid = socket.assigns.transfer.uuid
+
+    socket
+    |> assign(:transfer, nil)
+    |> load_transfer_into_socket(uuid, socket.assigns.locale)
+  end
+
+  # A write found the transfer in the trash: say so and draw the stored
+  # transfer, not the unsaved buffer.
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_transfer/1)
+
+  # A write event on a trashed transfer (TrashActions.refuse_trashed/4); the
+  # cancel confirmation closes either way.
+  defp refuse_trashed(socket) do
+    {:noreply,
+     TrashActions.refuse_trashed(
+       socket,
+       :transfer,
+       &(&1 |> assign(:show_cancel_confirm_modal, false) |> reload_transfer()),
+       &resume_files_tab/1
+     )}
   end
 
   defp assign_edit_buffer(socket, transfer, locale) do
@@ -210,6 +260,56 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
       nil -> nil
       location -> location.name
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # A transfer in the trash
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event(event, _params, %{assigns: %{transfer: %{deleted_at: %DateTime{}}}} = socket)
+      when event in @trash_blocked,
+      do: refuse_trashed(socket)
+
+  def handle_event(
+        event,
+        _params,
+        %{assigns: %{transfer: %{deleted_at: %DateTime{}, status: "draft"}}} = socket
+      )
+      when event in @trashed_draft_blocked,
+      do: refuse_trashed(socket)
+
+  # "Move to trash" of the form's own transfer (TrashActions); the uuid is the
+  # form's, not the browser's. After the move the form is drawn as trashed.
+  def handle_event(event, _params, %{assigns: %{transfer: nil}} = socket)
+      when event in ~w(request_trash restore) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
+  def handle_event("request_trash", _params, socket) do
+    {:noreply,
+     TrashActions.request_trash(
+       socket,
+       :transfer,
+       socket.assigns.transfer.uuid,
+       &reload_transfer/1
+     )}
+  end
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :transfer, &reload_transfer/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
+
+  def handle_event("restore", _params, socket) do
+    {:noreply,
+     TrashActions.restore(
+       socket,
+       :transfer,
+       socket.assigns.transfer.uuid,
+       &(&1 |> reload_transfer() |> resume_files_tab())
+     )}
   end
 
   # ---------------------------------------------------------------------------
@@ -348,6 +448,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
       {:error, _reason} ->
         {:noreply,
          socket
@@ -368,6 +471,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
           |> assign(:source_refs, DocRefs.refs_for(updated_transfer.source_refs || []))
 
         {:noreply, socket}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to remove link"))}
@@ -440,6 +546,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
              |> assign(:transfer, updated_transfer)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
 
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
+
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
         end
@@ -471,6 +580,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     else
       {:error, :not_draft} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Document is already shipped"))}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, :locations_required} ->
         {:noreply,
@@ -571,6 +683,12 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
          |> assign(:show_cancel_confirm_modal, false)
          |> put_flash(:info, dgettext("default", "Transfer cancelled"))
          |> push_navigate(to: Routes.path("/admin/warehouse/transfers"))}
+
+      {:error, :deleted} ->
+        {:noreply,
+         socket
+         |> assign(:show_cancel_confirm_modal, false)
+         |> trashed_meanwhile()}
 
       {:error, :not_cancellable} ->
         {:noreply,
@@ -682,17 +800,21 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   def render(assigns) do
     assigns =
       assigns
+      |> assign(:deleted?, !!(assigns.transfer && assigns.transfer.deleted_at))
       |> assign(:draft?, assigns.transfer && assigns.transfer.status == "draft")
       |> assign(:in_transit?, assigns.transfer && assigns.transfer.status == "in_transit")
       |> assign(
         :terminal?,
         assigns.transfer && assigns.transfer.status in ["done", "cancelled"]
       )
-      |> assign(
-        :editable_locations?,
-        assigns.transfer && assigns.transfer.status == "draft"
-      )
       |> assign(:transfer_uuid, assigns.transfer && assigns.transfer.uuid)
+
+    # Only a live draft is edited; a trashed one is shown. A transfer in transit
+    # that sits in the trash (legacy) keeps Receive and Cancel.
+    assigns =
+      assigns
+      |> assign(:editable?, !!assigns.draft? && !assigns.deleted?)
+      |> assign(:editable_locations?, !!assigns.draft? && !assigns.deleted?)
 
     ~H"""
     <PhoenixKitWeb.Components.LayoutWrapper.app_layout
@@ -708,8 +830,13 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
     >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
       <div class="flex flex-wrap items-center justify-end gap-2">
+        <TrashAction.trash_button
+          :if={@transfer && !@deleted?}
+          id_prefix="tr"
+          reason={TrashActions.blocked_reason(@transfer)}
+        />
         <%!-- Draft state: Save draft + Cancel + Ship --%>
-        <%= if @draft? and @active_tab in [:general, :items] do %>
+        <%= if @editable? and @active_tab in [:general, :items] do %>
           <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save draft")}
           </button>
@@ -734,7 +861,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
           </button>
         <% end %>
         <%!-- Terminal state + admin: note correction --%>
-        <%= if @terminal? and @admin? and @active_tab == :general do %>
+        <%= if @terminal? and not @deleted? and @admin? and @active_tab == :general do %>
           <button type="button" phx-click="save_correction" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save correction")}
           </button>
@@ -766,7 +893,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
           {dgettext("default", "Items")}
         </.link>
         <.link
-          :if={@transfer_uuid}
+          :if={@transfer_uuid && !@deleted?}
           patch={Routes.path("/admin/warehouse/transfers/#{@transfer_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
@@ -784,6 +911,14 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
         </.link>
       </div>
 
+      <%!-- Trashed transfer: say so, offer the way back (drafts only) --%>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="tr"
+        document={@transfer}
+        deleted_by={@deleted_by_name}
+      />
+
       <%!-- Status info banner (non-admin only) --%>
       <%= if @transfer && @transfer.status != "draft" and not @admin? do %>
         <div class="alert alert-info">
@@ -794,7 +929,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
 
       <%!-- Tab: General --%>
       <%= if @active_tab == :general do %>
-        <%= if @draft? do %>
+        <%= if @editable? do %>
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4 flex flex-col gap-3">
               <div>
@@ -899,7 +1034,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
                     />
                   </dd>
                 </div>
-                <%= if @transfer.note && !@draft? do %>
+                <%= if @transfer.note && !@editable? do %>
                   <div>
                     <dt class="text-base-content/60 font-medium">
                       {dgettext("default", "Note")}
@@ -914,9 +1049,10 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
                 downstream={[]}
                 upstream_label={dgettext("default", "Source documents")}
                 downstream_label={dgettext("default", "Related documents")}
+                read_only={@deleted?}
               />
               <%!-- Note correction on a terminal transfer (admin only) --%>
-              <%= if @terminal? and @admin? do %>
+              <%= if @terminal? and not @deleted? and @admin? do %>
                 <div class="divider my-1"></div>
                 <div class="text-sm">
                   <label class="text-base-content/60 font-medium block mb-1">
@@ -951,7 +1087,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
                   <span class="loading loading-spinner loading-md" />
                   <span class="ml-2">{dgettext("default", "Loading files...")}</span>
                 </div>
-              <% is_nil(@files_scope_folder_uuid) -> %>
+              <% @deleted? or is_nil(@files_scope_folder_uuid) -> %>
                 <div class="alert alert-warning">
                   {dgettext("default", "Files are not available for this transfer yet.")}
                 </div>
@@ -997,7 +1133,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
           <div class="card-body p-4">
             <div class="flex items-center justify-between gap-2 mb-2">
               <h2 class="card-title text-base">{dgettext("default", "Items")}</h2>
-              <%= if @draft? do %>
+              <%= if @editable? do %>
                 <button type="button" phx-click="open_item_selector" class="btn btn-primary btn-sm">
                   <.icon name="hero-plus" class="w-4 h-4" />
                   {dgettext("default", "Add item")}
@@ -1007,7 +1143,7 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
             <.transfer_lines_table
               lines={@lines}
               names={@names}
-              editable?={!!@draft?}
+              editable?={@editable?}
             />
           </div>
         </div>
@@ -1055,6 +1191,8 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
           </button>
         </:actions>
       </.modal>
+
+      <TrashAction.trash_confirm id_prefix="tr" candidate={@trash_candidate} form />
     </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
@@ -1182,9 +1320,17 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
   # File folder resolution / comments subscription
   # ---------------------------------------------------------------------------
 
+  # The Files tab skipped the folder lookup while the transfer was in the
+  # trash; a restore makes up for it, so the tab does not stay empty.
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
+
   defp maybe_start_files_folder_resolution(socket) do
     cond do
       not is_nil(socket.assigns.files_scope_folder_uuid) ->
+        socket
+
+      socket.assigns.transfer.deleted_at != nil ->
         socket
 
       not connected?(socket) ->
@@ -1354,6 +1500,9 @@ defmodule PhoenixKitWarehouse.Web.TransferFormLive do
                resolve_location_name(updated.destination_location_uuid)
              )
              |> put_flash(:info, dgettext("default", "Warehouse changed"))}
+
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
 
           {:error, _changeset} ->
             {:noreply,

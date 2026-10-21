@@ -13,8 +13,11 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
 
   import Ecto.Query
 
+  alias PhoenixKitWarehouse.ActivityLog
   alias PhoenixKitWarehouse.CommittedQuantities
+  alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.GoodsIssue
+  alias PhoenixKitWarehouse.InternalOrder
   alias PhoenixKitWarehouse.PostingSupport
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.Stock
@@ -45,13 +48,21 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
 
   @doc """
   Lists non-deleted goods issues ordered by number descending (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed issues instead
+      (any status, same order), the content of the trash view.
   """
-  def list_goods_issues(_opts \\ []) do
+  def list_goods_issues(opts \\ []) do
     GoodsIssue
-    |> where([i], is_nil(i.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([i], desc: i.number)
     |> repo().all()
   end
+
+  @doc "Counts the trashed goods issues (any status)."
+  @spec count_trashed_goods_issues() :: non_neg_integer()
+  def count_trashed_goods_issues, do: DraftTrash.count_trashed(GoodsIssue)
 
   @doc "Returns the goods issue or raises."
   def get_goods_issue!(uuid), do: repo().get!(GoodsIssue, uuid)
@@ -174,8 +185,6 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   # ---------------------------------------------------------------------------
 
   defp load_posted_internal_orders(uuids) do
-    alias PhoenixKitWarehouse.InternalOrder
-
     uuids = Enum.filter(uuids, & &1)
 
     InternalOrder
@@ -379,7 +388,7 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
 
   @doc """
   Updates a draft goods issue. Returns `{:error, :not_draft}` when not in
-  draft status.
+  draft status, `{:error, :deleted}` when it is in the trash.
 
   Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
   just the in-memory struct) so a stale tab cannot overwrite an issue that
@@ -405,7 +414,8 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   `"internal_order"` is always valid (intra-module). Any other `type` must be
   a kind registered via `PhoenixKitWarehouse.SourceKinds`.
   Pure metadata — does not touch `lines` and is not gated to draft status.
-  A duplicate `{type, uuid}` pair is a no-op.
+  A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
+  a document in the trash.
   """
   def add_source_ref(%GoodsIssue{} = issue, type, uuid) do
     if valid_ref_type?(type) do
@@ -415,9 +425,7 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
         ((issue.source_refs || []) ++ [new_ref])
         |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-      issue
-      |> GoodsIssue.changeset(%{source_refs: refs})
-      |> repo().update()
+      update_source_refs(issue, refs)
     else
       {:error, :invalid_ref_type}
     end
@@ -430,14 +438,21 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
 
   @doc """
   Detaches a traceability reference from a goods issue. No-op when the
-  `{type, uuid}` pair isn't present.
+  `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
+  document in the trash.
   """
   def remove_source_ref(%GoodsIssue{} = issue, type, uuid) do
     refs = Enum.reject(issue.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
+    update_source_refs(issue, refs)
+  end
+
+  # The trash is read from the row (locked), not from the struct, which may be
+  # a tab behind.
+  defp update_source_refs(issue, refs) do
     issue
     |> GoodsIssue.changeset(%{source_refs: refs})
-    |> repo().update()
+    |> then(&DraftTrash.update_unless_trashed(GoodsIssue, &1))
   end
 
   # ---------------------------------------------------------------------------
@@ -458,7 +473,8 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   - Merges `previous_quantity` into the persisted lines (audit trail).
   - Flips status → "posted", sets posted_at and performed_by_uuid.
 
-  Returns `{:error, :not_draft}` for non-draft issues.
+  Returns `{:error, :not_draft}` for non-draft issues and `{:error, :deleted}`
+  for one in the trash.
   Returns `{:error, {:insufficient_stock, item_uuid}}` when any line cannot be
   fulfilled; the entire transaction is rolled back.
   """
@@ -546,17 +562,103 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   # Soft delete
   # ---------------------------------------------------------------------------
 
-  @doc "Soft-deletes a draft goods issue. Returns {:error, :not_draft} for posted documents."
-  def soft_delete(%GoodsIssue{status: "draft"} = issue, actor_uuid) do
-    issue
-    |> GoodsIssue.soft_delete_changeset(%{
-      deleted_at: DateTime.utc_now() |> DateTime.truncate(:second),
-      deleted_by_uuid: actor_uuid
-    })
-    |> repo().update()
+  @doc """
+  Soft-deletes a draft goods issue (sends it to the trash).
+
+  Locks the row and moves it only while it is still a live draft in the
+  database, so a draft posted in another tab is not trashed from a stale
+  struct. Returns `{:ok, issue}`, `{:error, :not_draft}` for posted documents,
+  `{:error, :deleted}` when it is already in the trash and
+  `{:error, :not_found}` for a row that no longer exists. Logged as
+  `warehouse.goods_issue.trashed` after the commit.
+
+  A trashed issue no longer holds its share of the internal orders it was
+  imported from, so another issue can import it meanwhile; see
+  `overcommitted_internal_orders/1` after a restore.
+  """
+  @spec soft_delete(GoodsIssue.t(), Ecto.UUID.t() | nil) ::
+          {:ok, GoodsIssue.t()} | {:error, :not_draft | :deleted | :not_found}
+  def soft_delete(%GoodsIssue{status: "draft", uuid: uuid}, actor_uuid) do
+    with {:ok, trashed} <- DraftTrash.trash_one(GoodsIssue, uuid, actor_uuid) do
+      ActivityLog.log_goods_issue_trashed(trashed, actor_uuid: actor_uuid, reason: "manual")
+      {:ok, trashed}
+    end
   end
 
   def soft_delete(%GoodsIssue{}, _actor_uuid), do: {:error, :not_draft}
+
+  @doc """
+  Brings a trashed draft goods issue back.
+
+  Returns `{:ok, issue}`, `{:error, :not_deleted}` for a live one,
+  `{:error, :not_draft}` for a trashed posted issue (legacy; it stays in the
+  trash) or `{:error, :not_found}`. Logged as `warehouse.goods_issue.restored`
+  after the commit. The restore is not refused and the lines are not cut when
+  the internal orders are now over-reserved; ask
+  `overcommitted_internal_orders/1` to warn about it.
+  """
+  @spec restore_goods_issue(GoodsIssue.t(), Ecto.UUID.t() | nil) ::
+          {:ok, GoodsIssue.t()} | {:error, :not_deleted | :not_draft | :not_found}
+  def restore_goods_issue(%GoodsIssue{uuid: uuid}, actor_uuid) do
+    with {:ok, restored} <- DraftTrash.restore_one(GoodsIssue, uuid) do
+      ActivityLog.log_goods_issue_restored(restored, actor_uuid: actor_uuid)
+      {:ok, restored}
+    end
+  end
+
+  @doc """
+  The internal orders the issue refers to (its `"internal_order"` source refs)
+  that are posted and not in the trash, and where on at least one line the
+  quantity held by the live goods issues (drafts and posted ones, this issue
+  included) is greater than the internal order's own quantity. Sorted by
+  number.
+
+  The held quantity is counted the way an import counts it
+  (`CommittedQuantities`, from each ref's `"lines"`); only the internal
+  order's own items are compared. Meant for the warning after
+  `restore_goods_issue/2`.
+
+  This is a known approximation: a legacy ref without `"lines"` counts every
+  line of its goods issue against the internal order, so the warning can be
+  a false one for such documents. Likewise, an item on several lines of the
+  internal order is compared against its first line only (`uniq_by` over the
+  item, as the import's remaining lines do), which can warn falsely too.
+  """
+  @spec overcommitted_internal_orders(GoodsIssue.t()) :: [InternalOrder.t()]
+  def overcommitted_internal_orders(%GoodsIssue{source_refs: refs}) do
+    io_uuids =
+      for %{"type" => "internal_order", "uuid" => uuid} <- refs || [],
+          is_binary(uuid),
+          uniq: true,
+          do: uuid
+
+    case load_posted_internal_orders(io_uuids) do
+      [] ->
+        []
+
+      orders ->
+        committed =
+          CommittedQuantities.compute(
+            GoodsIssue,
+            ["internal_order"],
+            Enum.map(orders, & &1.uuid),
+            "issued_quantity"
+          )
+
+        orders
+        |> Enum.filter(&overcommitted?(&1, Map.get(committed, &1.uuid, %{})))
+        |> Enum.sort_by(& &1.number)
+    end
+  end
+
+  defp overcommitted?(%InternalOrder{lines: lines}, committed) do
+    lines
+    |> Enum.uniq_by(& &1["item_uuid"])
+    |> Enum.any?(fn line ->
+      held = Map.get(committed, line["item_uuid"], Decimal.new("0"))
+      Decimal.gt?(held, StockLedger.to_decimal(line["required_quantity"]))
+    end)
+  end
 
   # ---------------------------------------------------------------------------
   # Correction (note + storage_folder on posted)
@@ -591,18 +693,8 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  defp lock_status_step(uuid, expected_status, error) do
-    Ecto.Multi.run(Ecto.Multi.new(), :lock_status, fn repo, _changes ->
-      query =
-        from(i in GoodsIssue,
-          where: i.uuid == ^uuid and i.status == ^expected_status,
-          lock: "FOR UPDATE"
-        )
-
-      case repo.one(query) do
-        nil -> {:error, error}
-        %GoodsIssue{} = locked -> {:ok, locked}
-      end
-    end)
-  end
+  # Locks the row FOR UPDATE and asserts it is still in `expected_status` (a
+  # draft also out of the trash: a trashed one answers `:deleted`).
+  defp lock_status_step(uuid, expected_status, error),
+    do: DraftTrash.lock_status_step(GoodsIssue, uuid, expected_status, error)
 end

@@ -9,6 +9,8 @@ defmodule PhoenixKitWarehouse.Inventories do
   import Ecto.Query
 
   alias PhoenixKitCatalogue.Catalogue
+  alias PhoenixKitWarehouse.ActivityLog
+  alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.PostingSupport
   alias PhoenixKitWarehouse.Stock
@@ -150,7 +152,7 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   @doc """
   Updates a draft document. Returns `{:error, :not_draft}` if the document
-  is not in `draft` status.
+  is not in `draft` status, `{:error, :deleted}` when it is in the trash.
 
   Changing `:location_uuid` to a value different from the document's current
   one always re-seeds `:lines` from that warehouse's current stock (see
@@ -203,29 +205,63 @@ defmodule PhoenixKitWarehouse.Inventories do
   @doc """
   Lists non-deleted inventory documents. Ordered by number descending
   (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed documents
+      instead (any status, same order), the content of the trash view.
   """
-  def list_documents(_opts) do
+  def list_documents(opts) do
     InventoryDocument
-    |> where([d], is_nil(d.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([d], desc: d.number)
     |> repo().all()
   end
+
+  @doc "Counts the trashed inventory documents (any status)."
+  @spec count_trashed_documents() :: non_neg_integer()
+  def count_trashed_documents, do: DraftTrash.count_trashed(InventoryDocument)
 
   # ---------------------------------------------------------------------------
   # Soft delete
   # ---------------------------------------------------------------------------
 
-  @doc "Soft-deletes a draft document. Returns {:error, :not_draft} for posted documents."
-  def soft_delete_document(%InventoryDocument{status: "draft"} = doc, actor_uuid) do
-    doc
-    |> InventoryDocument.soft_delete_changeset(%{
-      deleted_at: DateTime.utc_now() |> DateTime.truncate(:second),
-      deleted_by_uuid: actor_uuid
-    })
-    |> repo().update()
+  @doc """
+  Soft-deletes a draft document (sends it to the trash).
+
+  Locks the row and moves it only while it is still a live draft in the
+  database, so a draft posted in another tab is not trashed from a stale
+  struct. Returns `{:ok, doc}`, `{:error, :not_draft}` for posted documents,
+  `{:error, :deleted}` when it is already in the trash and
+  `{:error, :not_found}` for a row that no longer exists. Logged as
+  `warehouse.inventory.trashed` after the commit.
+  """
+  @spec soft_delete_document(InventoryDocument.t(), Ecto.UUID.t() | nil) ::
+          {:ok, InventoryDocument.t()} | {:error, :not_draft | :deleted | :not_found}
+  def soft_delete_document(%InventoryDocument{status: "draft", uuid: uuid}, actor_uuid) do
+    with {:ok, trashed} <- DraftTrash.trash_one(InventoryDocument, uuid, actor_uuid) do
+      ActivityLog.log_inventory_trashed(trashed, actor_uuid: actor_uuid, reason: "manual")
+      {:ok, trashed}
+    end
   end
 
   def soft_delete_document(%InventoryDocument{}, _actor_uuid), do: {:error, :not_draft}
+
+  @doc """
+  Brings a trashed draft document back.
+
+  Returns `{:ok, doc}`, `{:error, :not_deleted}` for a live one,
+  `{:error, :not_draft}` for a trashed posted document (legacy; it stays in the
+  trash) or `{:error, :not_found}`. Logged as `warehouse.inventory.restored`
+  after the commit.
+  """
+  @spec restore_document(InventoryDocument.t(), Ecto.UUID.t() | nil) ::
+          {:ok, InventoryDocument.t()} | {:error, :not_deleted | :not_draft | :not_found}
+  def restore_document(%InventoryDocument{uuid: uuid}, actor_uuid) do
+    with {:ok, restored} <- DraftTrash.restore_one(InventoryDocument, uuid) do
+      ActivityLog.log_inventory_restored(restored, actor_uuid: actor_uuid)
+      {:ok, restored}
+    end
+  end
 
   # ---------------------------------------------------------------------------
   # Posting
@@ -245,7 +281,8 @@ defmodule PhoenixKitWarehouse.Inventories do
     stock as audit fields; upserts the stock row inside the same transaction.
   - Updates the document status to "posted" with `posted_at` and
     `performed_by_uuid`.
-  - Returns `{:error, :not_draft}` if the document is not in draft status.
+  - Returns `{:error, :not_draft}` if the document is not in draft status,
+    `{:error, :deleted}` when it is in the trash.
   - Posts the lines and `track_value` of the row read under the status lock,
     not those of the struct passed in, so a stale struct cannot overwrite a
     concurrent edit of the draft.
@@ -393,24 +430,13 @@ defmodule PhoenixKitWarehouse.Inventories do
   end
 
   # First step of a posting transaction: lock the document row FOR UPDATE and
-  # assert it is still in `expected_status`. Returns `{:error, error}` (aborting
-  # the transaction) when the row no longer matches — i.e. a concurrent
-  # transaction already moved it, or it was posted/deleted out from under a stale
-  # in-memory struct.
-  defp lock_status_step(uuid, expected_status, error) do
-    Ecto.Multi.run(Ecto.Multi.new(), :lock_status, fn repo, _changes ->
-      query =
-        from(d in InventoryDocument,
-          where: d.uuid == ^uuid and d.status == ^expected_status,
-          lock: "FOR UPDATE"
-        )
-
-      case repo.one(query) do
-        nil -> {:error, error}
-        %InventoryDocument{} = locked -> {:ok, locked}
-      end
-    end)
-  end
+  # assert it is still in `expected_status` (a draft also out of the trash).
+  # Returns `{:error, error}` (aborting the transaction) when the row no longer
+  # matches — i.e. a concurrent transaction already moved it, or it was posted
+  # out from under a stale in-memory struct — and `{:error, :deleted}` for a
+  # draft in the trash.
+  defp lock_status_step(uuid, expected_status, error),
+    do: DraftTrash.lock_status_step(InventoryDocument, uuid, expected_status, error)
 
   # The shared body of post_document/2, repost_document/2 and create_and_post/2.
   # Runs INSIDE the posting transaction: the prior stock is read under a row

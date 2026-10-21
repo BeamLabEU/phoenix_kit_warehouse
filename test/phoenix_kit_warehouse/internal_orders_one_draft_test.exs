@@ -579,7 +579,7 @@ defmodule PhoenixKitWarehouse.InternalOrdersOneDraftTest do
       assert entry.module == "warehouse"
       assert entry.resource_type == "internal_order"
       assert entry.actor_uuid == actor
-      assert entry.metadata["reason"] == "superseded"
+      assert entry.metadata["trash_reason"] == "superseded"
       assert entry.metadata["superseded_by_uuid"] == second.uuid
       assert entry.metadata["number"] == to_string(first.number)
     end
@@ -599,7 +599,7 @@ defmodule PhoenixKitWarehouse.InternalOrdersOneDraftTest do
       {:ok, _} = InternalOrders.soft_delete_internal_order(order, actor)
 
       assert [entry] = activity("warehouse.internal_order.trashed", order.uuid)
-      assert entry.metadata["reason"] == "manual"
+      assert entry.metadata["trash_reason"] == "manual"
       assert entry.actor_uuid == actor
       refute Map.has_key?(entry.metadata, "superseded_by_uuid")
     end
@@ -616,9 +616,9 @@ defmodule PhoenixKitWarehouse.InternalOrdersOneDraftTest do
       assert restored_entry.actor_uuid == actor
 
       swap_entries = activity("warehouse.internal_order.trashed", second.uuid)
-      assert Enum.any?(swap_entries, &(&1.metadata["reason"] == "restore_swap"))
+      assert Enum.any?(swap_entries, &(&1.metadata["trash_reason"] == "restore_swap"))
 
-      swap = Enum.find(swap_entries, &(&1.metadata["reason"] == "restore_swap"))
+      swap = Enum.find(swap_entries, &(&1.metadata["trash_reason"] == "restore_swap"))
       assert swap.metadata["superseded_by_uuid"] == restored.uuid
     end
 

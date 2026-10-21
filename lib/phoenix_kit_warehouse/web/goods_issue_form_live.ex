@@ -34,9 +34,15 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
-  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages}
 
   alias PhoenixKit.Utils.Routes
+
+  # Events that change the issue or its links. An issue in the trash answers
+  # none of them; the buttons are hidden, this is for a stale event.
+  @trash_blocked ~w(set_issued_qty set_location set_reason save_draft post save_correction
+                    open_io_picker open_link_picker source_picker_confirm remove_source_ref)
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -77,6 +83,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       |> assign(:io_picker_selected_meta, %{})
       |> assign(:io_picker_query, "")
       |> assign(:warehouses, StockLedger.list_warehouses())
+      |> assign(:deleted_by_name, nil)
+      |> assign(:trash_candidate, nil)
       |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
@@ -166,10 +174,26 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       |> assign(:sub_order_ref, sub_order_ref)
       |> assign(:internal_order_ref, internal_order_ref)
       |> assign(:refs_by_kind, refs_by_kind(issue))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(issue))
       |> assign(:page_title, dgettext("default", "Goods Issue #%{number}", number: issue.number))
 
     if same_issue?, do: socket, else: assign_edit_buffer(socket, issue)
   end
+
+  # Reads the issue again, buffer included: what the person had typed is not
+  # what the stored (possibly trashed) issue holds.
+  defp reload_issue(socket) do
+    uuid = socket.assigns.issue.uuid
+
+    socket
+    |> assign(:issue, nil)
+    |> load_issue_into_socket(uuid)
+    |> load_on_hand_quantities()
+  end
+
+  # A write found the issue in the trash: say so and draw the stored issue,
+  # not the unsaved buffer.
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_issue/1)
 
   defp assign_edit_buffer(socket, issue) do
     socket
@@ -222,9 +246,17 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   # File folder resolution
   # ---------------------------------------------------------------------------
 
+  # The Files tab skipped the folder lookup while the issue was in the trash;
+  # a restore makes up for it, so the tab does not stay empty.
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
+
   defp maybe_start_files_folder_resolution(socket) do
     cond do
       not is_nil(socket.assigns.files_scope_folder_uuid) ->
+        socket
+
+      socket.assigns.issue.deleted_at != nil ->
         socket
 
       not connected?(socket) ->
@@ -242,6 +274,47 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
         assign(socket, :files_folder_loading, true)
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # An issue in the trash
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event(event, _params, %{assigns: %{issue: %{deleted_at: %DateTime{}}}} = socket)
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(socket, :issue, &reload_issue/1, &resume_files_tab/1)}
+
+  # "Move to trash" of the form's own issue (TrashActions); the uuid is the
+  # form's, not the browser's. After the move the form is drawn as trashed.
+  def handle_event(event, _params, %{assigns: %{issue: nil}} = socket)
+      when event in ~w(request_trash restore) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
+  def handle_event("request_trash", _params, socket) do
+    {:noreply,
+     TrashActions.request_trash(socket, :goods_issue, socket.assigns.issue.uuid, &reload_issue/1)}
+  end
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :goods_issue, &reload_issue/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
+
+  # A restored issue that now over-reserves an internal order gets a warning
+  # in the flash (TrashActions.restore/4).
+  def handle_event("restore", _params, socket) do
+    {:noreply,
+     TrashActions.restore(
+       socket,
+       :goods_issue,
+       socket.assigns.issue.uuid,
+       &(&1 |> reload_issue() |> resume_files_tab())
+     )}
   end
 
   # ---------------------------------------------------------------------------
@@ -295,6 +368,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
              |> load_on_hand_quantities()
              |> put_flash(:info, dgettext("default", "Warehouse changed"))}
 
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
+
           {:error, _changeset} ->
             {:noreply,
              put_flash(socket, :error, dgettext("default", "Failed to change warehouse"))}
@@ -317,6 +393,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
         case GoodsIssues.update_draft(issue, %{reason: reason}) do
           {:ok, updated} ->
             {:noreply, assign(socket, :issue, updated)}
+
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to change reason"))}
@@ -347,6 +426,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
              socket
              |> assign(:issue, updated_issue)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
+
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
@@ -383,6 +465,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
     else
       {:error, :not_draft} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, {:insufficient_stock, item_uuid}} ->
         line = Enum.find(socket.assigns.lines, &(&1["item_uuid"] == item_uuid))
@@ -576,6 +661,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_io_picker, false) |> trashed_meanwhile()}
+
       {:error, :no_valid_orders} ->
         {:noreply,
          socket
@@ -616,6 +704,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_io_picker, false) |> trashed_meanwhile()}
+
       {:error, _reason} ->
         {:noreply,
          socket
@@ -636,6 +727,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
           |> assign(:refs_by_kind, refs_by_kind(updated_issue))
 
         {:noreply, socket}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to remove link"))}
@@ -699,7 +793,11 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
     assigns =
       assigns
       |> assign(:posted?, assigns.issue && assigns.issue.status == "posted")
+      |> assign(:deleted?, !!(assigns.issue && assigns.issue.deleted_at))
       |> assign(:issue_uuid, assigns.issue && assigns.issue.uuid)
+
+    # Posted and trashed issues are shown, not edited.
+    assigns = assign(assigns, :read_only?, assigns.posted? || assigns.deleted?)
 
     assigns = assign_new(assigns, :sub_order_ref, fn -> nil end)
     assigns = assign_new(assigns, :internal_order_ref, fn -> nil end)
@@ -719,8 +817,13 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
     >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
       <div class="flex flex-wrap items-center justify-end gap-2">
+        <TrashAction.trash_button
+          :if={@issue && !@deleted?}
+          id_prefix="gi"
+          reason={TrashActions.blocked_reason(@issue)}
+        />
         <%!-- Draft: Save draft + Post --%>
-        <%= if !@posted? and @active_tab in [:general, :lines] do %>
+        <%= if !@read_only? and @active_tab in [:general, :lines] do %>
           <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save draft")}
           </button>
@@ -729,7 +832,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
           </button>
         <% end %>
         <%!-- Posted + admin: correction --%>
-        <%= if @posted? and @admin? and @active_tab == :general do %>
+        <%= if @posted? and not @deleted? and @admin? and @active_tab == :general do %>
           <button type="button" phx-click="save_correction" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save correction")}
           </button>
@@ -756,7 +859,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
           {dgettext("default", "Lines")}
         </.link>
         <.link
-          :if={@issue_uuid}
+          :if={@issue_uuid && !@deleted?}
           patch={Routes.path("/admin/warehouse/goods-issues/#{@issue_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
@@ -774,6 +877,14 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
         </.link>
       </div>
 
+      <%!-- Trashed issue: say so, offer the way back (drafts only) --%>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="gi"
+        document={@issue}
+        deleted_by={@deleted_by_name}
+      />
+
       <%!-- Posted banner (non-admin) --%>
       <%= if @posted? and not @admin? do %>
         <div class="alert alert-success">
@@ -784,7 +895,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
 
       <%!-- Tab: General --%>
       <%= if @active_tab == :general do %>
-        <%= if !@posted? do %>
+        <%= if !@read_only? do %>
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
               <form phx-change="set_note" phx-submit="set_note">
@@ -828,7 +939,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                     {dgettext("default", "Warehouse (location)")}
                   </dt>
                   <dd class="mt-0.5">
-                    <%= if !@posted? and warehouse_options?(@warehouses) do %>
+                    <%= if !@read_only? and warehouse_options?(@warehouses) do %>
                       <form phx-change="set_location" phx-submit="set_location">
                         <select name="location_uuid" class="select select-sm">
                           <%= for warehouse <- @warehouses do %>
@@ -853,7 +964,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                 <div>
                   <dt class="text-base-content/60 font-medium">{dgettext("default", "Reason")}</dt>
                   <dd class="mt-0.5">
-                    <%= if !@posted? do %>
+                    <%= if !@read_only? do %>
                       <form id="gi-reason-form" phx-change="set_reason" phx-submit="set_reason">
                         <select id="gi-reason-select" name="reason" class="select select-sm">
                           <%= for {value, label} <- GoodsIssues.reason_options() do %>
@@ -906,11 +1017,13 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                   title={dgettext("default", "Customer orders")}
                   refs={(@refs_by_kind[:order] || []) ++ (@refs_by_kind[:sub_order] || [])}
                   link_kind="order"
+                  read_only={@deleted?}
                 />
                 <.ref_group
                   title={dgettext("default", "Internal orders")}
                   refs={@refs_by_kind[:internal_order] || []}
                   link_kind="internal_order"
+                  read_only={@deleted?}
                 />
                 <%= if @issue.inserted_at do %>
                   <div>
@@ -930,7 +1043,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                     </dd>
                   </div>
                 <% end %>
-                <%= if @issue.note && @posted? do %>
+                <%= if @issue.note && @read_only? do %>
                   <div>
                     <dt class="text-base-content/60 font-medium">
                       {dgettext("default", "Note")}
@@ -940,7 +1053,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                 <% end %>
               </dl>
               <%!-- Note edit on posted (admin only) --%>
-              <%= if @posted? and @admin? do %>
+              <%= if @posted? and not @deleted? and @admin? do %>
                 <div class="divider my-1"></div>
                 <div class="text-sm">
                   <label class="text-base-content/60 font-medium block mb-1">
@@ -971,7 +1084,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
           <div class="card-body p-4">
             <div class="flex items-center justify-between gap-2 mb-2">
               <h2 class="card-title text-base">{dgettext("default", "Issue Lines")}</h2>
-              <%= if !@posted? do %>
+              <%= if !@read_only? do %>
                 <button type="button" phx-click="open_io_picker" class="btn btn-outline btn-sm">
                   <.icon name="hero-arrow-down-tray" class="w-4 h-4" />
                   {dgettext("default", "Import from internal order")}
@@ -986,7 +1099,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
             <% end %>
             <.goods_issue_lines_table
               lines={@lines}
-              posted?={@posted?}
+              posted?={@read_only?}
               on_hand_map={@on_hand_map}
             />
           </div>
@@ -1003,7 +1116,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
                   <span class="loading loading-spinner loading-md" />
                   <span class="ml-2">{dgettext("default", "Loading files...")}</span>
                 </div>
-              <% is_nil(@files_scope_folder_uuid) -> %>
+              <% @deleted? or is_nil(@files_scope_folder_uuid) -> %>
                 <div class="alert alert-warning">
                   {dgettext("default", "Files are not available for this goods issue yet.")}
                 </div>
@@ -1053,6 +1166,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
         selected_uuids={@io_picker_selected}
         search_query={@io_picker_query}
       />
+
+      <TrashAction.trash_confirm id_prefix="gi" candidate={@trash_candidate} form />
     </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
@@ -1061,6 +1176,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
   attr(:title, :string, required: true)
   attr(:refs, :list, required: true)
   attr(:link_kind, :string, required: true)
+  attr(:read_only, :boolean, default: false)
 
   defp ref_group(assigns) do
     ~H"""
@@ -1068,6 +1184,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
       <dt class="text-base-content/60 font-medium flex items-center gap-1">
         {@title}
         <button
+          :if={!@read_only}
           type="button"
           phx-click="open_link_picker"
           phx-value-kind={@link_kind}
@@ -1085,6 +1202,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueFormLive do
               {ref.label}
             </.link>
             <button
+              :if={!@read_only}
               type="button"
               phx-click="remove_source_ref"
               phx-value-type={ref.kind}

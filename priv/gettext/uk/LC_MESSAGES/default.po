@@ -1063,10 +1063,10 @@ msgstr "Наявно"
 msgid "Only posted internal orders can create goods issues"
 msgstr "Створювати видачі товарів можна лише з проведених внутрішніх замовлень"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:17
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:38
 #, elixir-autogen, elixir-format
-msgid "%{document} restored from the trash."
-msgstr "%{document} відновлено з кошика."
+msgid "Restored from the trash: %{document}."
+msgstr "Відновлено з кошика: %{document}."
 
 #: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:29
 #, elixir-autogen, elixir-format
@@ -1113,6 +1113,11 @@ msgstr "Не вдалося відновити документ"
 #, elixir-autogen, elixir-format
 msgid "Moved to the trash: %{numbers}."
 msgstr "Переміщено до кошика: %{numbers}."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:62
+#, elixir-autogen, elixir-format
+msgid "Goods issues exceed the order for: %{numbers} — check the lines."
+msgstr "Видачі перевищують замовлення за: %{numbers} — перевірте рядки."
 
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:33
 #, elixir-autogen, elixir-format
@@ -2117,6 +2122,70 @@ msgstr "Спершу вкажіть склад за замовчуванням �
 #, elixir-autogen, elixir-format
 msgid "Warehouse is not set up yet"
 msgstr "Склад ще не налаштовано"
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:125
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:140
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:164
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:49
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:69
+#, elixir-autogen, elixir-format
+msgid "Move to trash"
+msgstr "У кошик"
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:162
+#, elixir-autogen, elixir-format
+msgid "Move to the trash?"
+msgstr "Перемістити до кошика?"
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:170
+#, elixir-autogen, elixir-format
+msgid "Move to the trash: %{document}. The document can be restored on the Trash tab."
+msgstr "У кошик: %{document}. Документ можна відновити на вкладці «Кошик»."
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:166
+#, elixir-autogen, elixir-format
+msgid "Unsaved changes in the form will not be saved."
+msgstr "Незбережені зміни форми не збережуться."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:34
+#, elixir-autogen, elixir-format
+msgid "Moved to the trash: %{document}."
+msgstr "Переміщено до кошика: %{document}."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:30
+#, elixir-autogen, elixir-format
+msgid "Inventory #%{number}"
+msgstr "Інвентаризація #%{number}"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:235
+#, elixir-autogen, elixir-format
+msgid "The document is already in the trash"
+msgstr "Документ уже в кошику"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:236
+#, elixir-autogen, elixir-format
+msgid "This document cannot be deleted"
+msgstr "Цей документ не можна видалити"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:149
+#, elixir-autogen, elixir-format
+msgid "A posted document cannot be deleted"
+msgstr "Проведений документ не можна видалити"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:152
+#, elixir-autogen, elixir-format
+msgid "A transfer in transit cannot be deleted — cancel it first"
+msgstr "Переміщення в дорозі не можна видалити — спершу скасуйте його"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:155
+#, elixir-autogen, elixir-format
+msgid "A completed transfer cannot be deleted"
+msgstr "Виконане переміщення не можна видалити"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:158
+#, elixir-autogen, elixir-format
+msgid "A cancelled transfer cannot be deleted"
+msgstr "Скасоване переміщення не можна видалити"
 
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:29
 #, elixir-autogen, elixir-format

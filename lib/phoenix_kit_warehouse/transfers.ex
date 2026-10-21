@@ -23,10 +23,16 @@ defmodule PhoenixKitWarehouse.Transfers do
   (no postings — nothing moved yet) or from `in_transit` (credits stock back
   to the source, reversing `ship_transfer/2`). It cannot be cancelled once
   `done` (received) or already `cancelled`.
+
+  Only a draft goes to the trash (`soft_delete_transfer/2`, back with
+  `restore_transfer/2`). A transfer trashed in transit by older code can
+  still be received or cancelled, so its goods do not stay in transit.
   """
 
   import Ecto.Query
 
+  alias PhoenixKitWarehouse.ActivityLog
+  alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.SourceKinds
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.Transfer
@@ -39,13 +45,21 @@ defmodule PhoenixKitWarehouse.Transfers do
 
   @doc """
   Lists non-deleted transfers ordered by number descending (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed transfers
+      instead (any status, same order), the content of the trash view.
   """
-  def list_transfers(_opts \\ []) do
+  def list_transfers(opts \\ []) do
     Transfer
-    |> where([t], is_nil(t.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([t], desc: t.number)
     |> repo().all()
   end
+
+  @doc "Counts the trashed transfers (any status)."
+  @spec count_trashed_transfers() :: non_neg_integer()
+  def count_trashed_transfers, do: DraftTrash.count_trashed(Transfer)
 
   @doc "Returns the transfer or raises."
   def get_transfer!(uuid), do: repo().get!(Transfer, uuid)
@@ -85,12 +99,25 @@ defmodule PhoenixKitWarehouse.Transfers do
 
   @doc """
   Updates a draft transfer. Returns `{:error, :not_draft}` when not in draft
-  status. Locations may be left/set to `nil` — see `create_transfer/1`.
+  status, `{:error, :deleted}` when it is in the trash. Locations may be
+  left/set to `nil` — see `create_transfer/1`.
+
+  Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
+  just the in-memory struct) so a stale tab cannot overwrite a transfer that
+  was shipped concurrently by another tab/user.
   """
-  def update_draft(%Transfer{status: "draft"} = transfer, attrs) do
-    transfer
-    |> Transfer.changeset(attrs)
-    |> repo().update()
+  def update_draft(%Transfer{status: "draft", uuid: uuid}, attrs) do
+    multi =
+      uuid
+      |> lock_status_step("draft", :not_draft)
+      |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
+        Transfer.changeset(locked, attrs)
+      end)
+
+    case repo().transaction(multi) do
+      {:ok, %{update: updated}} -> {:ok, updated}
+      {:error, _op, reason, _changes} -> {:error, reason}
+    end
   end
 
   def update_draft(%Transfer{}, _attrs), do: {:error, :not_draft}
@@ -100,7 +127,8 @@ defmodule PhoenixKitWarehouse.Transfers do
 
   `type` must be a kind registered via `PhoenixKitWarehouse.SourceKinds`.
   Pure metadata — does not touch `lines` and is not gated to draft status.
-  A duplicate `{type, uuid}` pair is a no-op.
+  A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
+  a document in the trash.
   """
   def add_source_ref(%Transfer{} = transfer, type, uuid) do
     if registered_kind?(type) do
@@ -110,9 +138,7 @@ defmodule PhoenixKitWarehouse.Transfers do
         ((transfer.source_refs || []) ++ [new_ref])
         |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-      transfer
-      |> Transfer.changeset(%{source_refs: refs})
-      |> repo().update()
+      update_source_refs(transfer, refs)
     else
       {:error, :invalid_ref_type}
     end
@@ -122,14 +148,21 @@ defmodule PhoenixKitWarehouse.Transfers do
 
   @doc """
   Detaches a traceability reference from a transfer. No-op when the
-  `{type, uuid}` pair isn't present.
+  `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
+  document in the trash.
   """
   def remove_source_ref(%Transfer{} = transfer, type, uuid) do
     refs = Enum.reject(transfer.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
+    update_source_refs(transfer, refs)
+  end
+
+  # The trash is read from the row (locked), not from the struct, which may be
+  # a tab behind.
+  defp update_source_refs(transfer, refs) do
     transfer
     |> Transfer.changeset(%{source_refs: refs})
-    |> repo().update()
+    |> then(&DraftTrash.update_unless_trashed(Transfer, &1))
   end
 
   # ---------------------------------------------------------------------------
@@ -158,7 +191,8 @@ defmodule PhoenixKitWarehouse.Transfers do
   - Lines with transfer_quantity == 0 contribute no stock change.
   - Flips status -> "in_transit", sets shipped_at and performed_by_uuid.
 
-  Returns `{:error, :not_draft}` for non-draft transfers.
+  Returns `{:error, :not_draft}` for non-draft transfers and
+  `{:error, :deleted}` for a draft in the trash.
   """
   def ship_transfer(%Transfer{status: status}, _performed_by_uuid) when status != "draft" do
     {:error, :not_draft}
@@ -347,7 +381,8 @@ defmodule PhoenixKitWarehouse.Transfers do
   - From `draft`: NO stock postings — the goods never physically moved, so
     cancelling just locks the row FOR UPDATE (re-checking status == "draft",
     guarding against a concurrent ship) and flips status -> "cancelled" via
-    `Transfer.cancel_changeset/2`.
+    `Transfer.cancel_changeset/2`. A draft in the trash answers
+    `{:error, :deleted}`.
   - From `in_transit`: reverses the `ship_transfer/2` posting. Locks the row
     FOR UPDATE (re-checking status == "in_transit") and, for each line with
     transfer_quantity > 0, credits the quantity BACK to `source_location_uuid`
@@ -434,17 +469,43 @@ defmodule PhoenixKitWarehouse.Transfers do
   # Soft delete
   # ---------------------------------------------------------------------------
 
-  @doc "Soft-deletes a draft transfer. Returns {:error, :not_draft} for shipped/received/cancelled transfers."
-  def soft_delete_transfer(%Transfer{status: "draft"} = transfer, actor_uuid) do
-    transfer
-    |> Transfer.soft_delete_changeset(%{
-      deleted_at: DateTime.utc_now() |> DateTime.truncate(:second),
-      deleted_by_uuid: actor_uuid
-    })
-    |> repo().update()
+  @doc """
+  Soft-deletes a draft transfer (sends it to the trash).
+
+  Locks the row and moves it only while it is still a live draft in the
+  database, so a draft shipped in another tab is not trashed from a stale
+  struct. Returns `{:ok, transfer}`, `{:error, :not_draft}` for shipped,
+  received or cancelled transfers, `{:error, :deleted}` when it is already in
+  the trash and `{:error, :not_found}` for a row that no longer exists.
+  Logged as `warehouse.transfer.trashed` after the commit.
+  """
+  @spec soft_delete_transfer(Transfer.t(), Ecto.UUID.t() | nil) ::
+          {:ok, Transfer.t()} | {:error, :not_draft | :deleted | :not_found}
+  def soft_delete_transfer(%Transfer{status: "draft", uuid: uuid}, actor_uuid) do
+    with {:ok, trashed} <- DraftTrash.trash_one(Transfer, uuid, actor_uuid) do
+      ActivityLog.log_transfer_trashed(trashed, actor_uuid: actor_uuid, reason: "manual")
+      {:ok, trashed}
+    end
   end
 
   def soft_delete_transfer(%Transfer{}, _actor_uuid), do: {:error, :not_draft}
+
+  @doc """
+  Brings a trashed draft transfer back.
+
+  Returns `{:ok, transfer}`, `{:error, :not_deleted}` for a live one,
+  `{:error, :not_draft}` for a trashed transfer in another status (legacy; it
+  stays in the trash) or `{:error, :not_found}`. Logged as
+  `warehouse.transfer.restored` after the commit.
+  """
+  @spec restore_transfer(Transfer.t(), Ecto.UUID.t() | nil) ::
+          {:ok, Transfer.t()} | {:error, :not_deleted | :not_draft | :not_found}
+  def restore_transfer(%Transfer{uuid: uuid}, actor_uuid) do
+    with {:ok, restored} <- DraftTrash.restore_one(Transfer, uuid) do
+      ActivityLog.log_transfer_restored(restored, actor_uuid: actor_uuid)
+      {:ok, restored}
+    end
+  end
 
   # ---------------------------------------------------------------------------
   # Correction (note + storage_folder, any status)
@@ -477,18 +538,10 @@ defmodule PhoenixKitWarehouse.Transfers do
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  defp lock_status_step(uuid, expected_status, error) do
-    Ecto.Multi.run(Ecto.Multi.new(), :lock_status, fn repo, _changes ->
-      query =
-        from(t in Transfer,
-          where: t.uuid == ^uuid and t.status == ^expected_status,
-          lock: "FOR UPDATE"
-        )
-
-      case repo.one(query) do
-        nil -> {:error, error}
-        %Transfer{} = locked -> {:ok, locked}
-      end
-    end)
-  end
+  # Locks the row FOR UPDATE and asserts it is still in `expected_status`. A
+  # draft must also be out of the trash (a trashed one answers `:deleted`); an
+  # in-transit transfer is not checked against the trash, so one trashed by
+  # older code can still be received or cancelled.
+  defp lock_status_step(uuid, expected_status, error),
+    do: DraftTrash.lock_status_step(Transfer, uuid, expected_status, error)
 end

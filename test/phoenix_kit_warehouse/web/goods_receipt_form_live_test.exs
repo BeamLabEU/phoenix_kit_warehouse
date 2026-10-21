@@ -369,9 +369,10 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLiveTest do
       |> element("#gr-rcv-form-0")
       |> render_change(%{"index" => "0", "received_quantity" => "abc"})
 
-      html = render(lv)
-      assert html =~ ~s(id="gr-rcv-0")
-      refute html =~ "abc"
+      # The input's own value, not the whole page: uuids and session tokens on
+      # the page are hex/base64 and may contain "abc" by chance.
+      assert has_element?(lv, "#gr-rcv-0")
+      refute has_element?(lv, "#gr-rcv-0[value*='abc']")
     end
 
     test "ordered_quantity is shown as read-only on draft", %{conn: conn} do

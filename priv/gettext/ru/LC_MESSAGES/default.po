@@ -1063,10 +1063,10 @@ msgstr "Остаток"
 msgid "Only posted internal orders can create goods issues"
 msgstr "Создавать выдачи можно только из проведённых внутренних заказов"
 
-#: lib/phoenix_kit_warehouse/web/trash_messages.ex:17
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:38
 #, elixir-autogen, elixir-format
-msgid "%{document} restored from the trash."
-msgstr "%{document} восстановлен из корзины."
+msgid "Restored from the trash: %{document}."
+msgstr "Восстановлено из корзины: %{document}."
 
 #: lib/phoenix_kit_warehouse/web/components/trash_tabs.ex:29
 #, elixir-autogen, elixir-format
@@ -1113,6 +1113,11 @@ msgstr "Не удалось восстановить документ"
 #, elixir-autogen, elixir-format
 msgid "Moved to the trash: %{numbers}."
 msgstr "Перемещены в корзину: %{numbers}."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:62
+#, elixir-autogen, elixir-format
+msgid "Goods issues exceed the order for: %{numbers} — check the lines."
+msgstr "Выдачи превышают заказ по: %{numbers} — проверьте строки."
 
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:33
 #, elixir-autogen, elixir-format
@@ -2118,6 +2123,70 @@ msgstr "Сначала укажите склад по умолчанию в на
 #, elixir-autogen, elixir-format
 msgid "External ref %{ref} is already used by a posted goods issue."
 msgstr "Внешняя ссылка %{ref} уже используется проведённой выдачей."
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:125
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:140
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:164
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:49
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:69
+#, elixir-autogen, elixir-format
+msgid "Move to trash"
+msgstr "В корзину"
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:162
+#, elixir-autogen, elixir-format
+msgid "Move to the trash?"
+msgstr "Переместить в корзину?"
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:170
+#, elixir-autogen, elixir-format
+msgid "Move to the trash: %{document}. The document can be restored on the Trash tab."
+msgstr "В корзину: %{document}. Документ можно восстановить на вкладке «Корзина»."
+
+#: lib/phoenix_kit_warehouse/web/components/trash_action.ex:166
+#, elixir-autogen, elixir-format
+msgid "Unsaved changes in the form will not be saved."
+msgstr "Несохранённые изменения формы не сохранятся."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:34
+#, elixir-autogen, elixir-format
+msgid "Moved to the trash: %{document}."
+msgstr "Перемещено в корзину: %{document}."
+
+#: lib/phoenix_kit_warehouse/web/trash_messages.ex:30
+#, elixir-autogen, elixir-format
+msgid "Inventory #%{number}"
+msgstr "Инвентаризация #%{number}"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:235
+#, elixir-autogen, elixir-format
+msgid "The document is already in the trash"
+msgstr "Документ уже в корзине"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:236
+#, elixir-autogen, elixir-format
+msgid "This document cannot be deleted"
+msgstr "Этот документ нельзя удалить"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:149
+#, elixir-autogen, elixir-format
+msgid "A posted document cannot be deleted"
+msgstr "Проведённый документ нельзя удалить"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:152
+#, elixir-autogen, elixir-format
+msgid "A transfer in transit cannot be deleted — cancel it first"
+msgstr "Перемещение в пути нельзя удалить — сначала отмените его"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:155
+#, elixir-autogen, elixir-format
+msgid "A completed transfer cannot be deleted"
+msgstr "Выполненное перемещение нельзя удалить"
+
+#: lib/phoenix_kit_warehouse/web/trash_actions.ex:158
+#, elixir-autogen, elixir-format
+msgid "A cancelled transfer cannot be deleted"
+msgstr "Отменённое перемещение нельзя удалить"
 
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:29
 #, elixir-autogen, elixir-format

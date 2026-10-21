@@ -34,13 +34,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
-  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, WarehouseBrowser}
-  alias PhoenixKitWarehouse.Web.ItemSelectorScope
+  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.{ItemSelectorScope, TrashActions, TrashMessages}
 
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitCatalogue.Web.Components.ItemSelectorModal
+
+  # Events that change the stocktake (its count sheet, warehouse, responsible
+  # people, posting). A stocktake in the trash answers none of them; the
+  # buttons are hidden, this is for a stale event.
+  @trash_blocked ~w(open_item_selector remove_line set_counted set_price set_sum
+                    toggle_track_value set_location confirm_location_change set_responsibility
+                    save_draft post save_correction repost)
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -83,6 +90,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:selectable_users, [])
       |> assign(:location_name, nil)
       |> assign(:page_title, dgettext("default", "Stocktake"))
+      |> assign(:deleted_by_name, nil)
+      |> assign(:trash_candidate, nil)
       |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
@@ -247,6 +256,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       |> assign(:selectable_users, selectable_users)
       |> assign(:location_name, resolve_location_name(doc.location_uuid))
       |> assign(:stock_map, StockLedger.stock_map_for_location(doc.location_uuid))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(doc))
       |> assign(:page_title, dgettext("default", "Stocktake #%{n}", n: doc.number))
 
     # Initialise the edit buffer only when first opening this document. Preserves
@@ -254,6 +264,20 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     # lines) across tab navigation within the same document.
     if same_doc?, do: socket, else: assign_edit_buffer(socket, doc, locale)
   end
+
+  # Reads the stocktake again, buffer included: what the person had typed is
+  # not what the stored (possibly trashed) stocktake holds.
+  defp reload_doc(socket) do
+    uuid = socket.assigns.doc.uuid
+
+    socket
+    |> assign(:doc, nil)
+    |> load_doc_into_socket(uuid, socket.assigns.locale)
+  end
+
+  # A write found the stocktake in the trash: say so and draw the stored
+  # stocktake, not the unsaved buffer.
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_doc/1)
 
   # (Re)initialises the editable buffer from a document. Called on first open and
   # explicitly after repost (to pick up the freshly audited lines).
@@ -287,9 +311,17 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   # File folder resolution
   # ---------------------------------------------------------------------------
 
+  # The Files tab skipped the folder lookup while the stocktake was in the
+  # trash; a restore makes up for it, so the tab does not stay empty.
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
+
   defp maybe_start_files_folder_resolution(socket) do
     cond do
       not is_nil(socket.assigns.files_scope_folder_uuid) ->
+        socket
+
+      socket.assigns.doc.deleted_at != nil ->
         socket
 
       not connected?(socket) ->
@@ -307,6 +339,50 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
 
         assign(socket, :files_folder_loading, true)
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # A stocktake in the trash
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event(event, _params, %{assigns: %{doc: %{deleted_at: %DateTime{}}}} = socket)
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(
+           socket,
+           :doc,
+           &(&1 |> reset_location_confirm() |> reload_doc()),
+           &resume_files_tab/1
+         )}
+
+  # "Move to trash" of the form's own stocktake (TrashActions); the uuid is
+  # the form's, not the browser's. After the move the form is drawn as trashed.
+  def handle_event(event, _params, %{assigns: %{doc: nil}} = socket)
+      when event in ~w(request_trash restore) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
+  def handle_event("request_trash", _params, socket) do
+    {:noreply,
+     TrashActions.request_trash(socket, :inventory, socket.assigns.doc.uuid, &reload_doc/1)}
+  end
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :inventory, &reload_doc/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
+
+  def handle_event("restore", _params, socket) do
+    {:noreply,
+     TrashActions.restore(
+       socket,
+       :inventory,
+       socket.assigns.doc.uuid,
+       &(&1 |> reload_doc() |> resume_files_tab())
+     )}
   end
 
   # ---------------------------------------------------------------------------
@@ -486,6 +562,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
          |> reset_location_confirm()
          |> put_flash(:info, dgettext("default", "Warehouse changed — count sheet re-seeded"))}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> reset_location_confirm() |> trashed_meanwhile()}
+
       {:error, _changeset} ->
         {:noreply,
          socket
@@ -562,6 +641,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
              |> assign(:doc, updated_doc)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
 
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
+
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
         end
@@ -601,6 +683,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
       {:error, :not_draft} ->
         {:noreply,
          put_flash(socket, :error, dgettext("default", "Document is already conducted"))}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to conduct stocktake"))}
@@ -763,9 +848,15 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     assigns =
       assigns
       |> assign(:posted?, assigns.doc && assigns.doc.status == "posted")
+      |> assign(:deleted?, !!(assigns.doc && assigns.doc.deleted_at))
       |> assign(:doc_uuid, assigns.doc && assigns.doc.uuid)
 
-    assigns = assign(assigns, :editable?, !assigns.posted? || assigns.admin?)
+    # Posted stocktakes stay editable for an admin; trashed ones are shown, not
+    # edited.
+    assigns =
+      assigns
+      |> assign(:read_only?, assigns.posted? || assigns.deleted?)
+      |> assign(:editable?, (!assigns.posted? || assigns.admin?) && !assigns.deleted?)
 
     # Grand total value across all lines (shown next to the Count sheet title
     # only when track_value is on).
@@ -798,8 +889,13 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
     >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
       <div class="flex flex-wrap items-center justify-end gap-2">
+        <TrashAction.trash_button
+          :if={@doc && !@deleted?}
+          id_prefix="inv"
+          reason={TrashActions.blocked_reason(@doc)}
+        />
         <%!-- Draft state: Save draft + Conduct --%>
-        <%= if !@posted? and @active_tab in [:general, :items] do %>
+        <%= if !@read_only? and @active_tab in [:general, :items] do %>
           <button
             type="button"
             phx-click="save_draft"
@@ -817,7 +913,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           </button>
         <% end %>
         <%!-- Posted + admin: correction + repost + badge --%>
-        <%= if @posted? and @admin? and @active_tab in [:general, :items] do %>
+        <%= if @posted? and not @deleted? and @admin? and @active_tab in [:general, :items] do %>
           <button
             type="button"
             phx-click="save_correction"
@@ -858,7 +954,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           {dgettext("default", "Items")}
         </.link>
         <.link
-          :if={@doc_uuid}
+          :if={@doc_uuid && !@deleted?}
           patch={Routes.path("/admin/warehouse/inventory/#{@doc_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
@@ -875,6 +971,14 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           </span>
         </.link>
       </div>
+
+      <%!-- Trashed stocktake: say so, offer the way back (drafts only) --%>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="inv"
+        document={@doc}
+        deleted_by={@deleted_by_name}
+      />
 
       <%!-- Posted info banner (non-admin only: admin can still edit) --%>
       <%= if @posted? and not @admin? and @active_tab == :general do %>
@@ -968,7 +1072,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
                     {dgettext("default", "Warehouse (location)")}
                   </dt>
                   <dd class="mt-0.5">
-                    <%= if !@posted? and warehouse_options?(@warehouses) do %>
+                    <%= if !@read_only? and warehouse_options?(@warehouses) do %>
                       <form phx-change="set_location" phx-submit="set_location">
                         <select name="location_uuid" class="select select-sm">
                           <%= for warehouse <- @warehouses do %>
@@ -999,14 +1103,14 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
                   label={dgettext("default", "Responsible")}
                   field_name="performed_by_uuid"
                   selected_uuid={@doc.performed_by_uuid}
-                  admin?={@admin?}
+                  admin?={@admin? and not @deleted?}
                   selectable_users={@selectable_users}
                 />
                 <.responsibility_field
                   label={dgettext("default", "Creator")}
                   field_name="created_by_uuid"
                   selected_uuid={@doc.created_by_uuid}
-                  admin?={@admin?}
+                  admin?={@admin? and not @deleted?}
                   selectable_users={@selectable_users}
                 />
               </div>
@@ -1075,7 +1179,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
                   <span class="loading loading-spinner loading-md" />
                   <span class="ml-2">{dgettext("default", "Loading files...")}</span>
                 </div>
-              <% is_nil(@files_scope_folder_uuid) -> %>
+              <% @deleted? or is_nil(@files_scope_folder_uuid) -> %>
                 <div class="alert alert-warning">
                   {dgettext("default", "Files are not available for this inventory yet.")}
                 </div>
@@ -1133,6 +1237,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           </button>
         </:actions>
       </.modal>
+
+      <TrashAction.trash_confirm id_prefix="inv" candidate={@trash_candidate} form />
     </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """

@@ -40,11 +40,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
     ColumnModal,
     FilterChips,
     SetupNotice,
+    TrashAction,
     TrashTabs,
     WarehouseHeader
   }
 
-  alias PhoenixKitWarehouse.Web.TrashMessages
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages}
   alias PhoenixKitWarehouse.Web.UserNames
 
   on_mount({__MODULE__, :self_wrapped_layout})
@@ -66,6 +67,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:orders, [])
       |> assign(:trash_count, 0)
+      |> assign(:trash_candidate, nil)
       |> ColumnManagement.assign_column_state(SupplierOrderColumnConfig)
 
     {:ok, socket}
@@ -128,6 +130,17 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
          |> assign_orders()}
     end
   end
+
+  # "Move to trash" of a row: the confirmation, then the move (TrashActions).
+  @impl true
+  def handle_event("request_trash", %{"uuid" => uuid}, socket),
+    do: {:noreply, TrashActions.request_trash(socket, :supplier_order, uuid, &assign_orders/1)}
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :supplier_order, &assign_orders/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
 
   @impl true
   def handle_event("search", %{"search" => search}, socket) do
@@ -214,6 +227,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
         number: order.number,
         status: order.status,
         status_label: status_label(order.status),
+        blocked_reason: TrashActions.blocked_reason(order),
         supplier_uuid: order.supplier_uuid,
         supplier_name: supplier && supplier.name,
         internal_order_uuid: order.internal_order_uuid,
@@ -351,7 +365,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
 
               Enum.map(@selected_columns, fn col ->
                 %{label: column_label(meta_map, col), value: render_card_value(col, entry)}
-              end) ++ trash_card_fields(@view, entry)
+              end) ++ TrashMessages.card_fields(@view, entry)
             end
           }
         >
@@ -428,6 +442,17 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
               <span class="hidden sm:inline">{dgettext("default", "Columns")}</span>
             </button>
           </:toolbar_actions>
+
+          <:card_actions :let={entry}>
+            <div class="relative z-10">
+              <TrashAction.row_menu
+                id_prefix="so-card"
+                entry={entry}
+                view={@view}
+                href={PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders/#{entry.uuid}")}
+              />
+            </div>
+          </:card_actions>
 
           <:card_header :let={entry}>
             <.link
@@ -512,30 +537,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
                   </.table_default_cell>
                 <% end %>
                 <.table_default_cell class="relative z-10 w-12">
-                  <.table_row_menu id={"so-menu-#{entry.uuid}"}>
-                    <.table_row_menu_link
-                      navigate={
-                        PhoenixKit.Utils.Routes.path(
-                          "/admin/warehouse/supplier-orders/#{entry.uuid}"
-                        )
-                      }
-                      icon={if @view == "trash", do: "hero-eye", else: "hero-pencil-square"}
-                      label={
-                        if @view == "trash",
-                          do: dgettext("default", "Open"),
-                          else: dgettext("default", "Edit")
-                      }
-                    />
-                    <.table_row_menu_button
-                      :if={@view == "trash" and entry.status == "draft"}
-                      id={"so-restore-#{entry.uuid}"}
-                      phx-click="restore"
-                      phx-disable-with={dgettext("default", "Restoring...")}
-                      phx-value-uuid={entry.uuid}
-                      icon="hero-arrow-uturn-left"
-                      label={dgettext("default", "Restore")}
-                    />
-                  </.table_row_menu>
+                  <TrashAction.row_menu
+                    id_prefix="so"
+                    entry={entry}
+                    view={@view}
+                    href={PhoenixKit.Utils.Routes.path("/admin/warehouse/supplier-orders/#{entry.uuid}")}
+                  />
                 </.table_default_cell>
               </.table_default_row>
             <% end %>
@@ -550,6 +557,8 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
           temp_selected={@temp_selected_columns}
           temp_active_filters={@temp_active_filters}
         />
+
+        <TrashAction.trash_confirm id_prefix="so" candidate={@trash_candidate} />
       </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
@@ -655,15 +664,6 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderIndexLive do
   defp render_card_value("created_by", entry), do: entry.created_by
   defp render_card_value("performed_by", entry), do: entry.performed_by
   defp render_card_value(_col, _entry), do: "—"
-
-  defp trash_card_fields("trash", entry) do
-    [
-      %{label: dgettext("default", "Deleted"), value: fmt_date(entry.deleted_at)},
-      %{label: dgettext("default", "Deleted by"), value: entry.deleted_by}
-    ]
-  end
-
-  defp trash_card_fields(_view, _entry), do: []
 
   defp fmt_date(nil), do: "—"
   defp fmt_date(dt), do: Calendar.strftime(dt, "%d.%m.%Y")

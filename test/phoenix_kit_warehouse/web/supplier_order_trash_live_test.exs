@@ -415,7 +415,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderTrashLiveTest do
       refute has_element?(lv, "#so-trash-banner")
       assert has_element?(lv, "button[phx-click=save_draft]")
       assert has_element?(lv, "button[phx-click=post]")
-      assert html =~ "restored"
+      assert html =~ "Restored from the trash"
     end
 
     test "Restore on the Files tab starts looking for the storage folder",

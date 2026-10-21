@@ -19,6 +19,8 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   import Ecto.Query
 
+  alias PhoenixKitWarehouse.ActivityLog
+  alias PhoenixKitWarehouse.DraftTrash
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.PostingSupport
@@ -34,13 +36,21 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   @doc """
   Lists non-deleted goods receipts ordered by number descending (newest first).
+
+  `opts`:
+    * `:trashed` (default `false`) - `true` lists the trashed receipts instead
+      (any status, same order), the content of the trash view.
   """
-  def list_goods_receipts(_opts \\ []) do
+  def list_goods_receipts(opts \\ []) do
     GoodsReceipt
-    |> where([r], is_nil(r.deleted_at))
+    |> DraftTrash.scope(Keyword.get(opts, :trashed, false))
     |> order_by([r], desc: r.number)
     |> repo().all()
   end
+
+  @doc "Counts the trashed goods receipts (any status)."
+  @spec count_trashed_goods_receipts() :: non_neg_integer()
+  def count_trashed_goods_receipts, do: DraftTrash.count_trashed(GoodsReceipt)
 
   @doc "Returns the goods receipt or raises."
   def get_goods_receipt!(uuid), do: repo().get!(GoodsReceipt, uuid)
@@ -334,7 +344,7 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   @doc """
   Updates a draft goods receipt. Returns `{:error, :not_draft}` when not in
-  draft status.
+  draft status, `{:error, :deleted}` when it is in the trash.
 
   Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
   just the in-memory struct) so a stale tab cannot overwrite a receipt that
@@ -360,7 +370,8 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
   `"internal_order"` and `"supplier_order"` are always valid (intra-module).
   Any other `type` must be a kind registered via `PhoenixKitWarehouse.SourceKinds`.
   Pure metadata — does not touch `lines` and is not gated to draft status.
-  A duplicate `{type, uuid}` pair is a no-op.
+  A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
+  a document in the trash.
   """
   def add_source_ref(%GoodsReceipt{} = receipt, type, uuid) do
     if valid_ref_type?(type) do
@@ -370,9 +381,7 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
         ((receipt.source_refs || []) ++ [new_ref])
         |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-      receipt
-      |> GoodsReceipt.changeset(%{source_refs: refs})
-      |> repo().update()
+      update_source_refs(receipt, refs)
     else
       {:error, :invalid_ref_type}
     end
@@ -383,14 +392,21 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
 
   @doc """
   Detaches a traceability reference from a goods receipt. No-op when the
-  `{type, uuid}` pair isn't present.
+  `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
+  document in the trash.
   """
   def remove_source_ref(%GoodsReceipt{} = receipt, type, uuid) do
     refs = Enum.reject(receipt.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
+    update_source_refs(receipt, refs)
+  end
+
+  # The trash is read from the row (locked), not from the struct, which may be
+  # a tab behind.
+  defp update_source_refs(receipt, refs) do
     receipt
     |> GoodsReceipt.changeset(%{source_refs: refs})
-    |> repo().update()
+    |> then(&DraftTrash.update_unless_trashed(GoodsReceipt, &1))
   end
 
   # ---------------------------------------------------------------------------
@@ -411,7 +427,8 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
     that moved stock.
   - Flips status → "posted", sets posted_at and performed_by_uuid.
 
-  Returns `{:error, :not_draft}` for non-draft receipts.
+  Returns `{:error, :not_draft}` for non-draft receipts and
+  `{:error, :deleted}` for one in the trash.
   """
   def post_goods_receipt(%GoodsReceipt{status: status}, _performed_by_uuid)
       when status != "draft" do
@@ -507,17 +524,43 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
   # Soft delete
   # ---------------------------------------------------------------------------
 
-  @doc "Soft-deletes a draft goods receipt. Returns {:error, :not_draft} for posted documents."
-  def soft_delete(%GoodsReceipt{status: "draft"} = receipt, actor_uuid) do
-    receipt
-    |> GoodsReceipt.soft_delete_changeset(%{
-      deleted_at: DateTime.utc_now() |> DateTime.truncate(:second),
-      deleted_by_uuid: actor_uuid
-    })
-    |> repo().update()
+  @doc """
+  Soft-deletes a draft goods receipt (sends it to the trash).
+
+  Locks the row and moves it only while it is still a live draft in the
+  database, so a draft posted in another tab is not trashed from a stale
+  struct. Returns `{:ok, receipt}`, `{:error, :not_draft}` for posted
+  documents, `{:error, :deleted}` when it is already in the trash and
+  `{:error, :not_found}` for a row that no longer exists. Logged as
+  `warehouse.goods_receipt.trashed` after the commit.
+  """
+  @spec soft_delete(GoodsReceipt.t(), Ecto.UUID.t() | nil) ::
+          {:ok, GoodsReceipt.t()} | {:error, :not_draft | :deleted | :not_found}
+  def soft_delete(%GoodsReceipt{status: "draft", uuid: uuid}, actor_uuid) do
+    with {:ok, trashed} <- DraftTrash.trash_one(GoodsReceipt, uuid, actor_uuid) do
+      ActivityLog.log_goods_receipt_trashed(trashed, actor_uuid: actor_uuid, reason: "manual")
+      {:ok, trashed}
+    end
   end
 
   def soft_delete(%GoodsReceipt{}, _actor_uuid), do: {:error, :not_draft}
+
+  @doc """
+  Brings a trashed draft goods receipt back.
+
+  Returns `{:ok, receipt}`, `{:error, :not_deleted}` for a live one,
+  `{:error, :not_draft}` for a trashed posted receipt (legacy; it stays in the
+  trash) or `{:error, :not_found}`. Logged as `warehouse.goods_receipt.restored`
+  after the commit.
+  """
+  @spec restore_goods_receipt(GoodsReceipt.t(), Ecto.UUID.t() | nil) ::
+          {:ok, GoodsReceipt.t()} | {:error, :not_deleted | :not_draft | :not_found}
+  def restore_goods_receipt(%GoodsReceipt{uuid: uuid}, actor_uuid) do
+    with {:ok, restored} <- DraftTrash.restore_one(GoodsReceipt, uuid) do
+      ActivityLog.log_goods_receipt_restored(restored, actor_uuid: actor_uuid)
+      {:ok, restored}
+    end
+  end
 
   # ---------------------------------------------------------------------------
   # Correction (note + storage_folder on posted)
@@ -552,18 +595,8 @@ defmodule PhoenixKitWarehouse.GoodsReceipts do
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  defp lock_status_step(uuid, expected_status, error) do
-    Ecto.Multi.run(Ecto.Multi.new(), :lock_status, fn repo, _changes ->
-      query =
-        from(r in GoodsReceipt,
-          where: r.uuid == ^uuid and r.status == ^expected_status,
-          lock: "FOR UPDATE"
-        )
-
-      case repo.one(query) do
-        nil -> {:error, error}
-        %GoodsReceipt{} = locked -> {:ok, locked}
-      end
-    end)
-  end
+  # Locks the row FOR UPDATE and asserts it is still in `expected_status` (a
+  # draft also out of the trash: a trashed one answers `:deleted`).
+  defp lock_status_step(uuid, expected_status, error),
+    do: DraftTrash.lock_status_step(GoodsReceipt, uuid, expected_status, error)
 end

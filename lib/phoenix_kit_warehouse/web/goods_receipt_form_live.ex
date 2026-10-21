@@ -34,11 +34,19 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.StorageFolders
   alias PhoenixKitWarehouse.SupplierOrders
-  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.Components.{CommentsPanel, TrashAction, WarehouseBrowser}
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages}
 
   alias PhoenixKit.Utils.Routes
   alias PhoenixKitCatalogue.Catalogue
   alias PhoenixKitWarehouse.CostProposals
+
+  # Events that change the receipt, its links or the catalogue prices it
+  # proposes. A receipt in the trash answers none of them; the buttons are
+  # hidden, this is for a stale event.
+  @trash_blocked ~w(set_received_qty receive_all set_location save_draft post save_correction
+                    update_price update_all_prices open_source_picker open_link_picker
+                    source_picker_confirm remove_source_ref)
 
   # ---------------------------------------------------------------------------
   # Lifecycle
@@ -79,6 +87,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       |> assign(:warehouses, StockLedger.list_warehouses())
       |> assign(:page_title, dgettext("default", "Goods Receipt"))
       |> assign(:price_proposals, [])
+      |> assign(:deleted_by_name, nil)
+      |> assign(:trash_candidate, nil)
       |> MediaBrowser.setup_uploads()
 
     {:ok, socket}
@@ -169,6 +179,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       |> assign(:location_name, location_name)
       |> assign(:supplier_order_ref, supplier_order_ref)
       |> assign(:refs_by_kind, refs_by_kind(receipt))
+      |> assign(:deleted_by_name, TrashActions.deleted_by_name(receipt))
       |> assign(
         :page_title,
         dgettext("default", "Goods Receipt #%{number}", number: receipt.number)
@@ -177,6 +188,20 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     socket = if same_receipt?, do: socket, else: assign_edit_buffer(socket, receipt)
     assign_price_proposals(socket)
   end
+
+  # Reads the receipt again, buffer included: what the person had typed is
+  # not what the stored (possibly trashed) receipt holds.
+  defp reload_receipt(socket) do
+    uuid = socket.assigns.receipt.uuid
+
+    socket
+    |> assign(:receipt, nil)
+    |> load_receipt_into_socket(uuid)
+  end
+
+  # A write found the receipt in the trash: say so and draw the stored
+  # receipt, not the unsaved buffer.
+  defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_receipt/1)
 
   defp assign_edit_buffer(socket, receipt) do
     socket
@@ -248,9 +273,17 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
   # File folder resolution
   # ---------------------------------------------------------------------------
 
+  # The Files tab skipped the folder lookup while the receipt was in the
+  # trash; a restore makes up for it, so the tab does not stay empty.
+  defp resume_files_tab(socket),
+    do: TrashActions.resume_files_tab(socket, &maybe_start_files_folder_resolution/1)
+
   defp maybe_start_files_folder_resolution(socket) do
     cond do
       not is_nil(socket.assigns.files_scope_folder_uuid) ->
+        socket
+
+      socket.assigns.receipt.deleted_at != nil ->
         socket
 
       not connected?(socket) ->
@@ -268,6 +301,50 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
         assign(socket, :files_folder_loading, true)
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # A receipt in the trash
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event(event, _params, %{assigns: %{receipt: %{deleted_at: %DateTime{}}}} = socket)
+      when event in @trash_blocked,
+      do:
+        {:noreply,
+         TrashActions.refuse_trashed(socket, :receipt, &reload_receipt/1, &resume_files_tab/1)}
+
+  # "Move to trash" of the form's own receipt (TrashActions); the uuid is the
+  # form's, not the browser's. After the move the form is drawn as trashed.
+  def handle_event(event, _params, %{assigns: %{receipt: nil}} = socket)
+      when event in ~w(request_trash restore) do
+    {:noreply, put_flash(socket, :error, TrashMessages.restore_error(:not_found))}
+  end
+
+  def handle_event("request_trash", _params, socket) do
+    {:noreply,
+     TrashActions.request_trash(
+       socket,
+       :goods_receipt,
+       socket.assigns.receipt.uuid,
+       &reload_receipt/1
+     )}
+  end
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :goods_receipt, &reload_receipt/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
+
+  def handle_event("restore", _params, socket) do
+    {:noreply,
+     TrashActions.restore(
+       socket,
+       :goods_receipt,
+       socket.assigns.receipt.uuid,
+       &(&1 |> reload_receipt() |> resume_files_tab())
+     )}
   end
 
   # ---------------------------------------------------------------------------
@@ -317,6 +394,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
          |> assign(:receipt, updated_receipt)
          |> assign(:lines, lines)
          |> put_flash(:info, dgettext("default", "All quantities set to ordered"))}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to update quantities"))}
@@ -478,6 +558,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
       {:error, _reason} ->
         {:noreply,
          socket
@@ -515,6 +598,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
         {:noreply, socket}
 
+      {:error, :deleted} ->
+        {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
       {:error, _reason} ->
         {:noreply,
          socket
@@ -535,6 +621,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
           |> assign(:refs_by_kind, refs_by_kind(updated_receipt))
 
         {:noreply, socket}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to remove link"))}
@@ -566,6 +655,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
              |> assign(:location_name, resolve_location_name(updated.location_uuid))
              |> put_flash(:info, dgettext("default", "Warehouse changed"))}
 
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
+
           {:error, _changeset} ->
             {:noreply,
              put_flash(socket, :error, dgettext("default", "Failed to change warehouse"))}
@@ -596,6 +688,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
              socket
              |> assign(:receipt, updated_receipt)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
+
+          {:error, :deleted} ->
+            {:noreply, trashed_meanwhile(socket)}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
@@ -632,6 +727,9 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     else
       {:error, :not_draft} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
+
+      {:error, :deleted} ->
+        {:noreply, trashed_meanwhile(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to post goods receipt"))}
@@ -831,7 +929,11 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     assigns =
       assigns
       |> assign(:posted?, assigns.receipt && assigns.receipt.status == "posted")
+      |> assign(:deleted?, !!(assigns.receipt && assigns.receipt.deleted_at))
       |> assign(:receipt_uuid, assigns.receipt && assigns.receipt.uuid)
+
+    # Posted and trashed receipts are shown, not edited.
+    assigns = assign(assigns, :read_only?, assigns.posted? || assigns.deleted?)
 
     assigns = assign_new(assigns, :supplier_order_ref, fn -> nil end)
 
@@ -849,8 +951,13 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
     >
     <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-4">
       <div class="flex flex-wrap items-center justify-end gap-2">
+        <TrashAction.trash_button
+          :if={@receipt && !@deleted?}
+          id_prefix="gr"
+          reason={TrashActions.blocked_reason(@receipt)}
+        />
         <%!-- Draft: Save draft + Post --%>
-        <%= if !@posted? and @active_tab in [:general, :lines] do %>
+        <%= if !@read_only? and @active_tab in [:general, :lines] do %>
           <button type="button" phx-click="save_draft" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save draft")}
           </button>
@@ -859,7 +966,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
           </button>
         <% end %>
         <%!-- Posted + admin: correction --%>
-        <%= if @posted? and @admin? and @active_tab == :general do %>
+        <%= if @posted? and not @deleted? and @admin? and @active_tab == :general do %>
           <button type="button" phx-click="save_correction" class="btn btn-ghost btn-sm">
             {dgettext("default", "Save correction")}
           </button>
@@ -886,7 +993,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
           {dgettext("default", "Lines")}
         </.link>
         <.link
-          :if={@receipt_uuid}
+          :if={@receipt_uuid && !@deleted?}
           patch={Routes.path("/admin/warehouse/goods-receipts/#{@receipt_uuid}/files")}
           class={["tab", @active_tab == :files && "tab-active"]}
         >
@@ -904,6 +1011,14 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
         </.link>
       </div>
 
+      <%!-- Trashed receipt: say so, offer the way back (drafts only) --%>
+      <TrashAction.trash_banner
+        :if={@deleted?}
+        id_prefix="gr"
+        document={@receipt}
+        deleted_by={@deleted_by_name}
+      />
+
       <%!-- Posted banner (non-admin) --%>
       <%= if @posted? and not @admin? do %>
         <div class="alert alert-success">
@@ -914,7 +1029,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
 
       <%!-- Tab: General --%>
       <%= if @active_tab == :general do %>
-        <%= if !@posted? do %>
+        <%= if !@read_only? do %>
           <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
               <form phx-change="set_note" phx-submit="set_note">
@@ -968,7 +1083,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                     {dgettext("default", "Warehouse (location)")}
                   </dt>
                   <dd class="mt-0.5">
-                    <%= if !@posted? and warehouse_options?(@warehouses) do %>
+                    <%= if !@read_only? and warehouse_options?(@warehouses) do %>
                       <form phx-change="set_location" phx-submit="set_location">
                         <select name="location_uuid" class="select select-sm">
                           <%= for warehouse <- @warehouses do %>
@@ -1009,16 +1124,19 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                   title={dgettext("default", "Customer orders")}
                   refs={(@refs_by_kind[:order] || []) ++ (@refs_by_kind[:sub_order] || [])}
                   link_kind="order"
+                  read_only={@deleted?}
                 />
                 <.ref_group
                   title={dgettext("default", "Supplier orders")}
                   refs={@refs_by_kind[:supplier_order] || []}
                   link_kind="supplier_order"
+                  read_only={@deleted?}
                 />
                 <.ref_group
                   title={dgettext("default", "Internal orders")}
                   refs={@refs_by_kind[:internal_order] || []}
                   link_kind="internal_order"
+                  read_only={@deleted?}
                 />
                 <%= if @receipt.inserted_at do %>
                   <div>
@@ -1038,7 +1156,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                     </dd>
                   </div>
                 <% end %>
-                <%= if @receipt.note && @posted? do %>
+                <%= if @receipt.note && @read_only? do %>
                   <div>
                     <dt class="text-base-content/60 font-medium">
                       {dgettext("default", "Note")}
@@ -1048,7 +1166,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                 <% end %>
               </dl>
               <%!-- Note edit on posted (admin only) --%>
-              <%= if @posted? and @admin? do %>
+              <%= if @posted? and not @deleted? and @admin? do %>
                 <div class="divider my-1"></div>
                 <div class="text-sm">
                   <label class="text-base-content/60 font-medium block mb-1">
@@ -1079,7 +1197,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
           <div class="card-body p-4">
             <div class="flex items-center justify-between gap-2 mb-2">
               <h2 class="card-title text-base">{dgettext("default", "Receipt Lines")}</h2>
-              <%= if !@posted? do %>
+              <%= if !@read_only? do %>
                 <div class="flex items-center gap-2">
                   <button
                     type="button"
@@ -1105,11 +1223,11 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                 <span>{dgettext("default", "Lines are read-only on a posted goods receipt.")}</span>
               </div>
             <% end %>
-            <.goods_receipt_lines_table lines={@lines} posted?={@posted?} />
+            <.goods_receipt_lines_table lines={@lines} posted?={@read_only?} />
           </div>
         </div>
         <%!-- Purchase price proposals card (posted receipts with a supplier only) --%>
-        <%= if @posted? and @price_proposals != [] do %>
+        <%= if @posted? and not @deleted? and @price_proposals != [] do %>
           <.price_proposals_card
             proposals={@price_proposals}
             admin?={@admin?}
@@ -1127,7 +1245,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
                   <span class="loading loading-spinner loading-md" />
                   <span class="ml-2">{dgettext("default", "Loading files...")}</span>
                 </div>
-              <% is_nil(@files_scope_folder_uuid) -> %>
+              <% @deleted? or is_nil(@files_scope_folder_uuid) -> %>
                 <div class="alert alert-warning">
                   {dgettext("default", "Files are not available for this goods receipt yet.")}
                 </div>
@@ -1177,6 +1295,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
         selected_uuids={@source_picker_selected_uuids}
         search_query={@source_picker_query}
       />
+
+      <TrashAction.trash_confirm id_prefix="gr" candidate={@trash_candidate} form />
     </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """
@@ -1185,6 +1305,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
   attr(:title, :string, required: true)
   attr(:refs, :list, required: true)
   attr(:link_kind, :string, required: true)
+  attr(:read_only, :boolean, default: false)
 
   defp ref_group(assigns) do
     ~H"""
@@ -1192,6 +1313,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
       <dt class="text-base-content/60 font-medium flex items-center gap-1">
         {@title}
         <button
+          :if={!@read_only}
           type="button"
           phx-click="open_link_picker"
           phx-value-kind={@link_kind}
@@ -1209,6 +1331,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsReceiptFormLive do
               {ref.label}
             </.link>
             <button
+              :if={!@read_only}
               type="button"
               phx-click="remove_source_ref"
               phx-value-type={ref.kind}

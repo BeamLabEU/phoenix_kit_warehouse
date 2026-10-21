@@ -14,6 +14,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
   # leaving the page.
   use PhoenixKitWeb.Live.UrlState,
     params: [
+      view: [default: "active", url_key: "view", in: ~w(active trash)],
       search: [default: "", url_key: "q"],
       sort_by: [
         default: "number",
@@ -39,10 +40,12 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
     ColumnModal,
     FilterChips,
     SetupNotice,
+    TrashAction,
+    TrashTabs,
     WarehouseHeader
   }
 
-  alias PhoenixKitWarehouse.Web.UserNames
+  alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages, UserNames}
 
   on_mount({__MODULE__, :self_wrapped_layout})
 
@@ -65,6 +68,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
       |> SetupNotice.assign_setup_status()
       |> assign(:current_user_uuid, user_uuid)
       |> assign(:issues, [])
+      |> assign(:trash_count, 0)
+      |> assign(:trash_candidate, nil)
       |> ColumnManagement.assign_column_state(GoodsIssueColumnConfig)
 
     {:ok, socket}
@@ -96,6 +101,26 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
   # ---------------------------------------------------------------------------
   # Events
   # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_event("set_view", %{"view" => view}, socket) do
+    {:noreply, push_url_state(socket, view: view)}
+  end
+
+  # The trash view: a trashed draft comes back; "Move to trash" of a row asks
+  # for the confirmation first (TrashActions).
+  @impl true
+  def handle_event("restore", %{"uuid" => uuid}, socket),
+    do: {:noreply, TrashActions.restore(socket, :goods_issue, uuid, &assign_issues/1)}
+
+  def handle_event("request_trash", %{"uuid" => uuid}, socket),
+    do: {:noreply, TrashActions.request_trash(socket, :goods_issue, uuid, &assign_issues/1)}
+
+  def handle_event("confirm_trash", _params, socket),
+    do: {:noreply, TrashActions.confirm_trash(socket, :goods_issue, &assign_issues/1)}
+
+  def handle_event("cancel_trash", _params, socket),
+    do: {:noreply, TrashActions.cancel_trash(socket)}
 
   # `replace: true` — debounced box, so a typed-out query would otherwise leave
   # one history entry per pause and Back would walk the search string backwards.
@@ -132,17 +157,20 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
 
   defp assign_issues(socket) do
     issues =
-      GoodsIssues.list_goods_issues()
+      GoodsIssues.list_goods_issues(trashed: socket.assigns.view == "trash")
       |> enrich_issues()
       |> apply_global_search(socket.assigns.search)
       |> apply_column_filters(socket.assigns.active_filters, socket.assigns.filter_values)
       |> apply_sort(socket.assigns.sort_by, socket.assigns.sort_dir)
 
-    assign(socket, :issues, issues)
+    socket
+    |> assign(:issues, issues)
+    |> assign(:trash_count, GoodsIssues.count_trashed_goods_issues())
   end
 
   defp enrich_issues(issues) do
-    user_names = UserNames.resolve(issues)
+    user_names =
+      UserNames.resolve(issues, [:created_by_uuid, :performed_by_uuid, :deleted_by_uuid])
 
     issues_with_sub = Enum.map(issues, &{&1, sub_order_uuid_of(&1)})
 
@@ -163,10 +191,13 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
       %{
         uuid: issue.uuid,
         created_by: UserNames.label(user_names, issue.created_by_uuid),
+        deleted_at: issue.deleted_at,
+        deleted_by: UserNames.label(user_names, issue.deleted_by_uuid),
         performed_by: UserNames.label(user_names, issue.performed_by_uuid),
         number: issue.number,
         status: issue.status,
         status_label: status_label(issue.status),
+        blocked_reason: TrashActions.blocked_reason(issue),
         reason: issue.reason,
         reason_label: GoodsIssues.reason_label(issue.reason),
         external_ref: issue.external_ref,
@@ -295,6 +326,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
       <div class="flex flex-col mx-auto max-w-none sm:px-4 py-2 sm:py-6 gap-2">
         <WarehouseHeader.warehouse_header active={:goods_issues} />
         <SetupNotice.setup_notice status={@setup_status} />
+        <TrashTabs.trash_tabs prefix="gi" view={@view} trash_count={@trash_count} />
 
         <.table_default
           id="goods-issues-table"
@@ -309,7 +341,7 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
 
               Enum.map(@selected_columns, fn col ->
                 %{label: column_label(meta_map, col), value: render_card_value(col, entry)}
-              end)
+              end) ++ TrashMessages.card_fields(@view, entry)
             end
           }
         >
@@ -387,6 +419,17 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
             </button>
           </:toolbar_actions>
 
+          <:card_actions :let={entry}>
+            <div class="relative z-10">
+              <TrashAction.row_menu
+                id_prefix="gi-card"
+                entry={entry}
+                view={@view}
+                href={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-issues/#{entry.uuid}")}
+              />
+            </div>
+          </:card_actions>
+
           <:card_header :let={entry}>
             <.link
               navigate={
@@ -423,6 +466,14 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
                   <% end %>
                 </.table_default_header_cell>
               <% end %>
+              <%= if @view == "trash" do %>
+                <.table_default_header_cell>
+                  {dgettext("default", "Deleted")}
+                </.table_default_header_cell>
+                <.table_default_header_cell>
+                  {dgettext("default", "Deleted by")}
+                </.table_default_header_cell>
+              <% end %>
               <.table_default_header_cell class="w-12"></.table_default_header_cell>
             </.table_default_row>
           </.table_default_header>
@@ -431,37 +482,46 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
             <%= if @issues == [] do %>
               <.table_default_row hover={false}>
                 <.table_default_cell
-                  colspan={length(@selected_columns) + 1}
+                  colspan={length(@selected_columns) + if(@view == "trash", do: 3, else: 1)}
                   class="text-center py-10 text-base-content/50"
                 >
                   <.icon
                     name="hero-arrow-up-on-square"
                     class="h-10 w-10 mx-auto mb-2 opacity-50"
                   />
-                  <div class="text-sm font-medium">{dgettext("default", "No goods issues yet")}</div>
+                  <div id={@view == "trash" && "gi-trash-empty"} class="text-sm font-medium">
+                    <%= if @view == "trash" do %>
+                      {dgettext("default", "The trash is empty")}
+                    <% else %>
+                      {dgettext("default", "No goods issues yet")}
+                    <% end %>
+                  </div>
                 </.table_default_cell>
               </.table_default_row>
             <% end %>
             <%= for entry <- @issues do %>
-              <.table_default_row class="transform-gpu relative cursor-pointer">
+              <.table_default_row id={"gi-row-#{entry.uuid}"} class="transform-gpu relative cursor-pointer">
                 <% meta_map = GoodsIssueColumnConfig.column_metadata_map() %>
                 <%= for col <- @selected_columns, meta = Map.get(meta_map, col), meta do %>
                   <.table_default_cell class={cell_class(col, meta)}>
                     {render_cell(col, entry)}
                   </.table_default_cell>
                 <% end %>
+                <%= if @view == "trash" do %>
+                  <.table_default_cell id={"gi-deleted-at-#{entry.uuid}"} class="text-sm">
+                    {fmt_date(entry.deleted_at)}
+                  </.table_default_cell>
+                  <.table_default_cell id={"gi-deleted-by-#{entry.uuid}"} class="text-sm">
+                    {entry.deleted_by}
+                  </.table_default_cell>
+                <% end %>
                 <.table_default_cell class="relative z-10 w-12">
-                  <.table_row_menu id={"gi-menu-#{entry.uuid}"}>
-                    <.table_row_menu_link
-                      navigate={
-                        PhoenixKit.Utils.Routes.path(
-                          "/admin/warehouse/goods-issues/#{entry.uuid}"
-                        )
-                      }
-                      icon="hero-pencil-square"
-                      label={dgettext("default", "Edit")}
-                    />
-                  </.table_row_menu>
+                  <TrashAction.row_menu
+                    id_prefix="gi"
+                    entry={entry}
+                    view={@view}
+                    href={PhoenixKit.Utils.Routes.path("/admin/warehouse/goods-issues/#{entry.uuid}")}
+                  />
                 </.table_default_cell>
               </.table_default_row>
             <% end %>
@@ -476,6 +536,8 @@ defmodule PhoenixKitWarehouse.Web.GoodsIssueIndexLive do
           temp_selected={@temp_selected_columns}
           temp_active_filters={@temp_active_filters}
         />
+
+        <TrashAction.trash_confirm id_prefix="gi" candidate={@trash_candidate} />
       </div>
     </PhoenixKitWeb.Components.LayoutWrapper.app_layout>
     """

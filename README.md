@@ -50,15 +50,30 @@ Posting semantics worth knowing:
 
 ### Drafts, the trash and one draft per source
 
-A draft internal order or supplier order that is deleted goes to the **trash**
-(a soft delete, `deleted_at`). The lists have an *Active / Trash (N)* tab pair
-(`?view=trash`; the Trash tab shows while it holds something) with the deletion
-date and who deleted the document, and a *Restore* action for drafts. A trashed
-document opens read-only with a banner; editing, posting, links, correction,
-the storage folder and the documents made from it are unavailable. A posted
-document is never moved to the trash by the module and cannot be restored from
-it (legacy rows stay where they are). Saving or posting a document that was
-trashed meanwhile answers `{:error, :deleted}` (the forms show a flash).
+Every warehouse document (internal order, supplier order, goods receipt, goods
+issue, stocktake, transfer) that is a **draft** can be moved to the **trash** (a
+soft delete, `deleted_at`): *Move to trash* in the row menu of its list (the
+card view too) and in its form, after a confirmation. A document that may not
+go shows the item and the button disabled, with the reason (posted; for a
+transfer: in transit, done or cancelled). The lists have an *Active / Trash (N)*
+tab pair (`?view=trash`; the Trash tab shows while it holds something) with the
+deletion date and who deleted the document, and a *Restore* action for drafts.
+A trashed document opens read-only with a banner; editing, posting, links,
+correction, the storage folder and the documents made from it are unavailable.
+A posted document is never moved to the trash by the module and cannot be
+restored from it (legacy rows stay where they are). Saving or posting a
+document that was trashed meanwhile answers `{:error, :deleted}` (the forms
+show a flash). A trashed goods issue holds none of its internal orders, so
+another issue may import them meanwhile; restoring it is not refused, and the
+flash names the internal orders the issues now exceed
+(`GoodsIssues.overcommitted_internal_orders/1`).
+
+For a draft transfer, *Cancel* and *Move to trash* differ: *Cancel* closes it
+for good as a `cancelled` transfer that stays in the list, *Move to trash* hides
+the draft and *Restore* brings it back as a draft. A transfer in transit is
+cancelled (which credits the stock back to the source), not trashed. A transfer
+in transit that older code moved to the trash can still be received or
+cancelled, so its goods do not stay on the road.
 
 Hosts that want **one draft per source** use these functions:
 
@@ -85,9 +100,10 @@ config :phoenix_kit_warehouse, one_draft_per_source: true
 With it on, *Generate supplier orders* passes `supersede_drafts: true` (the
 button asks for confirmation when live drafts could be moved, and the flash
 names the ones that were), and *Restore* passes `swap: true`. Moves to the
-trash and back are logged as `warehouse.internal_order.trashed|restored` and
-`warehouse.supplier_order.trashed|restored` activities (after the transaction
-commits, subject to `:inventory_activity_logging`).
+trash and back are logged as `warehouse.<kind>.trashed|restored` activities
+(`internal_order`, `supplier_order`, `goods_receipt`, `goods_issue`,
+`inventory`, `transfer`; after the transaction commits, subject to
+`:inventory_activity_logging`).
 
 ### Programmatic posting
 
