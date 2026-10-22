@@ -3,7 +3,7 @@ defmodule PhoenixKitWarehouse.ColumnConfig do
   Shared column-registry engine for warehouse list LiveViews.
 
   Consolidates what were 6 near-byte-identical `*_column_config.ex` files in
-  Andi (`internal_order_column_config.ex`, `inventory_column_config.ex`,
+  the host application this was extracted from (`internal_order_column_config.ex`, `inventory_column_config.ex`,
   `stock_column_config.ex`, `supplier_order_column_config.ex`,
   `goods_issue_column_config.ex`, `goods_receipt_column_config.ex`) into one
   engine (`use PhoenixKitWarehouse.ColumnConfig, scope: "..."`) plus 6 short

@@ -6,7 +6,7 @@ defmodule PhoenixKitWarehouse.Test.Endpoint do
   app's endpoint and router (via `phoenix_kit_routes()`). For tests we spin
   up a tiny endpoint + router (`PhoenixKitWarehouse.Test.Router`) so
   `Phoenix.LiveViewTest` can drive our LiveViews through `live/2` with real
-  URLs, at the exact same `/admin/andi/warehouse/...` paths `admin_tabs/0`
+  URLs, at the exact same `/admin/warehouse/...` paths `admin_tabs/0`
   serves in production.
   """
 

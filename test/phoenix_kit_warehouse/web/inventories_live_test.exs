@@ -40,7 +40,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLiveTest do
   defp inventories_path, do: Routes.path("/admin/warehouse/inventories")
 
   defp create_catalogue! do
-    # Intentionally NOT ANDI-prefixed: the warehouse shows ALL active catalogues
+    # Intentionally NOT prefixed: the warehouse shows ALL active catalogues
     # (no prefix filter), like sub-orders — so a non-prefixed catalogue must appear.
     {:ok, cat} =
       Catalogue.create_catalogue(%{

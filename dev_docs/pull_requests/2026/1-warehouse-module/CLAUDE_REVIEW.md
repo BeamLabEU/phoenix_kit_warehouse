@@ -261,7 +261,7 @@ shows a UUID, not a resolved name. **Fix:** batch-resolve location names in the 
   use the tx repo — audit-only, harmless, but asymmetric.
 - **Doc drift:** `source_kinds.ex` moduledoc says `source_refs` is keyed `"kind"` but the persisted column uses
   `"type"` everywhere (the code is consistent; only the doc is wrong); `column_config/internal_orders.ex` moduledoc
-  omits `sub_order_*`/`note`. Leftover **`Andi.*`** references (the source app) remain in several comments/docs.
+  omits `sub_order_*`/`note`. Leftover references to the host app this was extracted from remain in several comments/docs.
 
 ---
 

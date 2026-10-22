@@ -5,7 +5,7 @@ defmodule PhoenixKitWarehouse.Web.StockLive do
   Two views, toggled per-user:
   - **Grouped** (default): read-only catalogue/category tree via
     `WarehouseBrowser.stock_sheet`.
-  - **Flat**: full table-parity view backed by `Andi.Warehouse.StockColumnConfig`
+  - **Flat**: full table-parity view backed by `PhoenixKitWarehouse.ColumnConfig.Stock`
     — global search, per-column filtering, sorting, and configurable columns.
 
   Both views share a **warehouse scope** selector, rendered next to the

@@ -1,7 +1,7 @@
 defmodule PhoenixKitWarehouse.Test.Router do
   @moduledoc """
   Minimal Router used by the LiveView test suite. Routes match the exact
-  URLs `admin_tabs/0` serves in production (`/admin/andi/warehouse/...`,
+  URLs `admin_tabs/0` serves in production (`/admin/warehouse/...`,
   both with the default-locale `/en` prefix and without any locale segment,
   which is what `PhoenixKit.Utils.Routes.path/1` yields on a single-language
   site), so `live/2` calls in tests work with exactly the same URLs the

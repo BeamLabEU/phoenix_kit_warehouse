@@ -3,15 +3,15 @@ defmodule PhoenixKitWarehouse.Web.Components.CommentsPanel do
   Presentation helper for warehouse document comment threads. `panel/1`
   embeds the ready-made `PhoenixKitComments.Web.CommentsComponent`.
 
-  Consolidates what were 5 near-identical files in Andi
-  (`AndiWeb.Components.{InternalOrder,GoodsIssue,GoodsReceipt,SupplierOrder,
-  Inventory}Comments`, under `lib/andi_web/components/` — distinct from the
+  Consolidates what were 5 near-identical files in the host
+  application this was extracted from (`{InternalOrder,GoodsIssue,GoodsReceipt,
+  SupplierOrder,Inventory}Comments` components — distinct from the
   5 *context* wrapper modules of the same base names that
   `PhoenixKitWarehouse.Comments` already consolidates) into one module
   parameterized by `kind`, mirroring `PhoenixKitWarehouse.Comments`' own
   `kind :: :goods_issue | :goods_receipt | :internal_order | :supplier_order
   | :inventory | :transfer` parameterization (`:transfer` added later,
-  Plan 4/T15 — no Andi predecessor).
+  Plan 4/T15 — no predecessor in the original host).
 
   Callers guard visibility with `PhoenixKitWarehouse.Comments.available?/0`.
   """

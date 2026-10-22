@@ -70,7 +70,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTest do
   end
 
   defp create_catalogue! do
-    # Intentionally NOT ANDI-prefixed: the warehouse shows ALL active catalogues
+    # Intentionally NOT prefixed: the warehouse shows ALL active catalogues
     # (no prefix filter), like sub-orders.
     {:ok, cat} =
       Catalogue.create_catalogue(%{

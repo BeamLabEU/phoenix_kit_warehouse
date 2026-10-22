@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.Comments do
   kind.
 
   Consolidates what were 5 near-byte-identical `*_comments.ex` wrapper
-  modules in Andi (`goods_issue_comments.ex`, `goods_receipt_comments.ex`,
+  modules in the host application this was extracted from (`goods_issue_comments.ex`, `goods_receipt_comments.ex`,
   `internal_order_comments.ex`, `supplier_order_comments.ex`,
   `inventory_comments.ex`) into one module parameterized by a `kind` atom.
   Every function returns a neutral value rather than raising when comments are
@@ -26,8 +26,8 @@ defmodule PhoenixKitWarehouse.Comments do
   `count_comments/2` — all three added in 0.2.8 — would raise. That gap is
   closed by the `>= 0.2.8` floor in `mix.exs`, not by any guard here.
 
-  `:transfer` was added later (Plan 4/T15) — transfers have no Andi
-  predecessor, but plug into the same `kind`-parameterized wrapper.
+  `:transfer` was added later (Plan 4/T15) — transfers have no
+  predecessor in the original host application, but plug into the same `kind`-parameterized wrapper.
   """
   @compile {:no_warn_undefined, PhoenixKitComments}
 
