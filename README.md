@@ -372,11 +372,11 @@ conducted as usual. What the module does around that:
   photographed again replaces its own part while another place adds to it; lines
   no photo saw are not touched. Posting keeps these keys.
 - **Two tabs.** Every write of the lines from the stocktake page (Save draft,
-  Apply, Conduct, the warehouse change) passes the fingerprint of the lines the
-  tab started from: a tab whose lines another tab has saved over is refused
-  instead of silently writing over them. `Inventories.update_draft/3` checks it
-  only when called with `base_fingerprint:`; without the option it behaves as
-  before.
+  Apply, Conduct, the warehouse change) passes the fingerprint of the warehouse
+  and lines the tab started from: a tab whose warehouse or lines another tab
+  has changed is refused instead of silently writing over them.
+  `Inventories.update_draft/3` checks it only when called with
+  `base_fingerprint:`; without the option it behaves as before.
 
 ### Other modules
 

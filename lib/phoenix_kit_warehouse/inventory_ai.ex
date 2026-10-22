@@ -626,14 +626,27 @@ defmodule PhoenixKitWarehouse.InventoryAI do
   (`"location_changed"`: its lines were seeded again), or the document was
   posted (`"posted"`). The task of a running run is not killed; its answer
   goes to `late_result`. Returns how many were closed.
+
+  `:keep_location_uuid` leaves runs of that warehouse open. The warehouse
+  change uses it because a run for the new warehouse can start after the
+  change commits, before this cleanup runs.
   """
-  @spec close_open_runs(Ecto.UUID.t(), term(), String.t()) :: non_neg_integer()
-  def close_open_runs(inventory_uuid, actor, reason) do
-    {_count, runs} =
+  @spec close_open_runs(Ecto.UUID.t(), term(), String.t(), keyword()) :: non_neg_integer()
+  def close_open_runs(inventory_uuid, actor, reason, opts \\ []) do
+    query =
       from(r in InventoryAIRun,
         where: r.inventory_uuid == ^inventory_uuid and r.status in ["running", "proposed"],
         select: r
       )
+
+    query =
+      case Keyword.get(opts, :keep_location_uuid) do
+        nil -> query
+        location_uuid -> from(r in query, where: r.location_uuid != ^location_uuid)
+      end
+
+    {_count, runs} =
+      query
       |> repo().update_all(
         set: [status: "discarded", decisions: discarded(actor, reason, nil), updated_at: now()]
       )

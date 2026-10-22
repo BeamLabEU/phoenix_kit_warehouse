@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Apply do
   §11.2, §11.6) - one transaction:
 
     1. the document row `FOR UPDATE`, a live draft (`:not_draft`, `:deleted`);
-    2. the fingerprint of its lines in the database equal to the tab's base
+    2. the fingerprint of its warehouse and lines equal to the tab's base
        (`:stale` - another tab saved meanwhile); the document still on the
        warehouse the run was read for (`:location_changed`);
     3. the run moved `proposed -> applied` by a compare-and-set

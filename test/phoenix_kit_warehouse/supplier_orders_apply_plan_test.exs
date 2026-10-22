@@ -747,6 +747,27 @@ defmodule PhoenixKitWarehouse.SupplierOrdersApplyPlanTest do
       end
     end
 
+    test "a target warehouse change within the same timestamp makes the preview stale" do
+      supplier = supplier!()
+      item = item_of!(supplier)
+      io = posted_io!([io_line(item, "10")])
+      draft = draft!(supplier, %{internal_order_uuid: io.uuid, lines: [so_line(item, "2")]})
+      plan = plan!(io)
+
+      Repo.update_all(from(o in SupplierOrder, where: o.uuid == ^draft.uuid),
+        set: [location_uuid: uuid()]
+      )
+
+      moved = reload(draft)
+      assert moved.updated_at == draft.updated_at
+
+      assert {:error, {:stale, _}} =
+               SupplierOrders.apply_plan(io.uuid, plan.fingerprint, %{}, nil)
+
+      assert reload(draft) == moved
+      assert length(live_orders(io)) == 1
+    end
+
     test "a closed link, an unlinked manufacturer or a new primary make the plan stale" do
       a = supplier!()
       b = supplier!()

@@ -157,7 +157,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   @doc """
   The version of a supplier order: a hash of what the form writes and shows -
-  `lines`, `source_refs`, `supplier_uuid`, `note`, `status`, `deleted_at`.
+  `lines`, `source_refs`, `supplier_uuid`, `location_uuid`, `internal_order_uuid`,
+  `note`, `status`, `deleted_at`. A delivery warehouse or primary source changed
+  elsewhere must be reviewed before a tab saves or posts the draft.
 
   The values go through JSON first, the way the database stores them (a
   `Decimal` becomes its string), and map keys are hashed in order, so the
@@ -167,7 +169,16 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   @spec draft_version(SupplierOrder.t()) :: String.t()
   def draft_version(%SupplierOrder{} = order) do
     order
-    |> Map.take([:lines, :source_refs, :supplier_uuid, :note, :status, :deleted_at])
+    |> Map.take([
+      :lines,
+      :source_refs,
+      :supplier_uuid,
+      :location_uuid,
+      :internal_order_uuid,
+      :note,
+      :status,
+      :deleted_at
+    ])
     |> Jason.encode!()
     |> Jason.decode!()
     |> :erlang.term_to_binary([:deterministic])

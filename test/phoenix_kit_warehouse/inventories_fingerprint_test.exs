@@ -53,13 +53,14 @@ defmodule PhoenixKitWarehouse.InventoriesFingerprintTest do
   end
 
   describe "fingerprint/1" do
-    test "is md5 of the lines' text, taken in the database" do
+    test "is md5 of the warehouse and lines' canonical text, taken in the database" do
       {:ok, doc} =
         Inventories.create_draft(%{lines: [%{"item_uuid" => "x", "counted_quantity" => "1"}]})
 
       %{rows: [[expected]]} =
         Repo.query!(
-          "SELECT md5(lines::text) FROM phoenix_kit_warehouse_inventory_documents WHERE uuid = $1",
+          "SELECT md5(jsonb_build_array(location_uuid, lines)::text) " <>
+            "FROM phoenix_kit_warehouse_inventory_documents WHERE uuid = $1",
           [Ecto.UUID.dump!(doc.uuid)]
         )
 
@@ -142,6 +143,22 @@ defmodule PhoenixKitWarehouse.InventoriesFingerprintTest do
              ) == {:error, :stale}
     end
 
+    test "a warehouse change invalidates the base even when both count sheets are empty" do
+      {:ok, doc} = Inventories.create_draft(%{lines: []})
+      base = Inventories.fingerprint(doc)
+      location = Ecto.UUID.generate()
+      {:ok, moved} = Inventories.update_draft(doc, %{location_uuid: location})
+      assert moved.lines == doc.lines
+
+      assert Inventories.update_draft(doc, %{lines: [%{"counted_quantity" => "7"}]},
+               base_fingerprint: base
+             ) == {:error, :stale}
+
+      stored = Inventories.get_document!(doc.uuid)
+      assert stored.location_uuid == location
+      assert stored.lines == []
+    end
+
     test "a base passed as nil is refused, not taken as no option" do
       {:ok, doc} = Inventories.create_draft(%{lines: [%{"a" => "1"}]})
       {:ok, _} = Inventories.update_draft(doc, %{lines: [%{"a" => "2"}]})
@@ -174,6 +191,15 @@ defmodule PhoenixKitWarehouse.InventoriesFingerprintTest do
   end
 
   describe "post_document/3 with base_fingerprint:" do
+    test "a warehouse change with identical lines cannot be posted from the old base" do
+      {:ok, doc} = Inventories.create_draft(%{lines: []})
+      base = Inventories.fingerprint(doc)
+      {:ok, _} = Inventories.update_draft(doc, %{location_uuid: Ecto.UUID.generate()})
+
+      assert Inventories.post_document(doc, nil, base_fingerprint: base) == {:error, :stale}
+      assert Inventories.get_document!(doc.uuid).status == "draft"
+    end
+
     test "posts while the lines are still the base's" do
       {:ok, doc} = Inventories.create_draft(%{lines: []})
       base = Inventories.fingerprint(doc)

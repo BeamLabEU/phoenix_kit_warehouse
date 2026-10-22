@@ -168,6 +168,25 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveFingerprintTest do
       assert Inventories.get_document!(ctx.doc.uuid).location_uuid == ctx.site_b.uuid
       refute render_click(a, "save_draft", %{}) =~ stale_text()
     end
+
+    test "identical stock at another warehouse still refuses the old tab's counts", ctx do
+      stock!(ctx.hinge, ctx.site_b.uuid, "5")
+      original_lines = Inventories.get_document!(ctx.doc.uuid).lines
+      {:ok, a, _} = live(ctx.conn, items_path(ctx.doc))
+      {:ok, b, _} = live(ctx.conn, Routes.path("/admin/warehouse/inventory/#{ctx.doc.uuid}"))
+
+      set_counted(a, 0, "4")
+      refute change_warehouse(b, ctx.site_b) =~ stale_text()
+      assert Inventories.get_document!(ctx.doc.uuid).lines == original_lines
+
+      assert render_click(a, "save_draft", %{}) =~ stale_text()
+      assert render_click(a, "post", %{}) =~ stale_text()
+
+      stored = Inventories.get_document!(ctx.doc.uuid)
+      assert stored.location_uuid == ctx.site_b.uuid
+      assert stored.status == "draft"
+      assert Decimal.eq?(Lines.decimal(line(ctx.doc, ctx.hinge)["counted_quantity"]), 5)
+    end
   end
 
   describe "who gave the number" do

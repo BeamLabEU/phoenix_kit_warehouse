@@ -746,8 +746,8 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       supplier_orders
       |> Enum.sort_by(& &1.uuid)
       |> Enum.map(fn o ->
-        {o.uuid, o.status, o.supplier_uuid, canon(o.updated_at), hash(canon(o.lines)),
-         hash(canon(o.source_refs))}
+        {o.uuid, o.status, o.supplier_uuid, o.location_uuid, o.internal_order_uuid,
+         canon(o.updated_at), hash(canon(o.lines)), hash(canon(o.source_refs))}
       end),
       ctx.suppliers
       |> Map.values()

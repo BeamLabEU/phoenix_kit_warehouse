@@ -160,7 +160,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersDraftVersionTest do
                SupplierOrders.draft_version(%{draft | lines: [reversed]})
     end
 
-    test "lines, refs, supplier, note, status and the trash change it" do
+    test "lines, refs, supplier, warehouse, internal order, note, status and the trash change it" do
       supplier = supplier!()
       item = item_of!(supplier)
       draft = draft!(supplier, %{lines: [so_line(item, "10")]})
@@ -170,6 +170,8 @@ defmodule PhoenixKitWarehouse.SupplierOrdersDraftVersionTest do
         %{draft | lines: [so_line(item, "11")]},
         %{draft | source_refs: [%{"type" => "internal_order", "uuid" => Ecto.UUID.generate()}]},
         %{draft | supplier_uuid: Ecto.UUID.generate()},
+        %{draft | location_uuid: Ecto.UUID.generate()},
+        %{draft | internal_order_uuid: Ecto.UUID.generate()},
         %{draft | note: "changed"},
         %{draft | status: "posted"},
         %{draft | deleted_at: DateTime.utc_now() |> DateTime.truncate(:second)}
@@ -276,6 +278,20 @@ defmodule PhoenixKitWarehouse.SupplierOrdersDraftVersionTest do
   # ---------------------------------------------------------------------------
 
   describe "post_supplier_order/3 with expected_version" do
+    test "does not post after the delivery warehouse changed" do
+      draft = draft!(supplier!())
+      version = SupplierOrders.draft_version(draft)
+      location = Ecto.UUID.generate()
+      {:ok, moved} = SupplierOrders.update_draft(draft, %{location_uuid: location})
+
+      assert {:error, :stale} =
+               SupplierOrders.post_supplier_order(draft, nil, expected_version: version)
+
+      assert reload(draft) == reload(moved)
+      assert reload(draft).status == "draft"
+      assert reload(draft).location_uuid == location
+    end
+
     test "posts the version the caller saw" do
       supplier = supplier!()
       draft = draft!(supplier)

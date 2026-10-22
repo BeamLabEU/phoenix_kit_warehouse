@@ -53,6 +53,23 @@ defmodule PhoenixKitWarehouse.InventoryAI.ApplyTest do
   end
 
   describe "the rules on the document's lines" do
+    test "a new warehouse's proposal cannot save the old warehouse's edit buffer", ctx do
+      doc = draft!(ctx.location, [])
+      old_base = base(doc)
+      old_lines = [%{"item_uuid" => ctx.hinge.uuid, "counted_quantity" => "20"}]
+      {:ok, moved} = Inventories.update_draft(doc, %{location_uuid: Ecto.UUID.generate()})
+      assert moved.lines == []
+      run = run!(moved, ctx, "B", [object(%{"catalogue_no" => 2, "loose_units" => 9})])
+
+      assert {:error, :stale} =
+               InventoryAI.apply_run(run, old_base, old_lines, [row(1, ctx.screw, "9")], ctx.user,
+                 inventory_uuid: doc.uuid
+               )
+
+      assert lines(doc) == []
+      assert InventoryAI.get_run(doc.uuid, run.uuid).status == "proposed"
+    end
+
     test "a seeded line is replaced by default", ctx do
       doc = draft!(ctx.location)
       run = run!(doc, ctx, "Shelf A", [object(%{"catalogue_no" => 1, "loose_units" => 480})])

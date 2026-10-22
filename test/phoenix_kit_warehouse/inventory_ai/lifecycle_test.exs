@@ -9,6 +9,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.LifecycleTest do
   alias PhoenixKitWarehouse.Inventories
   alias PhoenixKitWarehouse.InventoryAI
   alias PhoenixKitWarehouse.InventoryAIRun
+  alias PhoenixKitWarehouse.Web.InventoryAIPanel
 
   setup do
     user = user!()
@@ -129,6 +130,28 @@ defmodule PhoenixKitWarehouse.InventoryAI.LifecycleTest do
   end
 
   describe "closing the open runs" do
+    test "warehouse cleanup preserves runs started for the new warehouse after the switch", ctx do
+      old = run!(ctx.doc, "proposed")
+      {:ok, moved} = Inventories.update_draft(ctx.doc, %{location_uuid: Ecto.UUID.generate()})
+      running = run!(moved, "running")
+      proposed = run!(moved, "proposed")
+
+      socket = %Phoenix.LiveView.Socket{
+        assigns: %{
+          __changed__: %{},
+          doc: moved,
+          current_user: ctx.user,
+          ai: %{run: nil, review: nil, picking: nil, runs: [], users: %{}, retaken: MapSet.new()}
+        }
+      }
+
+      InventoryAIPanel.close_open_runs(socket, "location_changed")
+
+      assert status(old) == "discarded"
+      assert status(running) == "running"
+      assert status(proposed) == "proposed"
+    end
+
     test "running and proposed runs are discarded; the others stay", ctx do
       running = run!(ctx.doc, "running")
       proposed = run!(ctx.doc, "proposed")

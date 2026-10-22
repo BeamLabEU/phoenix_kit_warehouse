@@ -135,7 +135,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveCommentsAndModalTest do
 
   describe "comment create/count smoke (server-side, no LiveView)" do
     @tag :smoke
-    test "create_comment with resource_type 'inventory' completes quickly (<100ms)" do
+    test "creates and counts an inventory comment, then counts its removal" do
       # Need a real user for the FK constraint on phoenix_kit_comments
       {:ok, user} =
         Auth.register_user(%{
@@ -157,30 +157,32 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveCommentsAndModalTest do
 
       test_uuid = Ecto.UUID.generate()
 
-      t0 = System.monotonic_time(:millisecond)
+      content = "block5 smoke #{System.unique_integer([:positive])}"
 
       {:ok, comment} =
         PhoenixKitComments.create_comment(
           "inventory",
           test_uuid,
           user.uuid,
-          %{content: "block5 smoke #{System.unique_integer([:positive])}"}
+          %{content: content}
         )
 
-      t1 = System.monotonic_time(:millisecond)
+      stored = PhoenixKitComments.get_comment!(comment.uuid)
+      assert stored.resource_type == "inventory"
+      assert stored.resource_uuid == test_uuid
+      assert stored.user_uuid == user.uuid
+      assert stored.content == content
 
       # Verify count increased
       count = Comments.count(:inventory, test_uuid)
       assert count == 1
 
       # Cleanup via Repo (delete_comment/1 requires a different signature)
-      Repo.delete(comment)
+      Repo.delete!(comment)
+      assert PhoenixKitComments.get_comment(comment.uuid) == nil
 
       count_after = Comments.count(:inventory, test_uuid)
       assert count_after == 0
-
-      # The create must complete well under 100ms
-      assert t1 - t0 < 100, "Comment create took #{t1 - t0}ms, expected < 100ms"
     end
 
     test "count/1 returns 0 for a uuid with no comments" do

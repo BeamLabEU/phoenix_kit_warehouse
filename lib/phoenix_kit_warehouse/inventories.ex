@@ -176,9 +176,9 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   Options:
 
-    * `:base_fingerprint` - the `fingerprint/1` of the lines the caller's
-      edit started from. Under the row lock it is compared with the lines in
-      the database; when they differ (another tab saved in between) nothing
+    * `:base_fingerprint` - the `fingerprint/1` of the warehouse and lines
+      the caller's edit started from. Under the row lock it is compared with
+      the warehouse and lines in the database; when they differ nothing
       is written and the answer is `{:error, :stale}`. On success the
       returned document carries the fingerprint of what was written in
       `:fingerprint`, the base of the caller's next save. A base passed as
@@ -232,11 +232,13 @@ defmodule PhoenixKitWarehouse.Inventories do
   end
 
   @doc """
-  The fingerprint of a document's lines: `md5(lines::text)`, taken in the
+  The fingerprint of a document's warehouse and lines, taken in the
   database (jsonb text is canonical; the socket's maps - Decimals, other key
   order - are never fingerprinted). `nil` when the document is not there.
-  Read under a row lock it says whether the lines are still the ones a tab
-  started from (see `update_draft/3`).
+  The warehouse is included because two warehouses can have identical seed
+  lines: counts from a tab on the old warehouse must not reach the new one.
+  Read under a row lock it says whether the warehouse and lines are still
+  the ones a tab started from (see `update_draft/3`).
   """
   @spec fingerprint(InventoryDocument.t() | Ecto.UUID.t(), Ecto.Repo.t() | nil) ::
           String.t() | nil
@@ -247,13 +249,13 @@ defmodule PhoenixKitWarehouse.Inventories do
   def fingerprint(uuid, target_repo) when is_binary(uuid) do
     from(d in InventoryDocument,
       where: d.uuid == ^uuid,
-      select: fragment("md5(?::text)", d.lines)
+      select: fragment("md5(jsonb_build_array(?, ?)::text)", d.location_uuid, d.lines)
     )
     |> (target_repo || repo()).one()
   end
 
   @doc """
-  The document and the fingerprint of its lines, read in one query:
+  The document and the fingerprint of its warehouse and lines, read in one query:
   `{:ok, doc}` with `doc.fingerprint` set, or `{:error, :not_found}`. A tab
   takes its base together with the lines it edits.
   """
@@ -262,7 +264,7 @@ defmodule PhoenixKitWarehouse.Inventories do
   def get_document_with_fingerprint(uuid) do
     from(d in InventoryDocument,
       where: d.uuid == ^uuid,
-      select: {d, fragment("md5(?::text)", d.lines)}
+      select: {d, fragment("md5(jsonb_build_array(?, ?)::text)", d.location_uuid, d.lines)}
     )
     |> repo().one()
     |> case do
@@ -370,12 +372,12 @@ defmodule PhoenixKitWarehouse.Inventories do
 
   Options:
 
-    * `:base_fingerprint` - the `fingerprint/1` of the lines the caller means
-      to post (the save it just made). Under the row lock it is compared with
-      the lines in the database; when they differ (another tab applied a photo
-      proposal or saved in between) nothing is posted and the answer is
-      `{:error, :stale}`. A base passed as `nil` is refused as `:stale` too.
-      Without the option nothing is compared.
+    * `:base_fingerprint` - the `fingerprint/1` of the warehouse and lines
+      the caller means to post (the save it just made). Under the row lock
+      it is compared with the warehouse and lines in the database; when they
+      differ nothing is posted and the answer is `{:error, :stale}`. A base
+      passed as `nil` is refused as `:stale` too. Without the option nothing
+      is compared.
   """
   def post_document(doc, performed_by_uuid, opts \\ [])
 

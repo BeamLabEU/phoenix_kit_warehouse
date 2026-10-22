@@ -175,7 +175,8 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   """
   @spec close_open_runs(Phoenix.LiveView.Socket.t(), String.t()) :: Phoenix.LiveView.Socket.t()
   def close_open_runs(%{assigns: %{doc: %InventoryDocument{} = doc}} = socket, reason) do
-    InventoryAI.close_open_runs(doc.uuid, socket.assigns.current_user, reason)
+    opts = if reason == "location_changed", do: [keep_location_uuid: doc.location_uuid], else: []
+    InventoryAI.close_open_runs(doc.uuid, socket.assigns.current_user, reason, opts)
     socket |> update_ai(&%{&1 | run: nil, review: nil, picking: nil}) |> reload_runs()
   end
 
