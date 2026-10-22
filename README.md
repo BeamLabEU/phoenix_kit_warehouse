@@ -157,6 +157,8 @@ counts as delivered.
 Generated supplier orders carry a `source_refs` entry to the internal order
 with the ordered quantities per item, so the supplier order form shows them
 under *Source documents* and an import from internal orders subtracts them.
+The import does not subtract what was issued for the internal order, so
+importing it into a draft generated from it orders the issued quantity again.
 When that ref is removed, a generation still counts the supplier order for
 the internal order by `internal_order_uuid`, by its actual lines.
 

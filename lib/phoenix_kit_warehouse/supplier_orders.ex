@@ -196,6 +196,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       row's differs, `{:error, :stale}` and nothing is written (`nil` checks
       nothing).
   """
+  @spec update_draft(SupplierOrder.t(), map(), keyword()) ::
+          {:ok, SupplierOrder.t()}
+          | {:error, :not_draft | :deleted | :stale | Ecto.Changeset.t() | term()}
   def update_draft(%SupplierOrder{uuid: uuid}, attrs, opts \\ []) do
     multi =
       uuid
@@ -220,6 +223,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   a document in the trash; with `expected_version:` (see `update_draft/3`),
   `{:error, :stale}` when the row's version differs.
   """
+  @spec add_source_ref(SupplierOrder.t(), String.t(), Ecto.UUID.t(), keyword()) ::
+          {:ok, SupplierOrder.t()}
+          | {:error, :deleted | :not_found | :stale | Ecto.Changeset.t()}
   def add_source_ref(%SupplierOrder{} = order, type, uuid, opts \\ [])
       when type in ["internal_order"] do
     new_ref = %{"type" => type, "uuid" => uuid}
@@ -237,6 +243,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   document in the trash; with `expected_version:` (see `update_draft/3`),
   `{:error, :stale}` when the row's version differs.
   """
+  @spec remove_source_ref(SupplierOrder.t(), String.t(), Ecto.UUID.t(), keyword()) ::
+          {:ok, SupplierOrder.t()}
+          | {:error, :deleted | :not_found | :stale | Ecto.Changeset.t()}
   def remove_source_ref(%SupplierOrder{} = order, type, uuid, opts \\ []) do
     refs = Enum.reject(order.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
@@ -270,6 +279,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   for one in the trash; with `expected_version:` (see `update_draft/3`),
   `{:error, :stale}` when the row's version differs - nothing is posted.
   """
+  @spec post_supplier_order(SupplierOrder.t(), Ecto.UUID.t() | nil, keyword()) ::
+          {:ok, SupplierOrder.t()}
+          | {:error, :not_draft | :deleted | :stale | Ecto.Changeset.t() | term()}
   def post_supplier_order(order, performed_by_uuid, opts \\ [])
 
   def post_supplier_order(%SupplierOrder{status: status}, _performed_by_uuid, _opts)
@@ -507,7 +519,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   `source_refs`: a new draft, and a target that is this order's alone, get one
   ref to the internal order whose `"lines"` are the draft's ordered
   quantities per item after the write; a combined target gets what was
-  appended added to this order's ref, its other refs untouched.
+  appended added to this order's ref, its other refs untouched - unless that
+  ref has no `"lines"`: it stands for the whole draft, which the plan
+  counted, and is left as it is.
 
   Returns `{:ok, %{supplier_orders: created, appended: drafts_appended_to,
   unassigned_lines: lines, skipped: plan_lines, superseded: []}}`:
@@ -556,6 +570,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   posted, `{:error, :deleted}` for one in the trash, `{:error, :not_found}`.
   Drafts are NOT posted.
   """
+  @spec generate_from_internal_order(term(), Ecto.UUID.t() | nil, keyword()) ::
+          {:ok, map()} | {:error, :not_found | :not_posted | :deleted | term()}
   def generate_from_internal_order(internal_order, actor_uuid, opts \\ [])
 
   def generate_from_internal_order(%{uuid: internal_order_uuid}, actor_uuid, _opts) do
@@ -644,22 +660,42 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   defp append_to_draft!(%SupplierOrder{} = draft, order, io_uuid) do
     lines = target_lines(order, io_uuid)
 
-    refs =
-      if single_source?(draft, io_uuid) do
-        [own_ref(draft.source_refs, io_uuid, lines)]
-      else
+    draft
+    |> SupplierOrder.changeset(%{
+      lines: lines,
+      source_refs: appended_refs(draft, order, io_uuid, lines)
+    })
+    |> update_or_rollback()
+  end
+
+  # A combined draft's ref to this order without `"lines"` stands for the
+  # whole draft (the plan counted all of it), so it is left as it is: it
+  # then covers what was appended too. Topping it up would turn it into
+  # "only what was appended", and the next plan would order the rest again.
+  defp appended_refs(draft, order, io_uuid, lines) do
+    refs = draft.source_refs || []
+
+    cond do
+      single_source?(draft, io_uuid) ->
+        [own_ref(refs, io_uuid, lines)]
+
+      Enum.any?(refs, &whole_document_ref?(&1, io_uuid)) ->
+        refs
+
+      true ->
         CommittedQuantities.merge_ref(
-          draft.source_refs || [],
+          refs,
           "internal_order",
           io_uuid,
           ordered_by_item(order.lines)
         )
-      end
-
-    draft
-    |> SupplierOrder.changeset(%{lines: lines, source_refs: refs})
-    |> update_or_rollback()
+    end
   end
+
+  defp whole_document_ref?(%{"type" => "internal_order", "uuid" => io_uuid} = ref, io_uuid),
+    do: not is_map(ref["lines"])
+
+  defp whole_document_ref?(_ref, _io_uuid), do: false
 
   # The ref of a draft of this internal order alone: its `"lines"` are what
   # the draft orders per item (the first line of an item, as posting keeps
@@ -747,6 +783,14 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     imported.
   - `{:error, reason}` on DB failure.
   """
+  @spec import_from_internal_orders(
+          SupplierOrder.t(),
+          [Ecto.UUID.t()],
+          Ecto.UUID.t() | nil,
+          keyword()
+        ) ::
+          {:ok, SupplierOrder.t()}
+          | {:error, :no_supplier | :not_draft | :deleted | :stale | term()}
   def import_from_internal_orders(supplier_order, io_uuids, actor_uuid, opts \\ [])
 
   def import_from_internal_orders(

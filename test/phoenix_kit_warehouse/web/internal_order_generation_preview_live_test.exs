@@ -326,6 +326,63 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderGenerationPreviewLiveTest do
       assert has_element?(lv, row(plan, item) <> " td.font-semibold", "8")
     end
 
+    test "a draft without a supplier is named as such where it counts as ordered",
+         %{conn: conn} do
+      s = supplier!()
+      partly = item_of!([s])
+      covered = item_of!([s])
+      io = posted_io!([io_line(partly, "5"), io_line(covered, "3")])
+
+      {:ok, no_supplier} =
+        SupplierOrders.create_supplier_order(%{
+          location_uuid: @location,
+          internal_order_uuid: io.uuid,
+          lines: [so_line(partly, "3"), so_line(covered, "3")]
+        })
+
+      plan = plan!(io)
+      lv = open!(conn, io)
+
+      assert has_element?(
+               lv,
+               "#io-preview-why-#{line_of(plan, partly).index}",
+               "Already ordered in draft #SO-#{no_supplier.number} without supplier: 3"
+             )
+
+      assert has_element?(
+               lv,
+               "#io-preview-reason-#{line_of(plan, covered).index}",
+               "Already ordered in #SO-#{no_supplier.number} (draft without supplier)"
+             )
+    end
+
+    test "the names of a draft without a supplier are translated in every bundled language" do
+      for {locale, why, label} <- [
+            {"ru", "Уже заказано в черновике #SO-7 без поставщика: 3",
+             "#SO-7 (черновик без поставщика)"},
+            {"et", "Juba tellitud tarnijata mustandis #SO-7: 3", "#SO-7 (tarnijata mustand)"},
+            {"uk", "Уже замовлено в чернетці #SO-7 без постачальника: 3",
+             "#SO-7 (чернетка без постачальника)"}
+          ] do
+        Gettext.with_locale(PhoenixKitWarehouse.Gettext, locale, fn ->
+          assert Gettext.dgettext(
+                   PhoenixKitWarehouse.Gettext,
+                   "default",
+                   "Already ordered in draft %{number} without supplier: %{quantity}",
+                   number: "#SO-7",
+                   quantity: "3"
+                 ) == why
+
+          assert Gettext.dgettext(
+                   PhoenixKitWarehouse.Gettext,
+                   "default",
+                   "%{number} (draft without supplier)",
+                   number: "#SO-7"
+                 ) == label
+        end)
+      end
+    end
+
     test "nothing to order: Generate is disabled", %{conn: conn} do
       s = supplier!()
       item = item_of!([s])
@@ -756,6 +813,51 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderGenerationPreviewLiveTest do
       assert html =~ "moved to the trash"
       refute has_element?(lv, "#io-generation-preview")
       assert has_element?(lv, "#io-trash-banner")
+      assert snapshot() == before
+    end
+
+    test "another error: a flash, the window stays open with its choices", %{conn: conn} do
+      [s_a, s_b] = [supplier!(), supplier!()]
+      ambiguous = item_of!([s_a, s_b])
+      io = posted_io!([io_line(ambiguous, "4")])
+      plan = plan!(io)
+      lv = open!(conn, io)
+      change!(lv, %{"choice" => %{line_of(plan, ambiguous).key => s_b.uuid}})
+      before = snapshot()
+
+      # The row itself is gone meanwhile: `:not_found`, neither trashed nor
+      # unposted.
+      Repo.delete_all(from(o in InternalOrder, where: o.uuid == ^io.uuid))
+
+      html = submit!(lv)
+
+      assert html =~ "Failed to generate supplier orders"
+      assert has_element?(lv, "#io-generation-preview")
+      assert has_element?(lv, "#io-preview-group-#{s_b.uuid} #{row(plan, ambiguous)}")
+      assert snapshot() == before
+    end
+
+    test "a choice the write refuses: a flash, the window stays open", %{conn: conn} do
+      s = supplier!()
+      [s_a, s_b] = [supplier!(), supplier!()]
+      auto = item_of!([s])
+      ambiguous = item_of!([s_a, s_b])
+      io = posted_io!([io_line(auto, "5"), io_line(ambiguous, "4")])
+      plan = plan!(io)
+      key = line_of(plan, ambiguous).key
+      lv = open!(conn, io)
+      before = snapshot()
+
+      # A choice the window would not offer (sent by hand, say).
+      :sys.replace_state(lv.pid, fn state ->
+        put_in(state.socket.assigns.preview.choices, %{key => Ecto.UUID.generate()})
+      end)
+
+      html = submit!(lv)
+
+      assert html =~ "A chosen supplier cannot be used for a line"
+      assert has_element?(lv, "#io-generation-preview")
+      assert has_element?(lv, "#io-preview-choose #{row(plan, ambiguous)}")
       assert snapshot() == before
     end
 

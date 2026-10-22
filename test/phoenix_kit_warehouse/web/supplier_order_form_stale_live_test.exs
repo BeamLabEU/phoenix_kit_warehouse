@@ -11,6 +11,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormStaleLiveTest do
 
   import Phoenix.LiveViewTest
 
+  alias Ecto.Adapters.SQL
   alias PhoenixKit.Users.Auth
   alias PhoenixKit.Users.Roles
   alias PhoenixKit.Utils.Routes
@@ -18,6 +19,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormStaleLiveTest do
   alias PhoenixKitWarehouse.InternalOrders
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrders
+  alias PhoenixKitWarehouse.Test.Repo
 
   @location "00000000-0000-0000-0000-000000000001"
   @stale "The draft was changed elsewhere — the current version is shown, repeat the action"
@@ -157,6 +159,35 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormStaleLiveTest do
     end
 
     assert has_element?(lv, "#so-qty-1")
+  end
+
+  # Writes `note` to the draft right after the first update of a supplier
+  # order the form process makes (the save of "Post"), before the post: Ecto
+  # emits the query event in the process that ran the query, so the handler
+  # runs in the form's process, between its save and its post.
+  defp write_after_first_save(form_pid, draft, note) do
+    handler = "write-after-save-#{unique()}"
+    done = {handler, :done}
+
+    :telemetry.attach(
+      handler,
+      [:phoenix_kit_warehouse, :test, :repo, :query],
+      fn _event, _measurements, %{query: query}, _config ->
+        if self() == form_pid and not Process.get(done, false) and
+             String.starts_with?(query, ~s(UPDATE "phoenix_kit_warehouse_supplier_orders")) do
+          Process.put(done, true)
+
+          SQL.query!(
+            Repo,
+            "UPDATE phoenix_kit_warehouse_supplier_orders SET note = $1 WHERE uuid = $2",
+            [note, Ecto.UUID.dump!(draft.uuid)]
+          )
+        end
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
   end
 
   # ---------------------------------------------------------------------------
@@ -370,6 +401,25 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormStaleLiveTest do
       posted = reload(ctx.draft)
       assert posted.status == "posted"
       assert ordered(posted, ctx.a) == "6"
+    end
+
+    test "Post: a write between its save and its post is not posted unseen", ctx do
+      {:ok, lv, _html} = live(ctx.conn, form_path(ctx.draft, "lines"))
+
+      lv
+      |> form("#so-qty-form-0", %{"index" => "0", "ordered_quantity" => "6"})
+      |> render_change()
+
+      written_between = "written between the save and the post"
+      write_after_first_save(lv.pid, ctx.draft, written_between)
+
+      result = lv |> element("button[phx-click=post]") |> render_click()
+
+      assert is_binary(result) and result =~ @stale
+      stored = reload(ctx.draft)
+      assert stored.status == "draft"
+      assert stored.note == written_between
+      assert ordered(stored, ctx.a) == "6"
     end
 
     test "supplier, a link and its removal, then Save draft: never changed elsewhere", ctx do

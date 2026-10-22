@@ -2363,6 +2363,16 @@ msgstr "Nothing required"
 msgid "Already ordered in %{numbers}"
 msgstr "Already ordered in %{numbers}"
 
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:448
+#, elixir-autogen, elixir-format
+msgid "Already ordered in draft %{number} without supplier: %{quantity}"
+msgstr "Already ordered in draft %{number} without supplier: %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:463
+#, elixir-autogen, elixir-format
+msgid "%{number} (draft without supplier)"
+msgstr "%{number} (draft without supplier)"
+
 #: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:456
 #, elixir-autogen, elixir-format
 msgid "primary"

@@ -669,6 +669,31 @@ defmodule PhoenixKitWarehouse.SupplierOrdersApplyPlanTest do
       assert_dec(line_a2["ordered_quantity"], "7")
     end
 
+    test "a combined draft linked without \"lines\" keeps that ref: it stands for the whole draft" do
+      sup = supplier!()
+      a = item_of!(sup)
+      b = item_of!(sup)
+      io = posted_io!([io_line(a, "5"), io_line(b, "3")])
+
+      # Made with "New" and linked to the order by hand (`add_source_ref/4`).
+      linked = draft!(sup, %{lines: [so_line(a, "5")], source_refs: [io_ref(io.uuid)]})
+
+      plan = plan!(io)
+      assert plan.targets[sup.uuid].uuid == linked.uuid
+      assert_dec(line_for(plan, a).to_order, "0")
+      assert_dec(line_for(plan, b).to_order, "3")
+
+      {:ok, %{appended: [_]}} = SupplierOrders.apply_plan(io.uuid, plan.fingerprint, %{}, nil)
+
+      written = reload(linked)
+      assert_dec(ordered(written, a), "5")
+      assert_dec(ordered(written, b), "3")
+      assert written.source_refs == [io_ref(io.uuid)]
+
+      # What was ordered is in transit for the next plan, as it was for this one.
+      assert Enum.all?(plan!(io).lines, &Decimal.eq?(&1.to_order, 0))
+    end
+
     test "nothing goes to the trash, with supersede_drafts or without" do
       sup = supplier!()
       item = item_of!(sup)
@@ -882,6 +907,22 @@ defmodule PhoenixKitWarehouse.SupplierOrdersApplyPlanTest do
                generate!(io)
 
       assert reload(draft).updated_at == updated_at
+    end
+
+    test "a combined draft linked without \"lines\": a second generation orders nothing again" do
+      sup = supplier!()
+      a = item_of!(sup)
+      b = item_of!(sup)
+      io = posted_io!([io_line(a, "5"), io_line(b, "3")])
+      linked = draft!(sup, %{lines: [so_line(a, "5")], source_refs: [io_ref(io.uuid)]})
+
+      assert %{supplier_orders: [], appended: [_]} = generate!(io)
+      assert %{supplier_orders: [], appended: []} = generate!(io)
+
+      written = reload(linked)
+      assert_dec(ordered(written, a), "5")
+      assert_dec(ordered(written, b), "3")
+      assert length(written.lines) == 2
     end
 
     test "writes source_refs, so an import afterwards sees what is ordered" do

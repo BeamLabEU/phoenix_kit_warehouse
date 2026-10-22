@@ -331,13 +331,7 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
     >
       <summary class="cursor-pointer text-base-content/60">{dgettext("default", "Why")}</summary>
       <div class="mt-1 space-y-1 text-base-content/70">
-        <div :for={from <- @line.in_transit_from}>
-          {dgettext("default", "Already ordered in %{number} (%{status}): %{quantity}",
-            number: "#SO-#{from.number}",
-            status: status_label(from.status),
-            quantity: qty(from.quantity)
-          )}
-        </div>
+        <div :for={from <- @line.in_transit_from}>{in_transit_text(from)}</div>
         <div :if={@line.explanation} class="whitespace-pre-line">{@line.explanation}</div>
       </div>
     </details>
@@ -443,11 +437,32 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
 
   defp not_ordered_reason(%{zero_reason: :in_transit} = line) do
     dgettext("default", "Already ordered in %{numbers}",
-      numbers: Enum.map_join(line.in_transit_from, ", ", &"#SO-#{&1.number}")
+      numbers: Enum.map_join(line.in_transit_from, ", ", &order_label/1)
     )
   end
 
   defp not_ordered_reason(_line), do: "—"
+
+  # A draft without a supplier is named as such (it still counts as ordered).
+  defp in_transit_text(%{status: "draft", supplier_uuid: nil} = from) do
+    dgettext("default", "Already ordered in draft %{number} without supplier: %{quantity}",
+      number: "#SO-#{from.number}",
+      quantity: qty(from.quantity)
+    )
+  end
+
+  defp in_transit_text(from) do
+    dgettext("default", "Already ordered in %{number} (%{status}): %{quantity}",
+      number: "#SO-#{from.number}",
+      status: status_label(from.status),
+      quantity: qty(from.quantity)
+    )
+  end
+
+  defp order_label(%{status: "draft", supplier_uuid: nil, number: number}),
+    do: dgettext("default", "%{number} (draft without supplier)", number: "#SO-#{number}")
+
+  defp order_label(%{number: number}), do: "#SO-#{number}"
 
   defp source_label(sources) do
     cond do

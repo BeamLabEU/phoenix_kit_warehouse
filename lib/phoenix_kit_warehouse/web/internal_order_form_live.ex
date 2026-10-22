@@ -1289,7 +1289,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   end
 
   # The internal order went to the trash meanwhile: say so and draw it as
-  # trashed. Anything else closes the window with a message.
+  # trashed. One no longer posted closes the window with a message; any other
+  # error leaves it open, the choices kept, with a message.
   defp generation_failed(socket, :deleted),
     do: socket |> assign(:preview, nil) |> trashed_meanwhile()
 
@@ -1303,9 +1304,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
   end
 
   defp generation_failed(socket, _reason) do
-    socket
-    |> assign(:preview, nil)
-    |> put_flash(:error, dgettext("default", "Failed to generate supplier orders"))
+    put_flash(socket, :error, dgettext("default", "Failed to generate supplier orders"))
   end
 
   defp picker_title(:import), do: dgettext("default", "Import from order")
