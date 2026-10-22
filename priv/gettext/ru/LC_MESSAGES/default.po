@@ -195,6 +195,11 @@ msgstr "Колонки"
 msgid "Columns updated"
 msgstr "Колонки обновлены"
 
+#: lib/phoenix_kit_warehouse/inventory_ai/guard.ex:54
+#, elixir-autogen, elixir-format
+msgid "Counts stock on the photos of a warehouse inventory: names the catalogue items that are visible and how many of each. Photos of shelves, boxes and stacks; nothing else is asked."
+msgstr "Считает запасы на фотографиях складской инвентаризации: называет видимые позиции каталога и количество каждой. Фото полок, коробок и штабелей; ничего другого не спрашивает."
+
 #: lib/phoenix_kit_warehouse/web/column_management.ex:248
 #, elixir-autogen, elixir-format
 msgid "Failed to save columns"

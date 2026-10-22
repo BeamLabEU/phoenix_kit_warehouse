@@ -195,6 +195,11 @@ msgstr "Стовпці"
 msgid "Columns updated"
 msgstr "Стовпці оновлено"
 
+#: lib/phoenix_kit_warehouse/inventory_ai/guard.ex:54
+#, elixir-autogen, elixir-format
+msgid "Counts stock on the photos of a warehouse inventory: names the catalogue items that are visible and how many of each. Photos of shelves, boxes and stacks; nothing else is asked."
+msgstr "Рахує запаси на фотографіях складської інвентаризації: називає видимі позиції каталогу та кількість кожної. Фото полиць, коробок і штабелів; нічого іншого не питає."
+
 #: lib/phoenix_kit_warehouse/web/column_management.ex:248
 #, elixir-autogen, elixir-format
 msgid "Failed to save columns"
