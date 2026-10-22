@@ -45,6 +45,18 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
   @spec label() :: String.t()
   def label, do: dgettext_noop("default", "Inventory count from photos")
 
+  @doc false
+  # The purpose of the task, a msgid like `label/0`: the guard's pages show it
+  # translated with `PhoenixKitWarehouse.Gettext`, the guard's prompts keep
+  # this English text.
+  @spec purpose() :: String.t()
+  def purpose,
+    do:
+      dgettext_noop(
+        "default",
+        "Counts stock on the photos of a warehouse inventory: names the catalogue items that are visible and how many of each. Photos of shelves, boxes and stacks; nothing else is asked."
+      )
+
   # --- phoenix_kit_ai task guard: the options of the call ---------------------------
 
   @doc """
@@ -190,10 +202,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
           label: label(),
           gettext_backend: PhoenixKitWarehouse.Gettext,
           needs: [:vision, :json_schema],
-          purpose:
-            "Counts stock on the photos of a warehouse inventory: names the catalogue items " <>
-              "that are visible and how many of each. Photos of shelves, boxes and stacks; " <>
-              "nothing else is asked.",
+          purpose: purpose(),
           self_flag: true,
           auto_block_threshold: nil,
           typical_tokens: {30_000, 4_000},
