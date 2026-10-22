@@ -657,6 +657,27 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlanTest do
       assert_dec(line.to_order, "0")
     end
 
+    test "re-importing the order into the issue made from it keeps the ref without lines" do
+      item = item!()
+      io = posted_io!([io_line(item, "10")])
+      stock!(item, "10")
+
+      {:ok, issue} = GoodsIssues.create_from_internal_order(io, nil)
+      {:ok, issue} = GoodsIssues.import_from_internal_orders(issue, [io.uuid], nil)
+
+      assert [%{"issued_quantity" => issued}] = issue.lines
+      assert_dec(issued, "10")
+      assert [ref] = Enum.filter(issue.source_refs, &(&1["uuid"] == io.uuid))
+      refute Map.has_key?(ref, "lines")
+
+      {:ok, _} = GoodsIssues.post_goods_issue(issue, nil)
+
+      line = only_line(plan!(io))
+      assert_dec(line.issued, "10")
+      assert_dec(line.on_hand, "0")
+      assert_dec(line.to_order, "0")
+    end
+
     test "issued with no ref to the order but its internal_order_uuid: the issue's lines" do
       item = item!()
       io = posted_io!([io_line(item, "10")])

@@ -152,14 +152,21 @@ defmodule PhoenixKitWarehouse.GoodsIssues do
         (issue.source_refs ++ top_refs)
         |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
+      # A ref without `"lines"` (as `create_from_internal_order/2` writes it)
+      # was netted as the whole issue, which now holds the imported lines too,
+      # so it stays as it is.
       updated_refs =
         Enum.reduce(orders, source_refs_with_top, fn io, acc_refs ->
-          CommittedQuantities.merge_ref(
-            acc_refs,
-            "internal_order",
-            io.uuid,
-            Map.get(remaining_by_io, io.uuid, %{})
-          )
+          if CommittedQuantities.whole_document_ref?(acc_refs, "internal_order", io.uuid) do
+            acc_refs
+          else
+            CommittedQuantities.merge_ref(
+              acc_refs,
+              "internal_order",
+              io.uuid,
+              Map.get(remaining_by_io, io.uuid, %{})
+            )
+          end
         end)
 
       attrs = %{

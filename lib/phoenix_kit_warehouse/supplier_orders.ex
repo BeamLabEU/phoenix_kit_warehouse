@@ -679,7 +679,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       single_source?(draft, io_uuid) ->
         [own_ref(refs, io_uuid, lines)]
 
-      Enum.any?(refs, &whole_document_ref?(&1, io_uuid)) ->
+      CommittedQuantities.whole_document_ref?(refs, "internal_order", io_uuid) ->
         refs
 
       true ->
@@ -691,11 +691,6 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
         )
     end
   end
-
-  defp whole_document_ref?(%{"type" => "internal_order", "uuid" => io_uuid} = ref, io_uuid),
-    do: not is_map(ref["lines"])
-
-  defp whole_document_ref?(_ref, _io_uuid), do: false
 
   # The ref of a draft of this internal order alone: its `"lines"` are what
   # the draft orders per item (the first line of an item, as posting keeps
@@ -868,7 +863,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     # the imported lines too, so it stays as it is (see `appended_refs/4`).
     merged_refs =
       Enum.reduce(internal_orders, supplier_order.source_refs || [], fn io, acc_refs ->
-        if Enum.any?(acc_refs, &whole_document_ref?(&1, io.uuid)) do
+        if CommittedQuantities.whole_document_ref?(acc_refs, "internal_order", io.uuid) do
           acc_refs
         else
           lines_map = Map.get(io_contributions, io.uuid, %{})
