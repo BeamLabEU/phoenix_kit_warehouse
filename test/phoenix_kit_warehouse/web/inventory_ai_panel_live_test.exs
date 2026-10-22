@@ -492,6 +492,28 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       refute options =~ "()"
     end
 
+    test "the alternatives are also listed as text under the row", ctx do
+      run = run!(ctx, "Shelf A", [object(%{"catalogue_no" => nil, "alternatives" => [1, 2]})])
+
+      lv = open!(ctx) |> open_run(run)
+      text = lv |> element("#inventory-ai-alternatives-1") |> render()
+
+      assert text =~ "Hinge (H-1); Screw (S-1)"
+    end
+
+    test "a row with nothing counted yet shows what was seen", ctx do
+      run =
+        run!(ctx, "Shelf A", [
+          object(%{"catalogue_no" => nil, "loose_units" => 23}),
+          object(%{"object_key" => "B", "catalogue_no" => 1, "closed_packages" => 2})
+        ])
+
+      lv = open!(ctx) |> open_run(run)
+
+      assert lv |> element("#inventory-ai-formulas-1") |> render() =~ "23"
+      assert lv |> element("#inventory-ai-formulas-2") |> render() =~ "2×?"
+    end
+
     test "the Items header wraps: the buttons go under a long title on a narrow screen", ctx do
       lv = open!(ctx)
       assert has_element?(lv, "#inventory-items-header.flex-wrap")

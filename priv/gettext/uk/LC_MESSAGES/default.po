@@ -3023,3 +3023,8 @@ msgstr "Чому"
 #, elixir-autogen, elixir-format
 msgid "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
 msgstr "Замовлення — це потреба за внутрішнім замовленням мінус залишок на складській локації на момент формування. Під час імпорту з внутрішнього замовлення додатково віднімається кількість цієї позиції, яка вже замовлена в інших замовленнях постачальнику. Постачальник — знайдений для позиції: основний постачальник або постачальник через виробника. Позиції без єдиного постачальника в це замовлення не потрапляють. Якщо кількість у замовленні правили вручну, вона може відрізнятися від розрахунку."
+
+#: lib/phoenix_kit_warehouse/web/inventory_ai_panel.ex
+#, elixir-autogen, elixir-format
+msgid "Also possible:"
+msgstr "Можливо також:"
