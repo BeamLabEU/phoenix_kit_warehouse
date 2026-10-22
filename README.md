@@ -82,24 +82,29 @@ Hosts that want **one draft per source** use these functions:
   transaction. Posted documents, combined drafts (several sources) and other
   sources are never touched. `InternalOrders.list_for_source/2` and
   `multi_source?/1` help a host show what exists.
-- `SupplierOrders.generate_from_internal_order/3` takes `supersede_drafts: true`:
-  the live drafts of the same (internal order, supplier) pair, other than the
-  new ones, go to the trash. Drafts of suppliers the generation made nothing
-  for, posted ones and imported ones that refer to another internal order stay.
+- `SupplierOrders.generate_from_internal_order/3` (and `apply_plan/5`, which
+  writes a plan a person has seen) always keeps one draft per (internal order,
+  supplier): what is still missing is appended to the live draft the supplier
+  already has for the internal order - a draft of this order alone, else a
+  combined draft that refers to it, the one with the highest number - and a
+  new draft is made only when there is none. Nothing goes to the trash; the
+  old `supersede_drafts: true` option is accepted and does nothing. The quantity
+  appended is what the internal order needs minus what was issued for it,
+  what is on hand and what its live supplier orders already bring, so a line
+  the keeper reduced or removed is offered again; the keeper's other edits
+  and the note stay.
 - `restore_internal_order/3` and `restore_supplier_order/3` bring a trashed
   draft back; with `swap: true` the live one-source drafts of its source (pair)
   go to the trash, so the rule holds after the restore too.
 
-All of this is opt-in by call; without it the module behaves as before. The
-admin UI follows one switch, off by default:
+The restore swap is opt-in by call. The admin UI follows one switch, off by
+default:
 
 ```elixir
 config :phoenix_kit_warehouse, one_draft_per_source: true
 ```
 
-With it on, *Generate supplier orders* passes `supersede_drafts: true` (the
-button asks for confirmation when live drafts could be moved, and the flash
-names the ones that were), and *Restore* passes `swap: true`. Moves to the
+With it on, *Restore* passes `swap: true`. Moves to the
 trash and back are logged as `warehouse.<kind>.trashed|restored` activities
 (`internal_order`, `supplier_order`, `goods_receipt`, `goods_issue`,
 `inventory`, `transfer`; after the transaction commits, subject to

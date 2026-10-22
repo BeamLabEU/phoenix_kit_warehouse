@@ -670,7 +670,11 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
   defp so_tag(so), do: "#SO-#{so.number}"
 
   describe "generating supplier orders" do
-    test "without the switch: no confirmation and the old drafts stay", %{conn: conn} do
+    # The generation appends to the live draft of the pair now (no second
+    # draft, nothing trashed); the button and its flash are rewritten with the
+    # preview window (B2), these only follow the new behaviour.
+    test "without the switch: no confirmation and the old draft is appended to",
+         %{conn: conn} do
       conn = log_in(conn, admin!())
       %{io: io, supplier: supplier} = posted_io_with_item!()
       old = old_supplier_draft!(io, supplier)
@@ -683,12 +687,12 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       result = lv |> element("#io-generate-supplier-orders") |> render_click()
       {:ok, _lv, html} = follow_redirect(result, conn)
 
-      assert html =~ "Generated 1 supplier order"
       refute html =~ "Moved to the trash"
       assert so_reload(old).deleted_at == nil
+      assert [%{"item_uuid" => _}] = so_reload(old).lines
 
       assert from(o in SupplierOrder, where: o.internal_order_uuid == ^io.uuid)
-             |> Repo.aggregate(:count) == 2
+             |> Repo.aggregate(:count) == 1
     end
 
     test "with the switch and a live draft: the confirmation names it", %{conn: conn} do
@@ -745,7 +749,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       refute has_element?(lv, "#io-generate-supplier-orders[data-confirm]")
     end
 
-    test "with the switch the generation trashes the old draft and the flash names it",
+    test "with the switch the generation appends to the old draft, nothing is trashed",
          %{conn: conn} do
       enable!()
       admin = admin!()
@@ -758,12 +762,11 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       result = lv |> element("#io-generate-supplier-orders") |> render_click()
       {:ok, _lv, html} = follow_redirect(result, conn)
 
-      assert html =~ "Generated 1 supplier order"
-      assert html =~ "Moved to the trash: #{so_tag(old)}"
+      refute html =~ "Moved to the trash"
 
-      trashed = so_reload(old)
-      assert trashed.deleted_at != nil
-      assert trashed.deleted_by_uuid == admin.uuid
+      appended = so_reload(old)
+      assert appended.deleted_at == nil
+      assert [%{"item_uuid" => _}] = appended.lines
 
       live =
         from(o in SupplierOrder,

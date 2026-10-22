@@ -43,6 +43,14 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   counts its ref's `"lines"` while a draft and
   `min(ref lines, ordered - received)` once posted.
 
+  ## Where the lines go
+
+  One draft per (internal order, supplier): `targets` names, per supplier,
+  the live draft that already belongs to this order - a draft of this order
+  alone, else a combined draft that refers to it, of several the highest
+  number. `assemble/2` puts a supplier's lines into that draft
+  (`target_lines/2`), or into a new one when there is none.
+
   The catalogue is read through `PhoenixKitCatalogue.Catalogue` only, one
   call per distinct item and manufacturer.
   """
@@ -73,8 +81,16 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
           internal_order: InternalOrder.t(),
           location_uuid: Ecto.UUID.t() | nil,
           lines: [map()],
-          groups: [%{supplier_uuid: Ecto.UUID.t(), supplier_name: String.t(), keys: [String.t()]}],
+          groups: [
+            %{
+              supplier_uuid: Ecto.UUID.t(),
+              supplier_name: String.t(),
+              target: map() | :new,
+              keys: [String.t()]
+            }
+          ],
           supplier_orders: [map()],
+          targets: %{Ecto.UUID.t() => map()},
           suppliers: [%{uuid: Ecto.UUID.t(), name: String.t()}],
           fingerprint: String.t()
         }
@@ -91,8 +107,8 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   Builds the plan of a posted, live internal order. See the moduledoc for the
   rules. `opts` is reserved.
 
-  Every line is `%{key, index, item_uuid, name, sku, unit, explanation,
-  reason, reason_source, primary_issue, candidates, excluded,
+  Every line is `%{key, index, item_uuid, name, sku, unit, catalogue_uuid,
+  base_price, explanation, reason, reason_source, primary_issue, candidates, excluded,
   auto_supplier_uuid, choosable?, choices, required, issued, need, on_hand,
   stock, in_transit, in_transit_from, to_order, zero_reason}`; `key` is
   `"<index>:<item_uuid>"`, `stock` the raw quantity on the location and
@@ -100,7 +116,9 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   `choosable?` when its item exists and something is to order; `choices` then
   lists its candidates followed by every other active supplier.
   `zero_reason` says why nothing is to order (`:issued`, `:on_hand`,
-  `:in_transit`, `:no_need`).
+  `:in_transit`, `:no_need`). `supplier_orders` summarises the live supplier
+  orders of the order (with their `lines` and `source_refs`), `targets` maps a
+  supplier to the one of them its lines are appended to.
   """
   @spec build(Ecto.UUID.t() | term(), keyword()) ::
           {:ok, plan()} | {:error, :not_found | :not_posted | :deleted}
@@ -110,7 +128,11 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
     end
   end
 
-  defp load_internal_order(uuid) do
+  # The checks of `build/2`; the writing side calls it under its lock.
+  @doc false
+  @spec load_internal_order(term()) ::
+          {:ok, InternalOrder.t()} | {:error, :not_found | :not_posted | :deleted}
+  def load_internal_order(uuid) do
     with {:ok, uuid} <- Ecto.UUID.cast(uuid),
          %InternalOrder{} = io <- repo().get(InternalOrder, uuid) do
       cond do
@@ -123,12 +145,13 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
     end
   end
 
-  # Public for tests only: builds the plan of `io` as given, without the
-  # checks of `build/2` (so a test can see what the fingerprint holds of the
-  # internal order itself).
+  # Builds the plan of `io` as given, without the checks of `build/2` (so a
+  # test can see what the fingerprint holds of the internal order itself).
+  # `:supplier_orders` - the live supplier orders of the order as the caller
+  # has locked them (the writing side), instead of reading them here.
   @doc false
-  @spec build_for(InternalOrder.t()) :: plan()
-  def build_for(%InternalOrder{} = io) do
+  @spec build_for(InternalOrder.t(), keyword()) :: plan()
+  def build_for(%InternalOrder{} = io, opts \\ []) do
     io_lines = io.lines || []
     location_uuid = io.location_uuid || StockLedger.default_location_uuid()
 
@@ -137,7 +160,15 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
 
     items_by_uuid = load_items(item_uuids)
     ctx = catalogue_context(Map.values(items_by_uuid))
-    supplier_orders = live_supplier_orders(io.uuid)
+
+    supplier_orders =
+      case Keyword.fetch(opts, :supplier_orders) do
+        {:ok, locked} ->
+          Enum.sort_by(locked, & &1.number)
+
+        :error ->
+          io.uuid |> live_supplier_orders_query() |> order_by([o], asc: o.number) |> repo().all()
+      end
 
     totals = %{
       stock: stock_by_item(item_uuids, location_uuid),
@@ -153,15 +184,22 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       |> allocate(totals)
       |> Enum.map(fn {line, index, quantities} ->
         item = Map.get(items_by_uuid, line["item_uuid"])
-        build_line(line, index, quantities, resolve_line_supplier(item, ctx), active)
+
+        line
+        |> build_line(index, quantities, resolve_line_supplier(item, ctx), active)
+        |> Map.put(:base_price, item && StockLedger.to_decimal_or_nil(item.base_price))
       end)
+
+    summaries = Enum.map(supplier_orders, &order_summary(&1, io.uuid))
+    targets = targets(summaries)
 
     plan = %{
       internal_order: io,
       location_uuid: location_uuid,
       lines: lines,
-      groups: groups(lines, ctx),
-      supplier_orders: Enum.map(supplier_orders, &order_summary(&1, io.uuid)),
+      groups: groups(lines, ctx, targets),
+      supplier_orders: summaries,
+      targets: targets,
       suppliers: Enum.map(active, &%{uuid: &1.uuid, name: &1.name})
     }
 
@@ -191,6 +229,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       name: line["name"],
       sku: line["sku"],
       unit: line["unit"],
+      catalogue_uuid: line["catalogue_uuid"],
       explanation: LineExplanation.get(line),
       reason: resolution.reason,
       reason_source: resolution.reason_source,
@@ -204,8 +243,9 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   end
 
   # Lines with something to order and an automatic supplier, grouped by that
-  # supplier in the order the suppliers first appear.
-  defp groups(lines, ctx) do
+  # supplier in the order the suppliers first appear, each with the draft a
+  # generation writes into (`:new` when there is none).
+  defp groups(lines, ctx, targets) do
     lines
     |> Enum.filter(&(&1.auto_supplier_uuid && Decimal.gt?(&1.to_order, 0)))
     |> Enum.group_by(& &1.auto_supplier_uuid)
@@ -214,6 +254,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
        %{
          supplier_uuid: supplier_uuid,
          supplier_name: supplier_name(ctx, supplier_uuid),
+         target: Map.get(targets, supplier_uuid, :new),
          keys: Enum.map(grouped, & &1.key)
        }}
     end)
@@ -234,9 +275,27 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       number: order.number,
       status: order.status,
       supplier_uuid: order.supplier_uuid,
-      single_source?: single_source?(order, io_uuid),
-      updated_at: order.updated_at
+      single_source?: SupplierOrders.single_source?(order, io_uuid),
+      refers?: io_ref(order.source_refs, io_uuid) != nil,
+      updated_at: order.updated_at,
+      lines: order.lines || [],
+      source_refs: order.source_refs || []
     }
+  end
+
+  # The draft of each supplier that a generation writes into: a draft of this
+  # order alone, else a combined draft that refers to it; of several, the one
+  # with the highest number. Posted orders and drafts without a supplier are
+  # never one.
+  defp targets(summaries) do
+    summaries
+    |> Enum.filter(
+      &(&1.status == "draft" and is_binary(&1.supplier_uuid) and (&1.single_source? or &1.refers?))
+    )
+    |> Enum.group_by(& &1.supplier_uuid)
+    |> Map.new(fn {supplier_uuid, drafts} ->
+      {supplier_uuid, Enum.max_by(drafts, &{&1.single_source?, &1.number})}
+    end)
   end
 
   # Active local suppliers by name: what a line may be given by hand.
@@ -447,16 +506,17 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   end
 
   # The live supplier orders of the internal order: the ones that name it in
-  # `internal_order_uuid` and the ones that refer to it.
-  defp live_supplier_orders(io_uuid) do
+  # `internal_order_uuid` and the ones that refer to it. Unordered; the
+  # writing side locks them in uuid order.
+  @doc false
+  @spec live_supplier_orders_query(Ecto.UUID.t()) :: Ecto.Query.t()
+  def live_supplier_orders_query(io_uuid) do
     from(o in SupplierOrder,
       where: is_nil(o.deleted_at),
       where:
         o.internal_order_uuid == ^io_uuid or
-          fragment("? @> ?::jsonb", o.source_refs, ^[ref_json(io_uuid)]),
-      order_by: [asc: o.number]
+          fragment("? @> ?::jsonb", o.source_refs, ^[ref_json(io_uuid)])
     )
-    |> repo().all()
   end
 
   # `%{item_uuid => {Decimal, [%{uuid, number, status, supplier_uuid, quantity}]}}`.
@@ -490,7 +550,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   end
 
   defp order_in_transit(order, io_uuid, received) do
-    single? = single_source?(order, io_uuid)
+    single? = SupplierOrders.single_source?(order, io_uuid)
     ref = io_ref(order.source_refs, io_uuid)
 
     cond do
@@ -531,15 +591,6 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   # `PhoenixKitWarehouse.CommittedQuantities`.
   defp ref_lines(%{"lines" => lines}, _order) when is_map(lines), do: decimalize(lines)
   defp ref_lines(_ref, order), do: line_quantities(order.lines, "ordered_quantity")
-
-  # An order of this internal order alone: it names it and refers to no other
-  # one (no refs at all counts). Same rule as the "one draft per pair" of
-  # `PhoenixKitWarehouse.SupplierOrders`.
-  defp single_source?(%SupplierOrder{internal_order_uuid: io_uuid, source_refs: refs}, io_uuid) do
-    Enum.all?(List.wrap(refs), &match?(%{"type" => "internal_order", "uuid" => ^io_uuid}, &1))
-  end
-
-  defp single_source?(%SupplierOrder{}, _io_uuid), do: false
 
   defp io_ref(refs, io_uuid) do
     Enum.find(List.wrap(refs), &match?(%{"type" => "internal_order", "uuid" => ^io_uuid}, &1))
@@ -637,7 +688,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   # lines cannot change, a note must not make a plan stale), the location, the
   # lines, the live supplier orders with a hash of their lines and refs, and
   # the active suppliers (a deactivated one is a stale plan, not a refused
-  # choice).
+  # choice) and the draft each supplier's lines are written into.
   defp fingerprint(plan, supplier_orders, ctx) do
     io = plan.internal_order
 
@@ -656,6 +707,9 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       |> Map.values()
       |> Enum.filter(&active?/1)
       |> Enum.map(&{&1.uuid, &1.status})
+      |> Enum.sort(),
+      plan.targets
+      |> Enum.map(fn {supplier, target} -> {supplier, target.uuid} end)
       |> Enum.sort()
     }
 
@@ -716,4 +770,198 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   end
 
   defp valid_choice?(_line, _choice), do: false
+
+  # ---------------------------------------------------------------------------
+  # What a plan writes
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  What writing `plan` with `choices` (`%{key => supplier_uuid | "skip"}`, as
+  `validate_choices/2` accepts them) creates, without touching the database:
+
+    * `orders` - one per supplier, in the order of their first line:
+      `%{supplier_uuid, supplier_name, target, keys, lines}`; `target` is the
+      draft of `plan.targets` the lines are appended to (`target_lines/2`)
+      or `:new`, `lines` the supplier order lines (an item on several lines
+      of the internal order is one line; `target_lines/2` gives the target's
+      lines after the write);
+    * `unplaced` - lines with something to order that get no supplier: the
+      choice is "skip", or the line has no automatic supplier and no choice;
+    * `not_ordered` - lines that cannot be chosen: nothing to order, or the
+      item is not in the catalogue.
+
+  A choice for a line that cannot be chosen, or one that is no uuid, is
+  ignored; a choice for a line with an automatic supplier replaces it.
+  """
+  @spec assemble(plan(), map()) :: %{orders: [map()], unplaced: [map()], not_ordered: [map()]}
+  def assemble(%{lines: lines} = plan, choices) when is_map(choices) do
+    names = Map.new(plan.suppliers, &{&1.uuid, &1.name})
+
+    {placed, unplaced, not_ordered} =
+      Enum.reduce(lines, {[], [], []}, fn line, {placed, unplaced, not_ordered} ->
+        case line_supplier(line, Map.get(choices, line.key)) do
+          :not_ordered -> {placed, unplaced, [line | not_ordered]}
+          nil -> {placed, [line | unplaced], not_ordered}
+          supplier_uuid -> {[{supplier_uuid, line} | placed], unplaced, not_ordered}
+        end
+      end)
+
+    orders =
+      placed
+      |> Enum.reverse()
+      |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+      |> Enum.sort_by(fn {_supplier, [first | _]} -> first.index end)
+      |> Enum.map(fn {supplier_uuid, supplier_lines} ->
+        %{
+          supplier_uuid: supplier_uuid,
+          supplier_name: Map.get(names, supplier_uuid),
+          target: Map.get(plan.targets, supplier_uuid, :new),
+          keys: Enum.map(supplier_lines, & &1.key),
+          lines: order_lines(supplier_lines)
+        }
+      end)
+
+    %{orders: orders, unplaced: Enum.reverse(unplaced), not_ordered: Enum.reverse(not_ordered)}
+  end
+
+  defp line_supplier(%{choosable?: false}, _choice), do: :not_ordered
+  defp line_supplier(_line, "skip"), do: nil
+
+  defp line_supplier(line, choice) when is_binary(choice) do
+    case Ecto.UUID.cast(choice) do
+      {:ok, uuid} -> uuid
+      :error -> line.auto_supplier_uuid
+    end
+  end
+
+  defp line_supplier(line, _no_choice), do: line.auto_supplier_uuid
+
+  # One supplier order line per item, in the order of its first line; the
+  # quantities of an item's lines add up, their explanations are merged.
+  defp order_lines(plan_lines) do
+    plan_lines
+    |> Enum.group_by(& &1.item_uuid)
+    |> Enum.sort_by(fn {_item, [first | _]} -> first.index end)
+    |> Enum.map(fn {_item, [first | _] = same_item} ->
+      Enum.reduce(tl(same_item), order_line(first), fn line, acc ->
+        acc
+        |> add_quantity("required_quantity", line.required)
+        |> add_quantity("on_hand_quantity", line.on_hand)
+        |> add_quantity("shortfall_quantity", line.to_order)
+        |> add_quantity("ordered_quantity", line.to_order)
+        |> LineExplanation.merge_into(%{"explanation" => line.explanation})
+      end)
+    end)
+  end
+
+  @doc """
+  The supplier order line of a plan line, the shape generation has always
+  written: `ordered_quantity = shortfall_quantity = to_order`.
+  """
+  @spec order_line(map()) :: map()
+  def order_line(line) do
+    %{
+      "item_uuid" => line.item_uuid,
+      "name" => line.name,
+      "sku" => line.sku,
+      "unit" => line.unit,
+      "catalogue_uuid" => line.catalogue_uuid,
+      "required_quantity" => line.required,
+      "on_hand_quantity" => line.on_hand,
+      "shortfall_quantity" => line.to_order,
+      "ordered_quantity" => line.to_order,
+      "base_price" => line.base_price
+    }
+    |> LineExplanation.put(line.explanation)
+  end
+
+  defp add_quantity(line, key, qty),
+    do: Map.put(line, key, Decimal.add(StockLedger.to_decimal(line[key]), qty))
+
+  @doc """
+  The lines of a draft after `new_lines` (lines of `assemble/2`) are
+  appended to it. An item the draft does not have goes to the end. An item it
+  has grows in its first line (the one posting keeps):
+  `ordered_quantity` adds the new quantity, `shortfall_quantity` becomes the
+  new `ordered_quantity` (so "Add 10% reserve" keeps what was appended and
+  does not inflate a line the keeper reduced), `on_hand_quantity` is the
+  plan's, the explanations are merged; every other key of the draft's line
+  stays as it is.
+
+  `required_quantity` follows `opts[:required]`:
+    * `:replace` (the default, a draft of this internal order alone) - the
+      plan's requirement;
+    * `{:add_except, items}` (a combined draft) - the line's requirement is
+      the sum over its internal orders, so this order's is added, unless the
+      item is in `items` (this order's ref already counts it);
+    * `:keep` - left as it is.
+  """
+  @spec merge_into([map()], [map()], keyword()) :: [map()]
+  def merge_into(draft_lines, new_lines, opts \\ []) do
+    rule = Keyword.get(opts, :required, :replace)
+
+    Enum.reduce(new_lines, draft_lines, fn new_line, lines ->
+      item_uuid = new_line["item_uuid"]
+
+      case Enum.find_index(lines, &(&1["item_uuid"] == item_uuid)) do
+        nil -> lines ++ [new_line]
+        index -> List.update_at(lines, index, &grow_line(&1, new_line, rule))
+      end
+    end)
+  end
+
+  @doc """
+  The lines an order of `assemble/2` leaves in its draft: its own lines for a
+  new draft, else the target's lines with them merged in (`merge_into/3`;
+  the requirement of a combined target is added to, see there). What
+  `SupplierOrders.apply_plan/5` writes.
+  """
+  @spec target_lines(map(), Ecto.UUID.t()) :: [map()]
+  def target_lines(%{target: :new, lines: lines}, _io_uuid), do: lines
+
+  def target_lines(%{target: target, lines: lines}, io_uuid) do
+    merge_into(target.lines, lines,
+      required: required_rule(target.single_source?, target.source_refs, io_uuid)
+    )
+  end
+
+  defp required_rule(true, _refs, _io_uuid), do: :replace
+
+  defp required_rule(false, refs, io_uuid) do
+    case io_ref(refs, io_uuid) do
+      %{"lines" => lines} when is_map(lines) -> {:add_except, MapSet.new(Map.keys(lines))}
+      _whole_document_or_none -> :keep
+    end
+  end
+
+  defp grow_line(line, new_line, rule) do
+    ordered =
+      Decimal.add(
+        StockLedger.to_decimal(line["ordered_quantity"]),
+        StockLedger.to_decimal(new_line["ordered_quantity"])
+      )
+
+    line
+    |> Map.merge(%{
+      "ordered_quantity" => ordered,
+      "shortfall_quantity" => ordered,
+      "required_quantity" => required(line, new_line, rule),
+      "on_hand_quantity" => new_line["on_hand_quantity"]
+    })
+    |> LineExplanation.merge_into(new_line)
+  end
+
+  defp required(_line, new_line, :replace), do: new_line["required_quantity"]
+  defp required(line, _new_line, :keep), do: line["required_quantity"]
+
+  defp required(line, new_line, {:add_except, counted}) do
+    if MapSet.member?(counted, line["item_uuid"]) do
+      line["required_quantity"]
+    else
+      Decimal.add(
+        StockLedger.to_decimal(line["required_quantity"]),
+        StockLedger.to_decimal(new_line["required_quantity"])
+      )
+    end
+  end
 end

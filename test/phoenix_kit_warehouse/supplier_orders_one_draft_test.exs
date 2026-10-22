@@ -1,9 +1,11 @@
 defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
   @moduledoc """
-  The "one draft per source" rule of `SupplierOrders`: the `supersede_drafts`
-  option of `generate_from_internal_order/3`, `restore_supplier_order/3`, the
-  `deleted_at` guard of the draft-only writes and the activity entries of a
-  move to the trash. The unit is the pair (internal order, supplier).
+  The "one draft per source" rule of `SupplierOrders`: generation appends to
+  the live draft of the pair instead of making another one (with or without
+  the `supersede_drafts` option, which no longer does anything there),
+  `restore_supplier_order/3`, the `deleted_at` guard of the draft-only writes
+  and the activity entries of a move to the trash. The unit is the pair
+  (internal order, supplier).
 
   Everything here runs in the sandbox (one connection). What needs two real
   connections (the race with posting, the serialisation by the advisory lock)
@@ -107,33 +109,29 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
     |> Repo.all()
   end
 
-  describe "generate_from_internal_order/3 with supersede_drafts" do
-    test "the second generation trashes the first drafts, one live draft per supplier remains" do
+  describe "generate_from_internal_order/3: one draft per pair" do
+    test "the second generation makes no second draft and trashes nothing" do
       %{supplier: sup_a, item: item_a} = supplier_with_item!()
       %{supplier: sup_b, item: item_b} = supplier_with_item!()
       io = posted_io!([item_a, item_b])
-      actor = uuid()
 
       first = generate!(io, uuid(), supersede_drafts: true)
       assert first.superseded == []
       assert length(first.supplier_orders) == 2
 
-      second = generate!(io, actor, supersede_drafts: true)
+      # The first drafts already order everything for this internal order.
+      second = generate!(io, uuid(), supersede_drafts: true)
+      assert second.superseded == []
+      assert second.supplier_orders == []
+      assert second.appended == []
 
-      assert Enum.sort(Enum.map(second.superseded, & &1.uuid)) ==
-               Enum.sort(Enum.map(first.supplier_orders, & &1.uuid))
-
-      assert Enum.all?(second.superseded, &(&1.deleted_by_uuid == actor))
-      assert Enum.all?(second.superseded, &match?(%DateTime{}, &1.deleted_at))
-
-      for old <- first.supplier_orders, do: refute(live?(old))
-      for new <- second.supplier_orders, do: assert(live?(new))
+      for old <- first.supplier_orders, do: assert(live?(old))
 
       assert [live_a] = live_for(io, sup_a)
       assert [live_b] = live_for(io, sup_b)
 
       assert Enum.sort([live_a.uuid, live_b.uuid]) ==
-               Enum.sort(Enum.map(second.supplier_orders, & &1.uuid))
+               Enum.sort(Enum.map(first.supplier_orders, & &1.uuid))
     end
 
     test "the previous result keys stay and the new key is additive" do
@@ -144,7 +142,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
                SupplierOrders.generate_from_internal_order(io, uuid(), supersede_drafts: true)
     end
 
-    test "without the option the old drafts stay live and nothing is reported" do
+    test "without the option it is the same: one draft, nothing reported" do
       %{supplier: sup, item: item} = supplier_with_item!()
       io = posted_io!([item])
 
@@ -152,31 +150,38 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
       second = generate!(io)
       third = generate!(io, uuid(), supersede_drafts: false)
 
-      assert second.superseded == []
-      assert third.superseded == []
-      assert length(live_for(io, sup)) == 3
-
-      for so <- first.supplier_orders ++ second.supplier_orders, do: assert(live?(so))
+      assert [only] = first.supplier_orders
+      assert second.supplier_orders == [] and second.superseded == []
+      assert third.supplier_orders == [] and third.superseded == []
+      assert [live] = live_for(io, sup)
+      assert live.uuid == only.uuid
     end
 
-    test "a supplier the new generation did not touch keeps its draft" do
+    test "only the drafts of the suppliers something is missing for change" do
       %{supplier: sup_a, item: item_a} = supplier_with_item!()
       %{item: item_b} = supplier_with_item!()
       io = posted_io!([item_a, item_b])
 
-      [old_a] = generate_for(io, item_a, supersede_drafts: true)
-      [old_b] = generate_for(io, item_b, supersede_drafts: true)
+      %{supplier_orders: drafts} = generate!(io, uuid(), supersede_drafts: true)
+      old_a = Enum.find(drafts, &(&1.supplier_uuid == sup_a.uuid))
+      old_b = Enum.find(drafts, &(&1.supplier_uuid != sup_a.uuid))
 
-      # The stock now covers the second supplier's item completely.
-      StockLedger.upsert_quantity(item_b.uuid, Decimal.new("100"), location_uuid: @location)
+      # The keeper cuts the first supplier's line to 4 of 10.
+      {:ok, _} =
+        SupplierOrders.update_draft(old_a, %{
+          lines: [old_a.lines |> hd() |> Map.put("ordered_quantity", "4")]
+        })
 
+      b_before = reload(old_b)
       result = generate!(io, uuid(), supersede_drafts: true)
 
-      assert [new_a] = result.supplier_orders
-      assert new_a.supplier_uuid == sup_a.uuid
-      assert Enum.map(result.superseded, & &1.uuid) == [old_a.uuid]
-      refute live?(old_a)
-      assert live?(old_b)
+      assert result.supplier_orders == []
+      assert result.superseded == []
+      assert Enum.map(result.appended, & &1.uuid) == [old_a.uuid]
+
+      assert [%{"ordered_quantity" => ordered}] = reload(old_a).lines
+      assert Decimal.equal?(StockLedger.to_decimal(ordered), Decimal.new("10"))
+      assert reload(old_b) == b_before
     end
 
     test "a generation that creates nothing trashes nothing" do
@@ -200,13 +205,15 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
 
       result = generate!(io, uuid(), supersede_drafts: true)
 
+      # The posted order still brings the 10, so nothing is missing.
       assert result.superseded == []
+      assert result.supplier_orders == []
       assert reload(posted).status == "posted"
       assert live?(posted)
-      assert length(live_for(io, sup)) == 2
+      assert [_only_the_posted] = live_for(io, sup)
     end
 
-    test "an imported supplier order that refers to another internal order is left alone" do
+    test "a combined draft that refers to the order is appended to; drafts of other orders only are left alone" do
       %{supplier: sup, item: item} = supplier_with_item!()
       io = posted_io!([item])
       other_io = uuid()
@@ -232,13 +239,20 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
           source_refs: [%{"type" => "something_else", "uuid" => io.uuid}]
         })
 
+      untouched = Enum.map([only_other, odd_ref], &reload/1)
+
       result = generate!(io, uuid(), supersede_drafts: true)
 
       assert result.superseded == []
+      assert result.supplier_orders == []
+      assert Enum.map(result.appended, & &1.uuid) == [imported.uuid]
+      assert [%{"item_uuid" => item_uuid}] = reload(imported).lines
+      assert item_uuid == item.uuid
+      assert Enum.map([only_other, odd_ref], &reload/1) == untouched
       for so <- [imported, only_other, odd_ref], do: assert(live?(so))
     end
 
-    test "a draft imported from this internal order alone, or with no refs, goes" do
+    test "of two drafts of the pair (this order alone, or no refs) the newer one is appended to" do
       %{supplier: sup, item: item} = supplier_with_item!()
       io = posted_io!([item])
 
@@ -253,8 +267,11 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
 
       result = generate!(io, uuid(), supersede_drafts: true)
 
-      assert Enum.sort(Enum.map(result.superseded, & &1.uuid)) ==
-               Enum.sort([own_ref.uuid, no_refs.uuid])
+      assert result.superseded == []
+      assert result.supplier_orders == []
+      assert Enum.map(result.appended, & &1.uuid) == [no_refs.uuid]
+      assert live?(own_ref) and live?(no_refs)
+      assert reload(own_ref).lines == []
     end
 
     test "drafts of another internal order, another supplier or none are left alone" do
@@ -285,35 +302,24 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftTest do
       assert reload(gone).deleted_by_uuid == gone.deleted_by_uuid
     end
 
-    test "activity trashed is written with the reason and the order that took its place" do
-      %{supplier: sup, item: item} = supplier_with_item!()
+    test "appending to a draft writes no trashed activity" do
+      %{item: item} = supplier_with_item!()
       io = posted_io!([item])
-      actor = uuid()
 
       [old] = generate!(io, uuid(), supersede_drafts: true).supplier_orders
-      %{supplier_orders: [new]} = generate!(io, actor, supersede_drafts: true)
+      {:ok, _} = SupplierOrders.update_draft(old, %{lines: []})
 
-      assert new.supplier_uuid == sup.uuid
+      %{appended: [appended]} = generate!(io, uuid(), supersede_drafts: true)
 
-      assert [entry] = activity("warehouse.supplier_order.trashed", old.uuid)
-      assert entry.resource_type == "supplier_order"
-      assert entry.actor_uuid == actor
-      assert entry.metadata["trash_reason"] == "superseded"
-      assert entry.metadata["superseded_by_uuid"] == new.uuid
-      assert entry.metadata["number"] == to_string(old.number)
+      assert appended.uuid == old.uuid
+      assert live?(old)
+      assert activity("warehouse.supplier_order.trashed", old.uuid) == []
     end
   end
 
   defp insert_supplier! do
     {:ok, supplier} = Catalogue.create_supplier(%{name: "Supplier #{unique()}", status: "active"})
     supplier
-  end
-
-  # Runs the generation on a copy of the internal order that only holds the
-  # line of one item, so only that item's supplier gets a draft.
-  defp generate_for(io, item, opts) do
-    lines = Enum.filter(io.lines, &(&1["item_uuid"] == item.uuid))
-    generate!(%{io | lines: lines}, uuid(), opts).supplier_orders
   end
 
   describe "restore_supplier_order/3" do

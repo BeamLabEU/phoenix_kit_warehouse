@@ -968,22 +968,11 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
   end
 
   # ---------------------------------------------------------------------------
-  # resolve_suppliers — current fallback behavior (catalogue 0.10.0, no
-  # primary-supplier support published yet)
+  # Supplier of a line in generation (SupplierOrderPlan.resolve_line_supplier/2;
+  # the rules themselves are tested in SupplierOrderPlanTest)
   # ---------------------------------------------------------------------------
-  #
-  # `phoenix_kit_catalogue` 0.10.0 (this repo's pinned Hex version) defines
-  # neither the `primary_supplier_uuid` scalar nor
-  # `Suppliers.primary_for_item/1` — see the comments on `resolve_suppliers/1`
-  # in lib/phoenix_kit_warehouse/supplier_orders.ex. Both of its non-manufacturer
-  # clauses are therefore unreachable against the real dependency today, and
-  # every item falls through to `resolve_via_manufacturer/1`. These tests lock
-  # in that real, currently-shipping behavior — including its known gaps — so
-  # a future catalogue release (which activates the dead clauses without a
-  # code change here) is the thing that should change these assertions, not a
-  # regression.
 
-  describe "resolve_suppliers — no primary-supplier support (current dependency)" do
+  describe "generation: supplier of a line" do
     test "a generic/unbranded item with no manufacturer has no resolvable supplier and lands unassigned" do
       actor = user_uuid()
       supplier = create_supplier!()
@@ -1033,7 +1022,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
       assert length(unassigned) == 1
     end
 
-    test "an item routed through resolve_suppliers/1's junction guard falls back to manufacturer resolution without crashing" do
+    test "an item whose manufacturer has one supplier is assigned to it" do
       actor = user_uuid()
       mfr = create_manufacturer!()
       supplier = create_supplier!()
