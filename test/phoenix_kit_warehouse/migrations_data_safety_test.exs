@@ -123,7 +123,7 @@ defmodule PhoenixKitWarehouse.MigrationsDataSafetyTest do
     # The number sequences are not OWNED BY their columns, so DROP TABLE alone
     # orphans them. Guard against the list being empty before the drop, or
     # the "nothing survives" assertion would pass vacuously.
-    assert length(warehouse_relations()) == 14
+    assert length(warehouse_relations()) == 15
 
     Enum.each(readme_removal_statements(), &Repo.query!/1)
 

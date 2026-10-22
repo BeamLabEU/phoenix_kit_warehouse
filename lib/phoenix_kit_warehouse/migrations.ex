@@ -9,14 +9,15 @@ defmodule PhoenixKitWarehouse.Migrations do
   (`migrated_version/1` for migration context, `migrated_version_runtime/1`
   for Mix-task context), `up/1` re-reading the version before it changes
   anything, and a namespaced `COMMENT ON TABLE` marker on one anchor table
-  for a chain that spans eight. `phoenix_kit_billing` (`v4_statements/2`,
+  for a chain that spans nine. `phoenix_kit_billing` (`v4_statements/2`,
   ten adopted tables in one version) and `phoenix_kit_dashboards` (one
   adopted table) are the closest sibling examples of this exact adoption
   situation.
 
   ## Ownership situation — read before touching
 
-  All 8 `phoenix_kit_warehouse_*` tables are core's baseline: `V140` created
+  The 8 core `phoenix_kit_warehouse_*` tables (all but V3's runs table)
+  are core's baseline: `V140` created
   `stock`, `inventory_documents`, `internal_orders`, `supplier_orders`,
   `goods_receipts`, and `goods_issues`; `V144` added `transfers` and
   `min_stock`. On every existing install all 8 already have their full
@@ -108,6 +109,19 @@ defmodule PhoenixKitWarehouse.Migrations do
 
   Column widths come from each schema's `v2_column_widths/0`.
 
+  ## V3 — the runs of the photo inventory
+
+  A new table of this chain's own, `phoenix_kit_warehouse_inventory_ai_runs`
+  (`PhoenixKitWarehouse.InventoryAIRun`): one row per batch of photos sent to
+  the AI from an inventory draft. Core's manifest does not know the table,
+  so there is nothing to exclude from it and `mix phoenix_kit.repair` leaves
+  it alone. The run belongs to its document (`ON DELETE CASCADE` — only a
+  hard delete; a document in the trash keeps its runs); its users are plain
+  uuids, as on the documents. An index over the document, and a partial
+  unique index that allows one `running` run per document. Widths come from
+  `InventoryAIRun.column_widths/0`. Like every version, `down/1` keeps the
+  table and its rows — it only re-stamps the marker.
+
   ## What must NEVER happen
 
   No conditional core migration of the form "module absent → drop the
@@ -116,7 +130,8 @@ defmodule PhoenixKitWarehouse.Migrations do
   package. Removing this module's data is a human, manual step — see
   README.md "Removing this module" for the operator SQL. There is
   deliberately no automated uninstall path, and `down/1` NEVER drops any of
-  the 8 tables for ANY target version, including `0` — it only unstamps
+  its 9 tables (the 8 core tables and V3's runs table) for ANY target
+  version, including `0` — it only unstamps
   (or re-stamps) the marker on the anchor table. The rows are live stock
   balances and document history, and on most installs every table is
   core-created; rolling back this module's chain must not destroy any of
@@ -134,12 +149,13 @@ defmodule PhoenixKitWarehouse.Migrations do
   alias PhoenixKitWarehouse.GoodsIssue
   alias PhoenixKitWarehouse.GoodsReceipt
   alias PhoenixKitWarehouse.InternalOrder
+  alias PhoenixKitWarehouse.InventoryAIRun
   alias PhoenixKitWarehouse.InventoryDocument
   alias PhoenixKitWarehouse.SupplierOrder
   alias PhoenixKitWarehouse.Transfer
 
   @initial_version 1
-  @current_version 2
+  @current_version 3
   @default_prefix "public"
   @marker_prefix "pkw_schema:"
 
@@ -151,6 +167,7 @@ defmodule PhoenixKitWarehouse.Migrations do
   @goods_issues "phoenix_kit_warehouse_goods_issues"
   @transfers "phoenix_kit_warehouse_transfers"
   @min_stock "phoenix_kit_warehouse_min_stock"
+  @inventory_ai_runs "phoenix_kit_warehouse_inventory_ai_runs"
 
   # The single table this chain's marker lives on — `stock` is core's V140
   # anchor table (first created, no FK dependencies of its own). Every other
@@ -270,8 +287,9 @@ defmodule PhoenixKitWarehouse.Migrations do
   `target` selects how much of the chain to emit (default
   `current_version/0`): `0` applies nothing (not an operation — clearing
   the marker is `down/1`'s job); `1` is the pure `V140`/`V144`-adoption step
-  across all 8 tables; `2` is V1 followed by the V2 additions (see the
-  moduledoc). The marker is always stamped last, at `target`.
+  across all 8 tables; `2` is V1 followed by the V2 additions; `3` adds the
+  runs table of V3 (see the moduledoc). The marker is always stamped last,
+  at `target`.
   """
   @spec up_statements(String.t(), non_neg_integer()) :: [String.t()]
   def up_statements(prefix \\ @default_prefix, target \\ @current_version)
@@ -283,7 +301,9 @@ defmodule PhoenixKitWarehouse.Migrations do
     if target == 0 do
       []
     else
-      v1_statements(prefix) ++ v2_statements(prefix, target) ++ [marker_statement(prefix, target)]
+      v1_statements(prefix) ++
+        v2_statements(prefix, target) ++
+        v3_statements(prefix, target) ++ [marker_statement(prefix, target)]
     end
   end
 
@@ -292,9 +312,10 @@ defmodule PhoenixKitWarehouse.Migrations do
   anchor table). The chain never drops data: V1 changes no shape of its own
   (pure adoption), and stepping down from V2 deliberately KEEPS the
   `reason` / `external_ref` columns and the three `external_ref` unique
-  indexes, so rows written under V2 survive a rollback. Only the marker is
-  re-stamped; all 8 tables and every row in them are left untouched, for any
-  target including `0`. Running `up` again is idempotent.
+  indexes, so rows written under V2 survive a rollback, and stepping down
+  from V3 keeps the runs table and every run in it. Only the marker is
+  re-stamped; all 9 tables (the 8 core tables and the runs table) and every
+  row in them are left untouched, for any target including `0`. Running `up` again is idempotent.
   """
   @spec down_statements(String.t(), non_neg_integer()) :: [String.t()]
   def down_statements(prefix \\ @default_prefix, target \\ 0)
@@ -698,6 +719,50 @@ defmodule PhoenixKitWarehouse.Migrations do
       end
 
     columns ++ indexes
+  end
+
+  # ── V3 statement builder ────────────────────────────────────────────────
+
+  defp v3_statements(_prefix, target) when target < 3, do: []
+
+  defp v3_statements(prefix, _target) do
+    qr = Helpers.qualify_table(@inventory_ai_runs, prefix)
+    qid = Helpers.qualify_table(@inventory_documents, prefix)
+    uuid_default = Helpers.uuid_v7_call(prefix)
+    widths = InventoryAIRun.column_widths()
+
+    [
+      """
+      CREATE TABLE IF NOT EXISTS #{qr} (
+        "uuid" uuid DEFAULT #{uuid_default} NOT NULL,
+        "inventory_uuid" uuid NOT NULL,
+        "location_uuid" uuid NOT NULL,
+        "place_label" character varying(#{widths.place_label}),
+        "photo_file_uuids" uuid[] DEFAULT '{}'::uuid[] NOT NULL,
+        "status" character varying(#{widths.status}) DEFAULT 'running'::character varying NOT NULL,
+        "endpoint_uuid" uuid,
+        "model" character varying(#{widths.model}),
+        "prompt_uuid" uuid,
+        "ai_request_uuid" uuid,
+        "catalogue_map" jsonb DEFAULT '{}'::jsonb NOT NULL,
+        "result" jsonb,
+        "decisions" jsonb,
+        "error" text,
+        "created_by_uuid" uuid,
+        "applied_by_uuid" uuid,
+        "late_result" jsonb,
+        "applied_at" timestamp with time zone,
+        "inserted_at" timestamp with time zone DEFAULT now() NOT NULL,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+        CONSTRAINT #{@inventory_ai_runs}_pkey PRIMARY KEY (uuid),
+        CONSTRAINT #{@inventory_ai_runs}_inventory_uuid_fkey FOREIGN KEY (inventory_uuid) REFERENCES #{qid}(uuid) ON DELETE CASCADE
+      )
+      """,
+      "CREATE INDEX IF NOT EXISTS #{@inventory_ai_runs}_inventory_uuid_index ON #{qr} " <>
+        "USING btree (inventory_uuid)",
+      "CREATE UNIQUE INDEX IF NOT EXISTS #{@inventory_ai_runs}_running_index ON #{qr} " <>
+        "USING btree (inventory_uuid) WHERE status = 'running'"
+    ]
   end
 
   defp unique_prefix("UNIQUE"), do: "UNIQUE "

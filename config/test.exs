@@ -30,6 +30,9 @@ config :phoenix_kit, repo: PhoenixKitWarehouse.Test.Repo
 config :phoenix_kit_warehouse, PhoenixKitWarehouse.Test.Endpoint,
   secret_key_base: String.duplicate("t", 64),
   live_view: [signing_salt: "warehouse-test-salt"],
+  # LiveViewTest's upload client joins an upload channel through it
+  # (`test_helper.exs` starts it before the endpoint).
+  pubsub_server: PhoenixKit.PubSub,
   server: false,
   url: [host: "localhost"],
   render_errors: [formats: [html: PhoenixKitWarehouse.Test.Layouts]]

@@ -106,8 +106,86 @@ defmodule PhoenixKitWarehouse.GettextTest do
     with_locale("uk", fn -> assert t("Move to trash") == "У кошик" end)
   end
 
+  test "et, ru and uk translate the photo inventory's messages" do
+    for locale <- ~w(et ru uk),
+        msgid <- [
+          "Reading the photos was interrupted.",
+          "The answer did not fit: send fewer photos in one batch.",
+          "The photos do not look like a warehouse: %{reason}",
+          "The document was changed in another tab: reload the page.",
+          "Some ticked rows are not complete: check the marked fields.",
+          "entered by hand: %{quantity}",
+          "Some of the photos are not files of this document.",
+          "Some of the chosen catalogues cannot be found."
+        ] do
+      with_locale(locale, fn ->
+        refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"
+      end)
+    end
+
+    with_locale("ru", fn -> assert t("No row is ticked.") == "Не отмечено ни одной строки." end)
+    with_locale("et", fn -> assert t("No row is ticked.") == "Ükski rida pole märgitud." end)
+    with_locale("uk", fn -> assert t("No row is ticked.") == "Не позначено жодного рядка." end)
+    with_locale("en", fn -> assert t("No row is ticked.") == "No row is ticked." end)
+  end
+
+  test "et, ru and uk translate the photo inventory panel" do
+    for locale <- ~w(et ru uk),
+        msgid <- [
+          "Count from photos",
+          "Propose",
+          "Undo the merge",
+          "Units per package",
+          "Show the late answer",
+          "This place may have been photographed again since.",
+          "Upload the photos of the place first.",
+          "The photos are sent to an outside AI service: photograph the shelves, not people.",
+          "Do not leave the page while the photos upload."
+        ] do
+      with_locale(locale, fn ->
+        refute t(msgid) == msgid, "#{msgid} is not translated into #{locale}"
+      end)
+    end
+
+    with_locale("ru", fn -> assert t("Count from photos") == "Посчитать по фото" end)
+    with_locale("et", fn -> assert t("Count from photos") == "Loenda fotodelt" end)
+    with_locale("uk", fn -> assert t("Count from photos") == "Порахувати за фото" end)
+    with_locale("en", fn -> assert t("Count from photos") == "Count from photos" end)
+  end
+
+  test "the photo inventory's counts take the plural forms" do
+    n = fn count ->
+      Gettext.dngettext(
+        PhoenixKitWarehouse.Gettext,
+        "default",
+        "%{count} line counted from photos will be lost.",
+        "%{count} lines counted from photos will be lost.",
+        count
+      )
+    end
+
+    with_locale("en", fn ->
+      assert n.(1) == "1 line counted from photos will be lost."
+      assert n.(2) == "2 lines counted from photos will be lost."
+    end)
+
+    with_locale("ru", fn ->
+      assert n.(1) == "Строк, посчитанных по фото, будет потеряно: 1."
+      assert n.(5) == "Строк, посчитанных по фото, будет потеряно: 5."
+    end)
+
+    for locale <- ~w(et uk) do
+      with_locale(locale, fn -> refute n.(2) =~ "lines counted" end)
+    end
+
+    with_locale("et", fn ->
+      assert Gettext.dpgettext(PhoenixKitWarehouse.Gettext, "default", "line action", "Add") ==
+               "Liida"
+    end)
+  end
+
   describe "catalogues are complete" do
-    @catalogues for locale <- ~w(en et ru),
+    @catalogues for locale <- ~w(en et ru uk),
                     do:
                       {locale,
                        Path.join(["priv", "gettext", locale, "LC_MESSAGES", "default.po"])}
@@ -122,6 +200,14 @@ defmodule PhoenixKitWarehouse.GettextTest do
               do: IO.iodata_to_binary(msgid)
 
         assert incomplete == []
+
+        incomplete_plurals =
+          for %Expo.Message.Plural{msgid: msgid, msgstr: msgstr, flags: flags} <- messages,
+              Enum.any?(Map.values(msgstr), &(IO.iodata_to_binary(&1) == "")) or
+                Enum.any?(flags, &("fuzzy" in &1)),
+              do: IO.iodata_to_binary(msgid)
+
+        assert incomplete_plurals == []
       end
     end
   end

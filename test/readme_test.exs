@@ -38,6 +38,24 @@ defmodule PhoenixKitWarehouse.ReadmeTest do
     end
   end
 
+  test "the README describes the photo inventory and drops its table first on removal" do
+    for phrase <- [
+          "### Photo inventory (AI)",
+          "warehouse_inventory_ai_endpoint_uuid",
+          "warehouse_inventory_ai_max_photos",
+          "warehouse_inventory_ai_max_items",
+          "phoenix_kit_ai",
+          "base_fingerprint:",
+          "\"counted_by\""
+        ] do
+      assert @readme =~ phrase
+    end
+
+    [_, removal] = String.split(@readme, "### Removing this module", parts: 2)
+    [first_drop | _] = Regex.run(~r/^DROP TABLE \S+;/m, removal)
+    assert first_drop == "DROP TABLE phoenix_kit_warehouse_inventory_ai_runs;"
+  end
+
   test "the README states the caveats an integrator must know" do
     # the catalogue_id rule, the retry answer, the issue retry gap, the confirmation hold,
     # the log switch

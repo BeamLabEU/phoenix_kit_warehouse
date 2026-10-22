@@ -9,7 +9,7 @@ package that implements the `PhoenixKit.Module` behaviour and is
 auto-discovered by a host Phoenix app at startup. It has no endpoint,
 router, or Ecto repo of its own; it borrows the host's via `phoenix_kit`.
 
-The module is fully implemented (wave 1 scope, ~60 source files, 8 Ecto
+The module is fully implemented (wave 1 scope, ~60 source files, 9 Ecto
 schemas). Features:
 
 - **Multi-warehouse stock scope** — stock balances per item per location,
@@ -106,8 +106,10 @@ modules — cf. `phoenix_kit_manufacturing`, `phoenix_kit_legal`):
 
 ### Database & migrations
 
-All 8 runtime tables were originally created by the parent
-[phoenix_kit](https://github.com/BeamLabEU/phoenix_kit) core migrations:
+8 of the 9 runtime tables were originally created by the parent
+[phoenix_kit](https://github.com/BeamLabEU/phoenix_kit) core migrations (the
+ninth, `phoenix_kit_warehouse_inventory_ai_runs`, is this module's own, from
+V3):
 
 - **V140** creates 6 tables: `phoenix_kit_warehouse_stock`,
   `phoenix_kit_warehouse_goods_receipts`, `phoenix_kit_warehouse_goods_issues`,
@@ -127,7 +129,7 @@ prefix, which re-raises); `up/1` re-reads the version through
 `migrated_version/1` before changing anything. The chain anchors its
 version marker on a single table, `phoenix_kit_warehouse_stock` (core's
 first-created, FK-free table), as a `pkw_schema:<N>` `COMMENT ON TABLE` —
-none of the other 7 tables carry a marker of their own. A marker-less
+none of the other 8 tables carry a marker of their own. A marker-less
 anchor table, or one carrying a foreign (non-`pkw_schema:`) comment, reads
 as version 0. Varchar widths are sourced from each of the six document
 schemas' own `column_widths/0` (`GoodsReceipt`, `GoodsIssue`,
@@ -143,11 +145,13 @@ object names (idempotent `CREATE TABLE IF NOT EXISTS` / guarded `DO $$ ...
 $$` constraint blocks), so on every existing install it changes nothing
 except stamping the marker; because it changes no shape, core's
 `ExpectedSchema` manifest stays accurate and no core release was required
-to ship it. **Phase 1** is the first real shape change. `V2` (the current
-version: goods-issue `reason`, `external_ref` on goods issues, receipts and
-inventory documents, and one partial unique index per `external_ref`) only
-ADDS objects core's manifest does not declare, so it needed no manifest
-change. A version that alters or drops an object the manifest declares must
+to ship it. **Phase 1** is the first real shape change. `V2` (goods-issue
+`reason`, `external_ref` on goods issues, receipts and inventory documents,
+and one partial unique index per `external_ref`) only ADDS objects core's
+manifest does not declare, so it needed no manifest change. `V3` (the
+current version) adds the photo inventory's runs table,
+`phoenix_kit_warehouse_inventory_ai_runs`, which core's manifest does not
+know either. A version that alters or drops an object the manifest declares must
 first add that object to core's manifest generator's `@excluded_exact` and
 regenerate `ExpectedSchema`, then raise this package's core floor.
 **Phase 2** is a future core baseline squash that
@@ -157,7 +161,7 @@ statements are therefore already fully self-sufficient definitions (calling
 than assuming core's chain provided them), not merely shape-matching no-ops
 for already-existing tables.
 
-**A table-shape change to any of the 8 tables is a new version in this
+**A table-shape change to any of the 9 tables is a new version in this
 chain from now on — never a new core migration.** `down/1` NEVER drops a
 table or its data, for any target including `0`; rolling this chain back
 only unstamps (or re-stamps) the marker on the anchor table. There is

@@ -154,6 +154,46 @@ defmodule PhoenixKitWarehouse.ActivityLog do
       :ok
   end
 
+  @doc """
+  Logs a photo inventory run that came back with a proposal
+  (`warehouse.inventory.ai_proposed`): the run, how many photos it read, the
+  model that answered and how many rows it proposed. Options: `:actor_uuid`
+  (who started the run); the entry is `"auto"` - the proposal is the
+  model's, nothing is written to the document.
+  """
+  def log_inventory_ai_proposed(%InventoryDocument{} = doc, metadata, opts)
+      when is_map(metadata) do
+    log(
+      %{
+        action: "warehouse.inventory.ai_proposed",
+        resource_type: "inventory_document",
+        resource_uuid: doc.uuid,
+        metadata: Map.merge(base_metadata(doc), stringify_keys(metadata))
+      },
+      actor_uuid: Keyword.get(opts, :actor_uuid),
+      mode: "auto"
+    )
+  end
+
+  @doc """
+  Logs a photo inventory proposal applied to the lines of a draft
+  (`warehouse.inventory.ai_applied`): the run, and how many rows were
+  applied, replaced, added, new, and below the stock. Options: `:actor` or
+  `:actor_uuid` (who pressed Apply).
+  """
+  def log_inventory_ai_applied(%InventoryDocument{} = doc, metadata, opts)
+      when is_map(metadata) do
+    log(
+      %{
+        action: "warehouse.inventory.ai_applied",
+        resource_type: "inventory_document",
+        resource_uuid: doc.uuid,
+        metadata: Map.merge(base_metadata(doc), stringify_keys(metadata))
+      },
+      opts
+    )
+  end
+
   @doc "Logs the cancellation of a transfer."
   def log_transfer_cancelled(%Transfer{} = transfer, opts) do
     log(
@@ -389,6 +429,8 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   defp stringify_changes(changes) when is_list(changes) do
     Map.new(changes, fn {field, value} -> {to_string(field), stringify(value)} end)
   end
+
+  defp stringify_keys(map), do: Map.new(map, fn {key, value} -> {to_string(key), value} end)
 
   defp stringify(nil), do: ""
   defp stringify(v) when is_binary(v), do: v

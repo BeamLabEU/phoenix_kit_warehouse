@@ -250,11 +250,64 @@ How they behave, in short:
 - The tools follow this module's own enabled state, not the shop's "Stock tracking"
   switch.
 
+### Photo inventory (AI)
+
+In a draft stocktake a person can count from photos: **Count from photos** on
+the Items tab uploads the photos of one place (one upload is one batch of one
+place, up to `warehouse_inventory_ai_max_photos`, 10 by default, at most 20 MB
+each, HEIC included), the AI proposes the catalogue items it sees and how many
+(packages and their fill turned into the item's unit), and the person reviews
+the proposal as a table, corrects it and applies the ticked rows. **Nothing is
+written to the lines without Apply**; the document stays a draft and is
+conducted as usual. What the module does around that:
+
+- **Where it runs.** The call goes through `phoenix_kit_ai`
+  (`PhoenixKitAI.describe_image/3`, one call per batch, in a background task
+  that writes its answer itself, so a closed page loses nothing). The button
+  shows only while the ai module is on, an endpoint is chosen in the warehouse
+  settings and the person may edit the draft (the `warehouse` permission, or an
+  Owner/Admin). Choosing the endpoint is choosing where money goes: the settings
+  block is shown to, and saved by, a holder of the `ai` permission or an
+  administrator only. The money limits are ai's.
+- **Time and cost.** One batch is one vision call: the photos and the whole
+  live catalogue in, the counted objects out. Measured on a catalogue of about
+  600 items with a Gemini Flash model through OpenRouter: 33-75 seconds and
+  about $0.04-0.07 per batch; most of the time goes on the model's output with
+  its reasoning. Narrowing a batch to some catalogues makes it cheaper.
+- **Settings** (`PhoenixKit.Settings`): `warehouse_inventory_ai_endpoint_uuid`
+  (empty: no button), `warehouse_inventory_ai_prompt_uuid` (the module's own
+  prompt in the ai prompts, made on first use; a prompt edited by hand is never
+  overwritten), `warehouse_inventory_ai_max_photos` and
+  `warehouse_inventory_ai_max_items` (3000 by default: the whole live catalogue
+  goes into the request, and past this many items a person narrows it to some
+  catalogues first).
+- **The photos** are stored in the stocktake's own Storage folder (visible on
+  its Files tab) and leave the system for the AI provider: the panel says to
+  photograph shelves, not people.
+- **The runs** are kept in `phoenix_kit_warehouse_inventory_ai_runs` (chain
+  version 3): the photos, the place, the model, the checked answer, what was
+  applied and by whom. One run per document reads at a time; a failed one can
+  be retried on the same photos; an answer that comes after a run was closed is
+  kept and shown only on request. Changing the warehouse of the stocktake or
+  conducting it closes its open runs.
+- **The lines** carry who gave each number - `"counted_by"`: `"stock"` (seeded),
+  `"manual"` (typed or added by a person), `"ai"` (applied from photos) - and,
+  for the photo counts, the part of each place (`"ai_parts"`), so that a place
+  photographed again replaces its own part while another place adds to it; lines
+  no photo saw are not touched. Posting keeps these keys.
+- **Two tabs.** Every write of the lines from the stocktake page (Save draft,
+  Apply, Conduct, the warehouse change) passes the fingerprint of the lines the
+  tab started from: a tab whose lines another tab has saved over is refused
+  instead of silently writing over them. `Inventories.update_draft/3` checks it
+  only when called with `base_fingerprint:`; without the option it behaves as
+  before.
+
 ### Other modules
 
 Requires `phoenix_kit_catalogue` (the items), `phoenix_kit_locations` (the
-warehouses), `phoenix_kit_billing` (currency formatting) and
-`phoenix_kit_comments` (document comment threads). A plan source for core's
+warehouses), `phoenix_kit_billing` (currency formatting),
+`phoenix_kit_comments` (document comment threads) and `phoenix_kit_ai` (the
+photo inventory; without the ai module switched on there is simply no button). A plan source for core's
 `mix phoenix_kit.media.reorganize` is included.
 
 ## Installation
@@ -276,7 +329,7 @@ mix phoenix_kit.update
 ### Removing this module
 
 There is deliberately **no automated uninstall**.
-`PhoenixKitWarehouse.Migrations.down/1` never drops any of the 8
+`PhoenixKitWarehouse.Migrations.down/1` never drops any of its
 `phoenix_kit_warehouse_*` tables or a row in them, for any target version —
 a host that merely removes this dependency from `mix.exs` has not consented
 to deleting live stock balances and document history, and a migration
@@ -288,6 +341,8 @@ step, in FK-safe order (children before parents):
 ```sql
 -- Only after removing :phoenix_kit_warehouse from mix.exs, and only if you
 -- actually want every stock balance and document gone for good.
+-- The runs of the photo inventory first: they reference the inventory documents.
+DROP TABLE phoenix_kit_warehouse_inventory_ai_runs;
 DROP TABLE phoenix_kit_warehouse_goods_issues;
 DROP TABLE phoenix_kit_warehouse_goods_receipts;
 DROP TABLE phoenix_kit_warehouse_supplier_orders;
