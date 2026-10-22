@@ -117,7 +117,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.ProposalTest do
     [a, b] = Proposal.build(objects, items())
 
     assert a["item"] == nil
-    assert a["count"] == %{"kind" => "item", "quantity" => nil, "formulas" => []}
+    assert a["count"] == %{"kind" => "item", "quantity" => nil, "formulas" => ["5"]}
     assert Enum.map(a["alternatives"], & &1["item_uuid"]) == ["item-1", "item-3"]
     assert b["object_keys"] == ["B"]
   end
@@ -129,7 +129,12 @@ defmodule PhoenixKitWarehouse.InventoryAI.ProposalTest do
         items()
       )
 
-    assert row["count"] == %{"kind" => "package_size", "quantity" => nil, "formulas" => []}
+    # what was seen stays in view while the units per package are missing
+    assert row["count"] == %{
+             "kind" => "package_size",
+             "quantity" => nil,
+             "formulas" => ["2×? + ⌊1×?×0.35⌋"]
+           }
 
     count = Proposal.recount(row, "piece", d(50))
     assert count["kind"] == "counted"
@@ -152,6 +157,20 @@ defmodule PhoenixKitWarehouse.InventoryAI.ProposalTest do
 
     [row] = Proposal.build(objects, items())
     assert Enum.map(row["alternatives"], & &1["no"]) == [3, 4, 2]
+  end
+
+  test "waiting_for_item/1: what each object showed, the empty ones left out" do
+    objects = [
+      object("A", %{"closed_packages" => d(1)}),
+      object("B", %{}),
+      object("C", %{"loose_units" => d(12)})
+    ]
+
+    assert Proposal.waiting_for_item(objects) == %{
+             "kind" => "item",
+             "quantity" => nil,
+             "formulas" => ["1×?", "12"]
+           }
   end
 
   test "no objects, no rows" do

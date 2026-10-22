@@ -205,4 +205,29 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
       assert eq?(qty, "235")
     end
   end
+
+  describe "seen/1 — what was seen, when the quantity cannot be counted" do
+    test "packages with the units per package unknown: each one with a ?" do
+      assert Counting.seen(object(%{"closed_packages" => 2})) == "2×?"
+
+      assert Counting.seen(object(%{"closed_packages" => 2, "open_packages" => 1})) ==
+               "2×? + ⌊1×?×0.35⌋"
+    end
+
+    test "the units per package and the loose units are shown as they are" do
+      obj = object(%{"closed_packages" => 1, "units_per_package" => 50, "loose_units" => 7})
+      assert Counting.seen(obj) == "1×50 + 7"
+      assert Counting.seen(object(%{"loose_units" => 23})) == "23"
+    end
+
+    test "a measured quantity alone; nothing seen is nil" do
+      assert Counting.seen(object(%{"quantity" => "12.5"})) == "12.5"
+      assert Counting.seen(object(%{})) == nil
+    end
+
+    test "stored objects (numbers as text) read the same" do
+      stored = %{"closed_packages" => "3", "open_packages" => "0", "loose_units" => nil}
+      assert Counting.seen(stored) == "3×?"
+    end
+  end
 end

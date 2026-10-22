@@ -99,6 +99,40 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
     end
   end
 
+  @doc """
+  What was seen on `object`, as a formula without a result: the packages
+  with their units per package (`?` when unknown), the loose units, a
+  measured quantity. For a row whose quantity cannot be counted yet, so the
+  person still sees what the model saw. `nil` when nothing was seen.
+  """
+  @spec seen(map()) :: String.t() | nil
+  def seen(object) do
+    closed = number(object["closed_packages"]) || @zero
+    open = number(object["open_packages"]) || @zero
+    fill = number(object["open_fill"]) || @zero
+    loose = number(object["loose_units"])
+    quantity = number(object["quantity"])
+
+    n =
+      case number(object["units_per_package"]) do
+        nil -> "?"
+        per_package -> format(per_package)
+      end
+
+    shown =
+      Enum.filter(
+        [
+          nonzero(closed) && "#{format(closed)}×#{n}",
+          nonzero(open) && "⌊#{format(open)}×#{n}×#{format(fill)}⌋",
+          nonzero(loose) && format(loose),
+          nonzero(quantity) && format(quantity)
+        ],
+        & &1
+      )
+
+    if shown == [], do: nil, else: Enum.join(shown, " + ")
+  end
+
   # closed × n + floor(open × n × fill) + loose
   defp by_package(closed, open, fill, per_package, loose) do
     share = open |> Decimal.mult(per_package) |> Decimal.mult(fill) |> Decimal.round(0, :floor)
