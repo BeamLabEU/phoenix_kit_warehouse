@@ -853,6 +853,60 @@ defmodule PhoenixKitWarehouse.SupplierOrdersTest do
       summary = SupplierOrders.received_summary(posted_order)
       assert Decimal.equal?(summary[item_uuid], Decimal.new("5"))
     end
+
+    test "counts a receipt by its primary order and by a secondary supplier_order ref, and no other" do
+      actor = user_uuid()
+      item_uuid = Ecto.UUID.generate()
+      {order_a, supplier} = create_draft!(%{lines: sample_lines(item_uuid)})
+      {order_b, _} = create_draft!(%{lines: sample_lines(item_uuid)})
+      {order_c, _} = create_draft!(%{lines: sample_lines(item_uuid)})
+      {:ok, posted_a} = SupplierOrders.post_supplier_order(order_a, actor)
+      {:ok, posted_b} = SupplierOrders.post_supplier_order(order_b, actor)
+      {:ok, posted_c} = SupplierOrders.post_supplier_order(order_c, actor)
+
+      line = fn qty ->
+        [
+          %{
+            "item_uuid" => item_uuid,
+            "name" => "Widget",
+            "sku" => "",
+            "unit" => "piece",
+            "catalogue_uuid" => Ecto.UUID.generate(),
+            "ordered_quantity" => Decimal.new("7"),
+            "received_quantity" => Decimal.new(qty)
+          }
+        ]
+      end
+
+      # One receipt of order A that also refers to order B, one of order C only.
+      {:ok, receipt_a} =
+        GoodsReceipts.create_goods_receipt(%{
+          supplier_uuid: supplier.uuid,
+          supplier_order_uuid: posted_a.uuid,
+          location_uuid: default_location_uuid(),
+          lines: line.("4")
+        })
+
+      {:ok, receipt_a} = GoodsReceipts.add_source_ref(receipt_a, "supplier_order", posted_b.uuid)
+
+      {:ok, receipt_c} =
+        GoodsReceipts.create_goods_receipt(%{
+          supplier_uuid: supplier.uuid,
+          supplier_order_uuid: posted_c.uuid,
+          location_uuid: default_location_uuid(),
+          lines: line.("9")
+        })
+
+      {:ok, _} = GoodsReceipts.post_goods_receipt(receipt_a, actor)
+      {:ok, _} = GoodsReceipts.post_goods_receipt(receipt_c, actor)
+
+      summaries = SupplierOrders.received_summaries([posted_a.uuid, posted_b.uuid])
+
+      assert Decimal.equal?(summaries[posted_a.uuid][item_uuid], Decimal.new("4"))
+      assert Decimal.equal?(summaries[posted_b.uuid][item_uuid], Decimal.new("4"))
+      refute Map.has_key?(summaries, posted_c.uuid)
+      assert SupplierOrders.received_summaries([]) == %{}
+    end
   end
 
   # ---------------------------------------------------------------------------

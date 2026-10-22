@@ -15,5 +15,10 @@
   {"lib/phoenix_kit_warehouse/internal_orders.ex", :call_without_opaque},
   {"lib/phoenix_kit_warehouse/inventories.ex", :call_without_opaque},
   {"lib/phoenix_kit_warehouse/posting_support.ex", :call_without_opaque},
-  {"lib/phoenix_kit_warehouse/supplier_orders.ex", :call_without_opaque}
+  {"lib/phoenix_kit_warehouse/supplier_orders.ex", :call_without_opaque},
+  # `use Gettext.Backend` generates `Gettext.Plural.plural/2` calls with the
+  # plural forms of the `.po` headers (`{"et", %Expo.PluralForms{}}`);
+  # `Expo.PluralForms` is `@opaque` in the dependency's types and dialyzer sees
+  # the concrete struct the macro builds. Nothing in this file is hand-written.
+  {"lib/phoenix_kit_warehouse/gettext.ex", :call_without_opaque}
 ]

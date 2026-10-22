@@ -26,13 +26,16 @@ schemas). Features:
   stock in and out.
 
 Hard dependencies (all of them — none is declared `optional:` in `mix.exs`):
-`phoenix_kit`, `phoenix_kit_billing`, `phoenix_kit_catalogue`,
+`phoenix_kit`, `phoenix_kit_ai`, `phoenix_kit_billing`, `phoenix_kit_catalogue`,
 `phoenix_kit_locations`, `phoenix_kit_comments`. Comments is a hard dep despite
 the runtime guards, because six form LiveViews `use PhoenixKitComments.Embed`
 and a `use` cannot be guarded. What is optional is the comments *module* being
 **enabled** in the host: `PhoenixKitWarehouse.Comments.available?/0` gates the
-call sites, so a disabled module means no threads rather than a crash. Only
-`"catalogue"` and `"locations"` appear in `required_modules/0`.
+call sites, so a disabled module means no threads rather than a crash. The same
+holds for `phoenix_kit_ai` (the photo inventory, `InventoryAI.*`): the package
+is always compiled in, but with the `"ai"` module switched off or no endpoint
+chosen the inventory button is simply not shown. Only `"catalogue"` and
+`"locations"` appear in `required_modules/0`.
 
 ## Common Commands
 

@@ -172,4 +172,38 @@ defmodule PhoenixKitWarehouse.InventoriesFingerprintTest do
                {:error, :deleted}
     end
   end
+
+  describe "post_document/3 with base_fingerprint:" do
+    test "posts while the lines are still the base's" do
+      {:ok, doc} = Inventories.create_draft(%{lines: []})
+      base = Inventories.fingerprint(doc)
+
+      assert {:ok, posted} = Inventories.post_document(doc, nil, base_fingerprint: base)
+      assert posted.status == "posted"
+    end
+
+    test "refuses lines another tab changed since the base, and posts nothing" do
+      {:ok, doc} = Inventories.create_draft(%{lines: []})
+      base = Inventories.fingerprint(doc)
+      {:ok, _} = Inventories.update_draft(doc, %{lines: [%{"a" => "applied elsewhere"}]})
+
+      assert Inventories.post_document(doc, nil, base_fingerprint: base) == {:error, :stale}
+
+      reloaded = Inventories.get_document!(doc.uuid)
+      assert reloaded.status == "draft"
+      assert [%{"a" => "applied elsewhere"}] = reloaded.lines
+    end
+
+    test "a base passed as nil is refused, not taken as no option" do
+      {:ok, doc} = Inventories.create_draft(%{lines: []})
+
+      assert Inventories.post_document(doc, nil, base_fingerprint: nil) == {:error, :stale}
+      assert Inventories.get_document!(doc.uuid).status == "draft"
+    end
+
+    test "without the option the post is as before" do
+      {:ok, doc} = Inventories.create_draft(%{lines: []})
+      assert {:ok, %{status: "posted"}} = Inventories.post_document(doc, nil)
+    end
+  end
 end

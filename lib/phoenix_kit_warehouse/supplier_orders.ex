@@ -1078,11 +1078,24 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
     GoodsReceipt
     |> where([r], r.status == "posted" and is_nil(r.deleted_at))
+    |> where(^referencing(supplier_order_uuids))
     |> repo().all()
     |> Enum.reduce(%{}, fn receipt, acc ->
       receipt
       |> matching_supplier_order_uuids(wanted)
       |> Enum.reduce(acc, fn so_uuid, acc2 -> attribute_lines(acc2, so_uuid, receipt.lines) end)
+    end)
+  end
+
+  # The receipts that can count against one of `uuids`: the primary FK, or a
+  # `"supplier_order"` source_refs entry. Narrows the read in the database -
+  # the plan of a generation asks this under the locks of the internal order,
+  # and posted receipts are the table that grows without bound.
+  # `matching_supplier_order_uuids/2` still decides what counts.
+  defp referencing(uuids) do
+    Enum.reduce(uuids, dynamic([r], r.supplier_order_uuid in ^uuids), fn uuid, dynamic ->
+      ref = [%{"type" => "supplier_order", "uuid" => uuid}]
+      dynamic([r], ^dynamic or fragment("? @> ?::jsonb", r.source_refs, ^ref))
     end)
   end
 

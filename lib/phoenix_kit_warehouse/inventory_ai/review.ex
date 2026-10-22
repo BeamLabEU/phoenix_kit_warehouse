@@ -55,7 +55,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
         }
 
   @doc "The review of a run's proposal, as the run proposed it."
-  @spec new(%{uuid: String.t(), place_label: String.t() | nil, result: map() | nil}) :: t()
+  @spec new(PhoenixKitWarehouse.InventoryAIRun.t()) :: t()
   def new(run) do
     rows = (run.result || %{})["rows"] || []
 

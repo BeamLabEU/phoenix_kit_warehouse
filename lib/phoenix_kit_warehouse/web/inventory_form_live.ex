@@ -1454,7 +1454,11 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
   end
 
   defp post_saved(socket, saved_doc, current_user) do
-    case Inventories.post_document(saved_doc, current_user && current_user.uuid) do
+    # Posted is the version the save wrote: lines another tab applied between
+    # the two transactions are not posted unseen.
+    case Inventories.post_document(saved_doc, current_user && current_user.uuid,
+           base_fingerprint: saved_doc.fingerprint
+         ) do
       {:ok, posted_doc} ->
         ActivityLog.log_posted(posted_doc, actor: current_user)
 

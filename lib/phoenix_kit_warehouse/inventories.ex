@@ -367,13 +367,24 @@ defmodule PhoenixKitWarehouse.Inventories do
     not those of the struct passed in, so a stale struct cannot overwrite a
     concurrent edit of the draft.
   - Rolls back on any failure.
+
+  Options:
+
+    * `:base_fingerprint` - the `fingerprint/1` of the lines the caller means
+      to post (the save it just made). Under the row lock it is compared with
+      the lines in the database; when they differ (another tab applied a photo
+      proposal or saved in between) nothing is posted and the answer is
+      `{:error, :stale}`. A base passed as `nil` is refused as `:stale` too.
+      Without the option nothing is compared.
   """
-  def post_document(%InventoryDocument{status: status}, _performed_by_uuid)
+  def post_document(doc, performed_by_uuid, opts \\ [])
+
+  def post_document(%InventoryDocument{status: status}, _performed_by_uuid, _opts)
       when status != "draft" do
     {:error, :not_draft}
   end
 
-  def post_document(%InventoryDocument{} = doc, performed_by_uuid) do
+  def post_document(%InventoryDocument{} = doc, performed_by_uuid, opts) do
     # `lock_status_step` locks the row FOR UPDATE and re-checks status == "draft"
     # inside the transaction, turning draft→posted into an atomic compare-and-swap.
     # The in-memory guard above only sees the struct in hand; a concurrent or
@@ -382,6 +393,7 @@ defmodule PhoenixKitWarehouse.Inventories do
     multi =
       doc.uuid
       |> lock_status_step("draft", :not_draft)
+      |> check_fingerprint_step(Keyword.fetch(opts, :base_fingerprint))
       |> Ecto.Multi.run(:document, fn repo, %{lock_status: locked} ->
         apply_counts_and_post(locked, performed_by_uuid, repo)
       end)
