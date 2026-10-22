@@ -4,11 +4,11 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
   Renders the inventories history list with full table parity — global search,
   per-column filtering, sorting, and configurable columns, backed by
-  `Andi.Warehouse.InventoryColumnConfig`.
+  `PhoenixKitWarehouse.ColumnConfig.Inventories`.
 
   The "In stock" default view has been moved to `Warehouse.StockLive` at
   `/admin/warehouse`. The shared tab bar lives in
-  `AndiWeb.Components.WarehouseHeader`.
+  the host application's warehouse header component.
 
   Admin-chrome pattern: `use PhoenixKitWeb, :live_view`, self-wrapping render/1
   with `LayoutWrapper.app_layout` so the page title lands in the global admin
@@ -56,7 +56,7 @@ defmodule PhoenixKitWarehouse.Web.InventoriesLive do
 
   alias PhoenixKitWarehouse.Web.{TrashActions, TrashMessages, UserNames}
 
-  # Opt out of PhoenixKit's auto admin-chrome layout (applied to external Andi
+  # Opt out of PhoenixKit's auto admin-chrome layout (applied to external host
   # views via `socket.private[:live_layout]`) so this view self-wraps with
   # `LayoutWrapper.app_layout` in render/1 and pushes its title into the global
   # admin header. A LiveView-level on_mount runs after the live_session hooks, so

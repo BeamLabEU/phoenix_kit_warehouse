@@ -1,7 +1,7 @@
 defmodule PhoenixKitWarehouse.Test.FakeOrderSources do
   @moduledoc """
   Fake `"order"`/`"sub_order"` source_kinds callbacks for tests that used to
-  build real `Andi.Orders`/`Andi.SubOrders` fixtures. Register via:
+  build real order/sub-order fixtures of a host application. Register via:
 
       Application.put_env(:phoenix_kit_warehouse, :source_kinds, [
         PhoenixKitWarehouse.Test.FakeOrderSources.order_kind(),
@@ -10,7 +10,7 @@ defmodule PhoenixKitWarehouse.Test.FakeOrderSources do
 
   Backed by a bare `Agent` so a test can seed fake "orders"/"sub-orders" as
   plain maps and have `search`/`resolve`/`build_lines` see them — no real
-  `Andi.Orders`/`Andi.SubOrders` schema or table involved.
+  host-application order schema or table involved.
   """
 
   use Agent

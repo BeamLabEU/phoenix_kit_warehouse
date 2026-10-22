@@ -11,7 +11,7 @@ defmodule PhoenixKitWarehouse.LiveCase do
   `phoenix_kit_current_scope` (not just `phoenix_kit_current_user`) and
   calls `PhoenixKit.Users.Auth.Scope.can_access_admin_area?/1`, so tests use the real
   register/confirm/promote/login flow via `PhoenixKit.Users.Auth`, exactly
-  as the original Andi tests did — this module only provides the
+  as the host application's original tests did — this module only provides the
   Endpoint/sandbox plumbing, not a login shortcut.
 
   ## Example

@@ -288,7 +288,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLiveTabsTest do
     end
 
     test "non-admin sees read-only span instead of select for responsible user", %{conn: _conn} do
-      # Warehouse is admin-only (andi permission gate), so a non-admin user cannot
+      # Warehouse is admin-only (the "warehouse" permission gate), so a non-admin user cannot
       # reach the page via HTTP. We test the read-only rendering branch directly
       # using render_component/2 on the extracted responsibility_field/1 component,
       # which is the single source of truth for admin?=false rendering.

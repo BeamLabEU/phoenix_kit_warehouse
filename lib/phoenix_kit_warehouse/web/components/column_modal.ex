@@ -1,6 +1,6 @@
 defmodule PhoenixKitWarehouse.Web.Components.ColumnModal do
   @moduledoc """
-  Function component for the "Customize columns" modal used by Andi list LVs.
+  Function component for the "Customize columns" modal used by the warehouse list LVs.
 
   Layout: two columns inside the modal.
 

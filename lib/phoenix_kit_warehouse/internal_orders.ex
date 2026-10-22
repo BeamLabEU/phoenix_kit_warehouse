@@ -132,8 +132,8 @@ defmodule PhoenixKitWarehouse.InternalOrders do
   Generic entry point for creating a draft internal order from arbitrary
   lines plus a single (optional) source ref — no domain knowledge of
   "material sheets" or any other host concept required. A host app (e.g.
-  Andi's sub-order Show page, per the design doc's "one piece of business
-  logic that stays in Andi") builds its own `lines` from whatever concept
+  a sub-order Show page, per the design doc's "one piece of business
+  logic that stays in the host") builds its own `lines` from whatever concept
   it has, builds a `%{"type" => kind, "uuid" => uuid}` source ref itself,
   and calls this function — replacing the removed `create_from_material_sheet/3`.
 

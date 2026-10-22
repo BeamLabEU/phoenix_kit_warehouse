@@ -93,11 +93,11 @@ defmodule PhoenixKitWarehouse.Inventories do
     end
   end
 
-  # `Andi.Catalogues.localized_name/2` is not a thin `PhoenixKitCatalogue.Catalogue`
-  # wrapper — it combines `Catalogue.get_translation/2` with an Andi-specific
-  # locale-code remap (`Andi.Locales.entity_locale/1`) this generic package has
+  # The host application's original `localized_name/2` is not a thin `PhoenixKitCatalogue.Catalogue`
+  # wrapper — it combines `Catalogue.get_translation/2` with a host-specific
+  # locale-code remap this generic package has
   # no access to. This private helper ports the actual translation-pick logic
-  # (the part that IS generic) and drops only the Andi-specific remap step —
+  # (the part that IS generic) and drops only the host-specific remap step —
   # callers already pass an explicit locale string (see the moduledoc above:
   # "do NOT rely on the process Gettext locale"), so the raw string is used
   # as-is against `Catalogue.get_translation/2` instead of being remapped

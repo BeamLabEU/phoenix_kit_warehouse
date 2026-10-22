@@ -4,7 +4,7 @@
 
 ## 0. Что уже есть
 
-Документы: приёмки (goods_receipts), расходы (goods_issues), внутренние заказы (internal_orders), заказы поставщикам (supplier_orders), инвентаризации (inventory_documents). Остатки: `stock` + stock_ledger + committed_quantities. Инфраструктура: activity log, комментарии, файлы (storage_folders), view_configs/column_config (table-parity), контракт `source_kinds` (реализован для order/sub_order через `Andi.Warehouse.Integration`).
+Документы: приёмки (goods_receipts), расходы (goods_issues), внутренние заказы (internal_orders), заказы поставщикам (supplier_orders), инвентаризации (inventory_documents). Остатки: `stock` + stock_ledger + committed_quantities. Инфраструктура: activity log, комментарии, файлы (storage_folders), view_configs/column_config (table-parity), контракт `source_kinds` (реализован для order/sub_order через интеграционный модуль хост-приложения).
 
 Ограничение: `Stock.location_uuid` — мягкий `Ecto.UUID` без FK, «the app is single-warehouse for now»; к phoenix_kit_locations не привязан.
 
@@ -36,7 +36,7 @@
 
 Цеховик: материалы списываются в производство, готовая продукция через «СГПП» попадает в приёмку склада ГП.
 
-- Регистрация source kind `production_order` в конфиге andi (по образцу order/sub_order) — изменений в warehouse почти не требует;
+- Регистрация source kind `production_order` в конфиге хост-приложения (по образцу order/sub_order) — изменений в warehouse почти не требует;
 - Goods Issue «в производство» — строки из входных строк производственного заказа (`build_lines`);
 - Goods Receipt готовой продукции — из выходных строк; очередь «готово к приёмке» (аналог СГПП) — представление на стороне производства, склад просто принимает;
 - committed_quantities: резерв материалов под запущенные производственные заказы → видна нехватка.

@@ -714,7 +714,7 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   end
 
   # ---------------------------------------------------------------------------
-  # Public helpers (ported from Andi.Catalogues)
+  # Public helpers (ported from the host application's catalogues helpers)
   # ---------------------------------------------------------------------------
 
   @doc """
@@ -724,14 +724,13 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   embedded primary translation, then to the denormalized `name` column.
   Returns `nil` for `nil` records.
 
-  Ported from `Andi.Catalogues.localized_name/2` — that function does not
+  Ported from the host application's `localized_name/2` — that function does not
   exist on `PhoenixKitCatalogue.Catalogue` itself (confirmed, matching
   Plan 3's identical finding for `Inventories`), so this is real ported
   logic, not a call-through. Unlike the original, `locale` is used exactly
-  as given — the original's `Andi.Locales.entity_locale/1`/`current_locale/0`
-  normalization is Andi-specific and dropped; callers pass an
-  already-resolved locale string (see this plan's Global Constraints on
-  `Andi.Locales.sync_from_phoenix_kit/0`).
+  as given — the original's locale
+  normalization is host-specific and dropped; callers pass an
+  already-resolved locale string (see this plan's Global Constraints on locale sync).
   """
   @spec localized_name(map() | struct() | nil, String.t() | nil) :: String.t() | nil
   def localized_name(nil, _locale), do: nil
@@ -758,8 +757,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   end
 
   @doc """
-  Short localized label for a catalogue item unit of measure. Ported from
-  `Andi.Catalogues.unit_label/1` verbatim.
+  Short localized label for a catalogue item unit of measure. Ported from the
+  host application's `unit_label/1` verbatim.
   """
   @spec unit_label(String.t() | nil) :: String.t()
   def unit_label(nil), do: ""
@@ -776,9 +775,8 @@ defmodule PhoenixKitWarehouse.Web.Components.WarehouseBrowser do
   any single separating space. Returns the original name if the prefix isn't
   present, or if stripping would yield an empty string.
 
-  Ported from `Andi.Catalogues.strip_prefix/1`. The original reads
-  `Application.get_env(:andi, :catalogue_prefix, "ANDI")` — Andi-specific
-  config the package cannot reference. This reads
+  Ported from the host application's `strip_prefix/1`. The original reads
+  a host-specific app env with a hardcoded brand default — config the package cannot reference. This reads
   `Application.get_env(:phoenix_kit_warehouse, :catalogue_prefix, "")`
   instead, defaulting to an **empty string** (no-op — every catalogue name
   passes through unchanged) rather than a hardcoded brand string, so the

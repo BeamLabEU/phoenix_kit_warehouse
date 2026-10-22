@@ -4,7 +4,7 @@ defmodule PhoenixKitWarehouse.StorageFolders do
   warehouse document.
 
   Consolidates what were 5 near-identical `*_storage_folders.ex` modules in
-  Andi (`goods_issue_storage_folders.ex`, `goods_receipt_storage_folders.ex`,
+  the host application this was extracted from (`goods_issue_storage_folders.ex`, `goods_receipt_storage_folders.ex`,
   `inventory_storage_folders.ex`, `supplier_order_storage_folders.ex`,
   `internal_order_storage_folders.ex`) into one module with 5 `ensure_for_*/2`
   functions.

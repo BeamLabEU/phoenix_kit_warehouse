@@ -2,8 +2,8 @@ defmodule PhoenixKitWarehouse.Web.SettingsLive do
   @moduledoc """
   Warehouse-location settings page (`/admin/settings/warehouse`).
 
-  Extracted from the warehouse section of Andi's `/admin/settings/andi`
-  page (`lib/andi_web/live/admin/settings/andi.ex`) — which location type
+  Extracted from the warehouse section of the host
+  application's settings page — which location type
   marks warehouses and which location is the default warehouse for stock.
   Both persist to `PhoenixKit.Settings` (admin-configurable, no redeploy)
   via `PhoenixKitWarehouse.StockLedger`.

@@ -609,7 +609,7 @@ msgstr "Failid ei ole selle kauba vastuvõtu jaoks veel saadaval."
 #: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:999
 #, elixir-autogen, elixir-format
 msgid "Files are not available for this internal order yet."
-msgstr "Failid ei ole selle sisemise tellimuse jaoks veel saadaval."
+msgstr "Failid ei ole selle sisetellimuse jaoks veel saadaval."
 
 #: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:1064
 #, elixir-autogen, elixir-format

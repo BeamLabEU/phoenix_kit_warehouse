@@ -1,9 +1,9 @@
 defmodule PhoenixKitWarehouse.ViewConfigs do
   @moduledoc """
   Minimal per-user, per-scope view-preference store — the "smallest viable"
-  replacement for `Andi.UserViewConfigs` (design doc, cross-dependency table).
+  replacement for the host application's user-view-configs store (design doc, cross-dependency table).
 
-  The original is backed by a dedicated `andi_user_view_configs` table
+  The original is backed by a dedicated host-specific user-view-configs table
   (`user_uuid`, `scope`, `view_config` jsonb, unique on `(user_uuid, scope)`).
   A standalone package cannot add its own ad-hoc table outside the Track A
   versioned-migration convention (Plan 1 already shipped V136 without one —

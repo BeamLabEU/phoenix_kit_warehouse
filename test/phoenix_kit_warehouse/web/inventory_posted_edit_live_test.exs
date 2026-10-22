@@ -5,7 +5,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
   Covers:
   - Admin sees editable controls + «Перепровести» on a posted document.
   - Non-admin sees a read-only view (no correction/repost buttons).
-  - correct_document/2 updates lines WITHOUT touching andi_warehouse_stock.
+  - correct_document/2 updates lines WITHOUT touching phoenix_kit_warehouse_stock.
   - repost_document/2 re-applies ABSOLUTE stock quantities and re-stamps
     posted_at / performed_by_uuid.
   - Activity rows land in phoenix_kit_activities for create / draft_saved /
@@ -193,7 +193,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
   # ---------------------------------------------------------------------------
 
   describe "correct_document/2" do
-    test "updates document lines without changing andi_warehouse_stock", %{conn: _conn} do
+    test "updates document lines without changing phoenix_kit_warehouse_stock", %{conn: _conn} do
       admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()
 
@@ -273,7 +273,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryPostedEditLiveTest do
   # ---------------------------------------------------------------------------
 
   describe "repost_document/2" do
-    test "re-applies ABSOLUTE stock: andi_warehouse_stock.quantity equals corrected counted_quantity",
+    test "re-applies ABSOLUTE stock: phoenix_kit_warehouse_stock.quantity equals corrected counted_quantity",
          %{conn: _conn} do
       admin = create_admin_user()
       item_uuid = Ecto.UUID.generate()

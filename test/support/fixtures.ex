@@ -2,7 +2,7 @@ defmodule PhoenixKitWarehouse.Test.Fixtures do
   @moduledoc """
   Standalone fixture helpers for the phoenix_kit_warehouse test suite.
 
-  Provides the same interface as `Andi.Fixtures.insert_order!/0` without
+  Provides the same interface as a host application's `insert_order!/0` fixture without
   depending on the host application.  Uses `FakeOrderSources` (an in-memory
   Agent) to satisfy `SourceKinds.resolve/2` calls made by LiveViews during
   tests that exercise the source-picker and traceability-chain flows.

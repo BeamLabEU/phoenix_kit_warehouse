@@ -27,13 +27,13 @@
 
 - `Stock.location_uuid` и `location_uuid` во всех документах (`GoodsReceipt`, `GoodsIssue`, `InternalOrder`, `SupplierOrder`, `InventoryDocument`) уже существуют как мягкий `Ecto.UUID` без FK. Настройки `warehouse_location_type_uuid` / `warehouse_default_location_uuid` уже реализованы в `StockLedger` и управляются через `Web.SettingsLive` (`/admin/settings/warehouse`) — **значит, задача 1 не требует новой миграции**, только доводки логики и UI.
 - **`phoenix_kit_locations` v0.2.1**: пикер места (`PlacePicker` LiveComponent) и `PhoenixKitLocations.Spaces.full_path/2` (не `Paths.full_path/1` — `lib/phoenix_kit_locations/paths.ex` содержит только `Routes.path`-хелперы для URL, к построению пути локации не относится) **ещё не реализованы**. Есть `PhoenixKitLocations.Locations.list_locations(type_uuid: ...)` и `get_location/1` — этого достаточно. **Решение: используем обычный `<select>`**, без ожидания picker-компонента locations (graceful text/select-fallback). Замена на богатый picker — T23 (хвост волны 1, опционально).
-- **Реальный источник таблиц склада сегодня**: актуальный dep `/www/app/deps/phoenix_kit` уже имеет `@current_version 140`, и `v140.ex` в его составе — это и есть штатная складская core-миграция (создаёт те же 6 таблиц, что и bootstrap-миграция самого Andi: `/www/app/priv/repo/migrations/20260708140000_create_phoenix_kit_warehouse_tables.exs`; обе idempotent, конфликта между ними нет). Это НЕ «стоп-гэп до публикации V140» — V140 уже реальность в текущем deps. Для нас это не блокер: новые таблицы (Transfers, MinStock), которых нет ни в bootstrap-миграции, ни в core V140, идут через **собственный** `migration_module/0` пакета `phoenix_kit_warehouse` — первый потребитель этого механизма во всей экосистеме.
+- **Реальный источник таблиц склада сегодня**: актуальный dep `<host-app>/deps/phoenix_kit` уже имеет `@current_version 140`, и `v140.ex` в его составе — это и есть штатная складская core-миграция (создаёт те же 6 таблиц, что и bootstrap-миграция самого хост-приложения: `priv/repo/migrations/20260708140000_create_phoenix_kit_warehouse_tables.exs`; обе idempotent, конфликта между ними нет). Это НЕ «стоп-гэп до публикации V140» — V140 уже реальность в текущем deps. Для нас это не блокер: новые таблицы (Transfers, MinStock), которых нет ни в bootstrap-миграции, ни в core V140, идут через **собственный** `migration_module/0` пакета `phoenix_kit_warehouse` — первый потребитель этого механизма во всей экосистеме.
 - `PhoenixKit.Module.migration_module/0` (см. `/www/phoenix_kit/lib/phoenix_kit/module.ex:112`, default `nil`) и генератор в `/www/phoenix_kit/lib/mix/tasks/phoenix_kit.update.ex:830-932` (`run_module_migrations/1` → `discover_module_migrations/0` → `generate_module_migration/5`) ожидают от модуля-мигратора:
   - `current_version/0 :: integer`
   - `migrated_version_runtime(prefix: prefix) :: integer` — вызывается как `migration_mod.migrated_version_runtime(prefix: prefix)` (keyword list, НЕ map).
-  - `up(prefix: "...", version: N)` / `down(prefix: "...", version: N)` — сгенерированная в хосте (Andi) обёртка `priv/repo/migrations/<ts>_..._update_vN_to_vM.exs` вызывает их так же, keyword list.
+  - `up(prefix: "...", version: N)` / `down(prefix: "...", version: N)` — сгенерированная в хосте обёртка `priv/repo/migrations/<ts>_..._update_vN_to_vM.exs` вызывает их так же, keyword list.
   - Обёртка **не** содержит `@disable_ddl_transaction` — это надо добавить руками после генерации (PgBouncer в dev молча роняет DDL внутри транзакции — см. известную проблему проекта).
-  - `PhoenixKit.Migrations.Postgres` (core, `/www/phoenix_kit/lib/phoenix_kit/migrations/postgres.ex`) — эталон стиля V-файлов (`use Ecto.Migration`, `create_if_not_exists`, `execute("COMMENT ON TABLE ... IS '<v>'")` как маркер версии), но **не наследуется** — это самостоятельный движок ядра под свою таблицу `phoenix_kit`. Для склада маркер версии должен сидеть на **своей** таблице, не на core-`phoenix_kit` (комментарий в bootstrap-миграции Andi явно говорит: `COMMENT ON TABLE phoenix_kit` — прерогатива только core). Решение: маркер версии — `COMMENT ON TABLE phoenix_kit_warehouse_stock IS '<v>'` (эта таблица гарантированно существует, раз модуль вообще работает).
+  - `PhoenixKit.Migrations.Postgres` (core, `/www/phoenix_kit/lib/phoenix_kit/migrations/postgres.ex`) — эталон стиля V-файлов (`use Ecto.Migration`, `create_if_not_exists`, `execute("COMMENT ON TABLE ... IS '<v>'")` как маркер версии), но **не наследуется** — это самостоятельный движок ядра под свою таблицу `phoenix_kit`. Для склада маркер версии должен сидеть на **своей** таблице, не на core-`phoenix_kit` (комментарий в bootstrap-миграции хоста явно говорит: `COMMENT ON TABLE phoenix_kit` — прерогатива только core). Решение: маркер версии — `COMMENT ON TABLE phoenix_kit_warehouse_stock IS '<v>'` (эта таблица гарантированно существует, раз модуль вообще работает).
 - `PhoenixKitWarehouse.StockLedger.stock_map/0` и коллеги (`stock_for_items/2` + `Map.new(&{&1.item_uuid, &1})` в `goods_receipts.ex`, `goods_issues.ex`, `supplier_orders.ex`) схлопывают **все** строки `Stock` по `item_uuid`, теряя `location_uuid` — при одном складе это незаметно (одна строка на товар), но при мульти-складе это станет реальным багом (неверный "видимый" остаток, неверный `previous_quantity` в аудите приёмок/расходов, неверное посевное количество в инвентаризации). Это нужно чинить как часть задачи 1, а не откладывать.
 - Обвязка документа (эталон — Internal Orders): schema (`schemas/internal_order.ex`) + context (`internal_orders.ex`, паттерн `lock_status_step` + `Ecto.Multi`) + `ColumnConfig.InternalOrders` (`use PhoenixKitWarehouse.ColumnConfig, scope: "..."`) + `Web.InternalOrderIndexLive` (`use ColumnManagement`, self-wrapped `LayoutWrapper.app_layout`) + `Web.InternalOrderFormLive` (:new/:edit/:items/:files/:comments, `use PhoenixKitComments.Embed`, `MediaBrowser.setup_uploads`, `StorageFolders.ensure_for_internal_order/2`) + `DocRefs` (label/path резолвинг) + `Web.Components.WarehouseHeader` (общий таб-бар). Все новые фичи копируют эту форму.
 - «Связанные документы»: `InternalOrderFormLive` — единственный, у кого уже есть блок «upstream» (`@source_refs` через `DocRefs.refs_for/1`) **и** «downstream» (`@child_supplier_order_refs` + `@child_goods_issue_refs` через `DocRefs.supplier_order_refs_for_internal_order/1` и `goods_issue_refs_for_internal_order/1`). У `SupplierOrderFormLive`, `GoodsReceiptFormLive`, `GoodsIssueFormLive` уже есть upstream-блок (через `DocRefs.refs_for/1`), но нет downstream. У `InventoryFormLive` нет ни того, ни другого (в схеме `InventoryDocument` вообще нет `source_refs`) — это самостоятельный документ, трогать не нужно.
@@ -118,7 +118,7 @@
 Файлы: не изменяются — только чтение.
 
 Что сделать: непосредственно перед T7 заново прочитать (могло измениться с момента написания этого плана):
-- `deps/phoenix_kit/lib/mix/tasks/phoenix_kit.update.ex` внутри `/www/phoenix_kit_warehouse` (или `/www/app`, если генерация будет запускаться оттуда) — секции `run_module_migrations/1`, `discover_module_migrations/0`, `generate_module_migration/5`.
+- `deps/phoenix_kit/lib/mix/tasks/phoenix_kit.update.ex` внутри `/www/phoenix_kit_warehouse` (или `<host-app>`, если генерация будет запускаться оттуда) — секции `run_module_migrations/1`, `discover_module_migrations/0`, `generate_module_migration/5`.
 - `deps/phoenix_kit/lib/phoenix_kit/module.ex` — сигнатура `@callback migration_module() :: module() | nil`.
 
 Подтвердить, что: (a) `migrated_version_runtime/1` вызывается с keyword list `prefix: prefix`; (b) сгенерированная обёртка вызывает `Mod.up(prefix: "...", version: N)` / `Mod.down(prefix: "...", version: N)`, тоже keyword list; (c) обёртка **не** содержит `@disable_ddl_transaction`. Если что-то разошлось с этим планом — скорректировать T7/T9/T17 до написания кода.
@@ -141,12 +141,12 @@
 
 Проверка: `mix compile` (в `phoenix_kit_warehouse`); юнит-тест на `migrated_version_runtime/1` (0 до применения) — можно через `PhoenixKitWarehouse.DataCase`, выполнить `V01.up(%{prefix: "public"})` в тесте и проверить `current_version() == migrated_version_runtime(prefix: "public")`.
 
-### T8. Прогон миграции в Andi и проверка на PgBouncer
+### T8. Прогон миграции в хост-приложении и проверка на PgBouncer
 
-Файлы: сгенерированный `/www/app/priv/repo/migrations/<ts>_..._update_v0_to_v1.exs`.
+Файлы: сгенерированный `<host-app>/priv/repo/migrations/<ts>_..._update_v0_to_v1.exs`.
 
 Что сделать:
-1. Из `/www/app`: `mix phoenix_kit.update` (единственная команда — генерирует И применяет миграцию одним прогоном; отдельного шага «применить» нет).
+1. Из `<host-app>`: `mix phoenix_kit.update` (единственная команда — генерирует И применяет миграцию одним прогоном; отдельного шага «применить» нет).
 2. ОЖИДАЕМЫЙ результат первого прогона в dev (не аварийный случай, а норма): `mix ecto.migrate` внутри команды запишет версию как применённую, но сама DDL (`CREATE TABLE ...`) молча провалится — PgBouncer рвёт неявную транзакцию миграции (известная проблема проекта, см. `reference_pgbouncer_migrations`). Добавить `@disable_ddl_transaction true` в файл ДО этого прогона невозможно: файла ещё не существует до генерации, а `mix phoenix_kit.update` генерирует и тут же применяет одной командой — вставить атрибут «между» негде.
 3. Поэтому сразу чинить фактическое состояние БД руками через Tidewave (`mcp__tidewave__execute_sql_query` или `project_eval`) — прямые `CREATE TABLE ...`/`CREATE SEQUENCE ...`/индексы/`COMMENT ON TABLE` из V01, как в рецепте `reference_pgbouncer_migrations`.
 4. Открыть уже сгенерированный файл `<ts>_..._update_v0_to_v1.exs` и добавить `@disable_ddl_transaction true` — это НЕ чинит уже прошедший прогон (БД уже починена шагом 3), а нужно для ПОСЛЕДУЮЩИХ сред (test/prod с прямым подключением к Postgres без PgBouncer, где `up`/`down` пройдут по-настоящему) и для повторных прогонов в самом dev через прямое подключение.
@@ -239,7 +239,7 @@
 - `hidden_crud_tabs/0`: `:warehouse_transfer_new` (`warehouse/transfers/new`, priority 611), `:warehouse_transfer_edit` (`warehouse/transfers/:uuid`, 612), `:warehouse_transfer_items` (`.../items`, 613), `:warehouse_transfer_files` (`.../files`, 614), `:warehouse_transfer_comments` (`.../comments`, 615) — `visible: false`, `live_view: {TransferFormLive, :new|:edit|:items|:files|:comments}`. Регистрация `:warehouse_transfer_items` здесь ОБЯЗЫВАЕТ T15 реализовать у `TransferFormLive` полноценный action `:items` (по образцу Internal Orders) — таб не должен остаться осиротевшим роутом без контента; если при реализации T15 решение изменится на «без отдельного `:items`», этот пункт `hidden_crud_tabs/0` нужно убрать синхронно.
 - `WarehouseHeader`: добавить вкладку «Transfers»/«Перемещения» между Supplier Orders и Goods Receipt (порядок — на усмотрение, главное присутствие).
 
-Проверка: `mix compile` в phoenix_kit_warehouse; из `/www/app`: recompile + `sudo /usr/bin/supervisorctl restart elixir` (boot-time discovery путь-зависимости); `AndiWeb.Router.__routes__()` через Tidewave содержит `/admin/warehouse/transfers`; открыть `/admin/warehouse/transfers` в браузере — 404 не должно быть (даже с пустым LiveView-стабом на этом этапе допустим временный редирект/пустая страница — полноценный контент появится в T14).
+Проверка: `mix compile` в phoenix_kit_warehouse; из `<host-app>`: recompile + `sudo /usr/bin/supervisorctl restart elixir` (boot-time discovery путь-зависимости); роутер хоста (`__routes__()`) через Tidewave содержит `/admin/warehouse/transfers`; открыть `/admin/warehouse/transfers` в браузере — 404 не должно быть (даже с пустым LiveView-стабом на этом этапе допустим временный редирект/пустая страница — полноценный контент появится в T14).
 
 ### T14. `Web.TransferIndexLive`
 
@@ -277,7 +277,7 @@
 Что сделать (повторно — короткая версия T6/T7/T8, второй прогон механизма):
 - `V02.up/1`: `CREATE TABLE IF NOT EXISTS <prefix>.phoenix_kit_warehouse_min_stock (uuid UUID PK DEFAULT uuid_generate_v7(), item_uuid UUID NOT NULL, min_quantity NUMERIC NOT NULL DEFAULT 0, timestamps)`; `CREATE UNIQUE INDEX IF NOT EXISTS phoenix_kit_warehouse_min_stock_item_uuid_index ON ... (item_uuid)`; `COMMENT ON TABLE phoenix_kit_warehouse_stock IS '2'`.
 - `V02.down/1` — зеркально, `COMMENT ... IS '1'`.
-- Из `/www/app`: `mix phoenix_kit.update` (ОЖИДАЕМО первый прогон в dev молча уронит DDL под PgBouncer, версия запишется, а таблица не создастся — это норма, не авария, см. полный рецепт в T8) → сразу починить руками через Tidewave прямыми `CREATE TABLE`/`CREATE UNIQUE INDEX`/`COMMENT ON TABLE` из V02 → добавить `@disable_ddl_transaction true` в сгенерированный `..._update_v1_to_v2.exs` (для последующих сред, см. T8 п.4 — не чинит уже прошедший прогон) → `sudo supervisorctl restart elixir`.
+- Из `<host-app>`: `mix phoenix_kit.update` (ОЖИДАЕМО первый прогон в dev молча уронит DDL под PgBouncer, версия запишется, а таблица не создастся — это норма, не авария, см. полный рецепт в T8) → сразу починить руками через Tidewave прямыми `CREATE TABLE`/`CREATE UNIQUE INDEX`/`COMMENT ON TABLE` из V02 → добавить `@disable_ddl_transaction true` в сгенерированный `..._update_v1_to_v2.exs` (для последующих сред, см. T8 п.4 — не чинит уже прошедший прогон) → `sudo supervisorctl restart elixir`.
 
 Проверка: Tidewave `SELECT to_regclass('public.phoenix_kit_warehouse_min_stock')` не `NULL`; `PhoenixKitWarehouse.Migrations.Postgres.current_version() == 2 == migrated_version_runtime(prefix: "public")`.
 
@@ -341,7 +341,7 @@
 - `WarehouseHeader`: добавить вкладку «Turnover»/«Обороты».
 - Явно **не** добавлять кнопку экспорта — прецедента XLS-записи в модуле нет (см. «Текущее состояние»); при необходимости — отдельная будущая задача.
 
-Проверка: `mix compile` phoenix_kit_warehouse → из `/www/app` recompile + `sudo supervisorctl restart elixir` → `/admin/warehouse/turnover` открывается, таблица считается по умолчанным датам; `mix test test/phoenix_kit_warehouse/web/turnover_report_live_test.exs`.
+Проверка: `mix compile` phoenix_kit_warehouse → из `<host-app>` recompile + `sudo supervisorctl restart elixir` → `/admin/warehouse/turnover` открывается, таблица считается по умолчанным датам; `mix test test/phoenix_kit_warehouse/web/turnover_report_live_test.exs`.
 
 ---
 
@@ -377,7 +377,7 @@
 ## Общие правила для каждой задачи
 
 - `mix format && mix quality` (или хотя бы `mix format && mix credo --strict`) перед коммитом в `phoenix_kit_warehouse`.
-- После любого изменения в `phoenix_kit_warehouse.ex` (`admin_tabs/0`, `migration_module/0`) — из `/www/app`: recompile + `sudo /usr/bin/supervisorctl restart elixir` (path-dep, boot-time, без hot-reload — см. окружение). Рутинные правки LiveView/контекстов внутри уже зарегистрированных модулей — без рестарта.
-- Миграции — только через `mix phoenix_kit.update` из `/www/app`; каждую сгенерированную обёртку проверять на `@disable_ddl_transaction` (PgBouncer).
+- После любого изменения в `phoenix_kit_warehouse.ex` (`admin_tabs/0`, `migration_module/0`) — из `<host-app>`: recompile + `sudo /usr/bin/supervisorctl restart elixir` (path-dep, boot-time, без hot-reload — см. окружение). Рутинные правки LiveView/контекстов внутри уже зарегистрированных модулей — без рестарта.
+- Миграции — только через `mix phoenix_kit.update` из `<host-app>`; каждую сгенерированную обёртку проверять на `@disable_ddl_transaction` (PgBouncer).
 - Не трогать `CHANGELOG.md`/`@version` — это прерогатива мейнтейнера.
 - Коммиты — в `main` `phoenix_kit_warehouse`, без AI-атрибуции.
