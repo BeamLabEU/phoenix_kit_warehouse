@@ -171,7 +171,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderPreview do
   end
 
   # A choice equal to what the line would get anyway is no choice: the line
-  # keeps its automatic reason.
+  # keeps its automatic (or preselected) reason.
   defp put_choice(choices, %{choosable?: true} = line, value) do
     case normalize(value, line) do
       :none -> Map.delete(choices, line.key)
@@ -182,12 +182,15 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderPreview do
 
   defp put_choice(choices, _line, _value), do: choices
 
-  defp normalize("skip", %{auto_supplier_uuid: nil}), do: :none
-  defp normalize("skip", _line), do: "skip"
+  defp normalize("skip", line) do
+    if SupplierOrderPlan.default_supplier_uuid(line), do: "skip", else: :none
+  end
 
   defp normalize(value, line) when is_binary(value) do
+    default = SupplierOrderPlan.default_supplier_uuid(line)
+
     case Ecto.UUID.cast(value) do
-      {:ok, uuid} when uuid == line.auto_supplier_uuid -> :none
+      {:ok, ^default} -> :none
       {:ok, uuid} -> if uuid in line.choices, do: uuid, else: :invalid
       :error -> :invalid
     end
@@ -203,7 +206,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderPreview do
 
   defp signature(line) do
     {line.item_uuid, Enum.map([line.need, line.on_hand, line.in_transit, line.to_order], &qty/1),
-     line.auto_supplier_uuid, line.reason}
+     line.auto_supplier_uuid, line.reason, line.preselected}
   end
 
   defp qty(%Decimal{} = d), do: d |> Decimal.normalize() |> Decimal.to_string()

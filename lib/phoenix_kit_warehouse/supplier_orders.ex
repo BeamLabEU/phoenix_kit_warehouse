@@ -554,7 +554,8 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   @doc """
   Generates draft supplier orders from a posted internal order: what
   `apply_plan/5` writes, with the plan built under the lock and no choices,
-  so a line without an automatic supplier is not ordered. See
+  so a line without an automatic or preselected supplier is not ordered (a
+  preselected line goes to the draft its item already lies in). See
   `PhoenixKitWarehouse.SupplierOrderPlan` for the supplier of a line and the
   quantity (`required - issued - on hand - already ordered for this order`).
 

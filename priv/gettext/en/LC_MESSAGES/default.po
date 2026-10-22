@@ -2308,6 +2308,11 @@ msgstr "Chosen by hand"
 msgid "Primary supplier of the item"
 msgstr "Primary supplier of the item"
 
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:405
+#, elixir-autogen, elixir-format
+msgid "As in %{number}"
+msgstr "As in %{number}"
+
 #: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:415
 #, elixir-autogen, elixir-format
 msgid "The only supplier of the item"

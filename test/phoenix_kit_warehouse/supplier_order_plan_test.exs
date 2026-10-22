@@ -752,6 +752,172 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlanTest do
   end
 
   # ---------------------------------------------------------------------------
+  # Preselected supplier: the draft the item already lies in
+  # ---------------------------------------------------------------------------
+
+  describe "preselected supplier" do
+    test "a line without a supplier, partly in a draft of this order: that draft's supplier" do
+      sup = supplier!()
+      item = item!()
+      io = posted_io!([io_line(item, "4")])
+
+      draft =
+        draft_so!(%{
+          supplier_uuid: sup.uuid,
+          internal_order_uuid: io.uuid,
+          lines: [so_line(item, "1")]
+        })
+
+      plan = plan!(io)
+      line = only_line(plan)
+
+      assert line.reason == :no_supplier
+      assert line.auto_supplier_uuid == nil
+
+      assert line.preselected == %{
+               supplier_uuid: sup.uuid,
+               uuid: draft.uuid,
+               number: draft.number
+             }
+
+      assert SupplierOrderPlan.default_supplier_uuid(line) == sup.uuid
+
+      assert [%{supplier_uuid: group_sup, target: %{uuid: target}, keys: [key]}] = plan.groups
+      assert {group_sup, target, key} == {sup.uuid, draft.uuid, line.key}
+    end
+
+    test "an ambiguous line is preselected too" do
+      sup = supplier!()
+      item = item!(%{manufacturer_uuid: manufacturer!([supplier!(), supplier!()]).uuid})
+      io = posted_io!([io_line(item, "4")])
+
+      draft_so!(%{
+        supplier_uuid: sup.uuid,
+        internal_order_uuid: io.uuid,
+        lines: [so_line(item, "1")]
+      })
+
+      line = only_line(plan!(io))
+
+      assert line.reason == :ambiguous
+      assert line.preselected.supplier_uuid == sup.uuid
+    end
+
+    test "from a combined draft that refers to this order" do
+      sup = supplier!()
+      item = item!()
+      io = posted_io!([io_line(item, "4")])
+      other = posted_io!([io_line(item, "2")])
+
+      combined =
+        draft_so!(%{
+          supplier_uuid: sup.uuid,
+          internal_order_uuid: other.uuid,
+          lines: [so_line(item, "3")],
+          source_refs: [
+            io_ref(io.uuid, %{item.uuid => "1"}),
+            io_ref(other.uuid, %{item.uuid => "2"})
+          ]
+        })
+
+      line = only_line(plan!(io))
+
+      assert line.preselected == %{
+               supplier_uuid: sup.uuid,
+               uuid: combined.uuid,
+               number: combined.number
+             }
+    end
+
+    test "of drafts at several suppliers: this order's own draft, then the highest number" do
+      [own_sup, combined_sup, newer_sup] = [supplier!(), supplier!(), supplier!()]
+      item = item!()
+      io = posted_io!([io_line(item, "10")])
+      other = posted_io!([io_line(item, "1")])
+
+      own =
+        draft_so!(%{
+          supplier_uuid: own_sup.uuid,
+          internal_order_uuid: io.uuid,
+          lines: [so_line(item, "1")]
+        })
+
+      _combined =
+        draft_so!(%{
+          supplier_uuid: combined_sup.uuid,
+          internal_order_uuid: other.uuid,
+          lines: [so_line(item, "2")],
+          source_refs: [
+            io_ref(io.uuid, %{item.uuid => "1"}),
+            io_ref(other.uuid, %{item.uuid => "1"})
+          ]
+        })
+
+      # A combined draft with a higher number loses to the draft of this order alone.
+      assert only_line(plan!(io)).preselected.uuid == own.uuid
+
+      # Of two drafts of this order alone, the higher number.
+      newer =
+        draft_so!(%{
+          supplier_uuid: newer_sup.uuid,
+          internal_order_uuid: io.uuid,
+          lines: [so_line(item, "1")]
+        })
+
+      assert newer.number > own.number
+
+      assert only_line(plan!(io)).preselected == %{
+               supplier_uuid: newer_sup.uuid,
+               uuid: newer.uuid,
+               number: newer.number
+             }
+    end
+
+    test "no preselection from a draft without a supplier, a posted order or an inactive supplier" do
+      item = item!()
+      io = posted_io!([io_line(item, "10")])
+      inactive = supplier!(%{status: "inactive"})
+
+      draft_so!(%{supplier_uuid: nil, internal_order_uuid: io.uuid, lines: [so_line(item, "1")]})
+      posted_so!(%{internal_order_uuid: io.uuid, lines: [so_line(item, "1")]})
+
+      draft_so!(%{
+        supplier_uuid: inactive.uuid,
+        internal_order_uuid: io.uuid,
+        lines: [so_line(item, "1")]
+      })
+
+      plan = plan!(io)
+      line = only_line(plan)
+
+      assert_dec(line.to_order, "7")
+      assert line.preselected == nil
+      assert SupplierOrderPlan.default_supplier_uuid(line) == nil
+      assert plan.groups == []
+    end
+
+    test "an automatic supplier is not overridden, a line with nothing to order is not preselected" do
+      auto = supplier!()
+      sup = supplier!()
+      auto_item = item!(%{manufacturer_uuid: manufacturer!([auto]).uuid})
+      covered = item!()
+      io = posted_io!([io_line(auto_item, "4"), io_line(covered, "1")])
+
+      draft_so!(%{
+        supplier_uuid: sup.uuid,
+        internal_order_uuid: io.uuid,
+        lines: [so_line(auto_item, "1"), so_line(covered, "1")]
+      })
+
+      [auto_line, covered_line] = plan!(io).lines
+
+      assert auto_line.preselected == nil
+      assert SupplierOrderPlan.default_supplier_uuid(auto_line) == auto.uuid
+      assert covered_line.preselected == nil
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # The plan
   # ---------------------------------------------------------------------------
 

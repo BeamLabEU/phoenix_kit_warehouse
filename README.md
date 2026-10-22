@@ -127,7 +127,13 @@ shows exactly what will be written:
 - the lines without a supplier or with several: a supplier is chosen per line
   or for all ticked lines at once (candidates of the item first, then every
   active supplier; the default is not to order); any automatic supplier can be
-  replaced as well. A choice is for this generation only;
+  replaced as well. A choice is for this generation only. Such a line whose
+  item already lies in a live draft of this internal order with an active
+  supplier is preselected to that supplier ("as in `#SO-…`"; of several such
+  drafts, a draft of this order alone, then the highest number), so the
+  missing rest goes into that draft - also when `generate_from_internal_order/3`
+  runs without the window; "do not order" or another supplier can still be
+  chosen;
 - the lines with nothing to order, with the reason (issued, covered by stock,
   already ordered in `#SO-…`, item not in the catalogue).
 

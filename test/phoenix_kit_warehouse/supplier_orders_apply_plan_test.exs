@@ -973,6 +973,57 @@ defmodule PhoenixKitWarehouse.SupplierOrdersApplyPlanTest do
       assert covered_uuid == covered.uuid
     end
 
+    test "a line without a supplier, partly in a draft: the rest is appended to that draft" do
+      sup = supplier!()
+      lone = item!()
+      ambiguous = item!(%{manufacturer_uuid: manufacturer!([supplier!(), supplier!()]).uuid})
+      io = posted_io!([io_line(lone, "4"), io_line(ambiguous, "3")])
+
+      draft =
+        draft!(sup, %{
+          internal_order_uuid: io.uuid,
+          lines: [so_line(lone, "1"), so_line(ambiguous, "1")]
+        })
+
+      result = generate!(io)
+
+      assert result.supplier_orders == []
+      assert [%{uuid: appended_uuid}] = result.appended
+      assert appended_uuid == draft.uuid
+      assert result.unassigned_lines == []
+
+      written = reload(draft)
+      assert_dec(ordered(written, lone), "4")
+      assert_dec(ordered(written, ambiguous), "3")
+      assert length(written.lines) == 2
+      assert [draft.uuid] == Enum.map(live_orders(io), & &1.uuid)
+
+      # Nothing is missing any more: a second generation writes nothing.
+      assert %{supplier_orders: [], appended: []} = generate!(io)
+    end
+
+    test "a preselected line chosen \"do not order\" is not appended" do
+      sup = supplier!()
+      lone = item!()
+      io = posted_io!([io_line(lone, "4")])
+      draft = draft!(sup, %{internal_order_uuid: io.uuid, lines: [so_line(lone, "1")]})
+
+      plan = plan!(io)
+      key = line_for(plan, lone).key
+
+      assert %{orders: [%{supplier_uuid: placed_sup, target: %{uuid: target}}]} =
+               SupplierOrders.assemble(plan, %{})
+
+      assert {placed_sup, target} == {sup.uuid, draft.uuid}
+
+      assert {:ok, result} =
+               SupplierOrders.apply_plan(io.uuid, plan.fingerprint, %{key => "skip"}, uuid())
+
+      assert result.appended == []
+      assert [%{"reason" => "skipped"}] = result.unassigned_lines
+      assert_dec(ordered(reload(draft), lone), "1")
+    end
+
     test "an unposted internal order is :not_posted" do
       {:ok, draft} =
         InternalOrders.create_internal_order(%{

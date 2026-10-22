@@ -444,6 +444,83 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderGenerationPreviewLiveTest do
              )
     end
 
+    test "a line without a supplier, partly in a draft: preselected to that draft's supplier",
+         %{conn: conn} do
+      s = supplier!()
+      lone = item!()
+      io = posted_io!([io_line(lone, "4")])
+      draft = draft_of!(io, s, [so_line(lone, "1")])
+
+      plan = plan!(io)
+      line = line_of(plan, lone)
+      lv = open!(conn, io)
+
+      assert has_element?(lv, "#io-preview-group-#{s.uuid} #{row(plan, lone)}")
+      refute has_element?(lv, "#io-preview-choose")
+
+      assert has_element?(
+               lv,
+               "#io-preview-reason-#{line.index}",
+               "As in #SO-#{draft.number}"
+             )
+
+      assert has_element?(
+               lv,
+               "#io-preview-choice-#{line.index} option[value='#{s.uuid}'][selected]"
+             )
+
+      assert has_element?(
+               lv,
+               "#io-preview-now-after-#{line.index}",
+               "in #SO-#{draft.number}: now 1 → 4"
+             )
+
+      assert has_element?(
+               lv,
+               "#io-preview-summary",
+               "New orders: 0, appended: 1 (lines: 1); not ordered: 0"
+             )
+
+      # "Do not order" takes it out of the draft's group.
+      change!(lv, %{"choice" => %{line.key => "skip"}})
+
+      assert has_element?(lv, "#io-preview-choose #{row(plan, lone)}")
+      assert has_element?(lv, row(plan, lone), "Not ordered: chosen by hand")
+      assert has_element?(lv, "#io-preview-choice-#{line.index} option[value='skip'][selected]")
+      assert has_element?(lv, "#io-preview-submit[disabled]")
+
+      assert has_element?(
+               lv,
+               "#io-preview-summary",
+               "New orders: 0, appended: 0 (lines: 0); not ordered: 1"
+             )
+
+      # Back to the draft's supplier: the preselection again.
+      change!(lv, %{"choice" => %{line.key => s.uuid}})
+
+      assert has_element?(lv, "#io-preview-reason-#{line.index}", "As in #SO-#{draft.number}")
+
+      submit!(lv)
+
+      assert [written] = orders_of(io)
+      assert written.uuid == draft.uuid
+      assert quantities(written.lines) == %{lone.uuid => "4"}
+    end
+
+    test "the reason of a preselected line is translated in every bundled language" do
+      for {locale, expected} <- [
+            {"ru", "Как в #SO-14"},
+            {"et", "Nagu #SO-14"},
+            {"uk", "Як у #SO-14"}
+          ] do
+        Gettext.with_locale(PhoenixKitWarehouse.Gettext, locale, fn ->
+          assert Gettext.dgettext(PhoenixKitWarehouse.Gettext, "default", "As in %{number}",
+                   number: "#SO-14"
+                 ) == expected
+        end)
+      end
+    end
+
     test "the warning is translated in every bundled language" do
       msgid =
         "There is already a draft %{number} for this supplier — what is missing will be added to it"

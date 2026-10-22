@@ -43,6 +43,17 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   counts its ref's `"lines"` while a draft and
   `min(ref lines, ordered - received)` once posted.
 
+  ## Preselected supplier
+
+  A line without an automatic supplier (`:ambiguous`, `:no_supplier`) whose
+  item already lies in a live draft of this order that has an active
+  supplier is `preselected` to that supplier: what is missing goes where the
+  rest already is. Of several such drafts, the one `targets` would prefer -
+  a draft of this order alone, then the highest number. It is a default
+  choice, not an automatic supplier: the reason stays, a person may choose
+  another supplier or "do not order", and without a choice `assemble/2`
+  (and so a generation without the window) places the line there.
+
   ## Where the lines go
 
   One draft per (internal order, supplier): `targets` names, per supplier,
@@ -110,15 +121,18 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   Every line is `%{key, index, item_uuid, name, sku, unit, catalogue_uuid,
   base_price, explanation, reason, reason_source, primary_issue, candidates, excluded,
   auto_supplier_uuid, choosable?, choices, required, issued, need, on_hand,
-  stock, in_transit, in_transit_from, to_order, zero_reason}`; `key` is
-  `"<index>:<item_uuid>"`, `stock` the raw quantity on the location and
-  `on_hand`/`in_transit`/`issued` the share of it this line uses. A line is
-  `choosable?` when its item exists and something is to order; `choices` then
-  lists its candidates followed by every other active supplier.
-  `zero_reason` says why nothing is to order (`:issued`, `:on_hand`,
-  `:in_transit`, `:no_need`). `supplier_orders` summarises the live supplier
-  orders of the order (with their `lines` and `source_refs`), `targets` maps a
-  supplier to the one of them its lines are appended to.
+  preselected, stock, in_transit, in_transit_from, to_order, zero_reason}`;
+  `key` is `"<index>:<item_uuid>"`, `stock` the raw quantity on the location
+  and `on_hand`/`in_transit`/`issued` the share of it this line uses. A line
+  is `choosable?` when its item exists and something is to order; `choices`
+  then lists its candidates followed by every other active supplier.
+  `preselected` is `%{supplier_uuid, uuid, number}` of the draft a line
+  without an automatic supplier is preselected from, else `nil` (see the
+  moduledoc and `default_supplier_uuid/1`). `zero_reason` says why nothing
+  is to order (`:issued`, `:on_hand`, `:in_transit`, `:no_need`).
+  `supplier_orders` summarises the live supplier orders of the order (with
+  their `lines` and `source_refs`), `targets` maps a supplier to the one of
+  them its lines are appended to.
   """
   @spec build(Ecto.UUID.t() | term(), keyword()) ::
           {:ok, plan()} | {:error, :not_found | :not_posted | :deleted}
@@ -223,6 +237,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       end
 
     Map.merge(quantities, %{
+      preselected: preselected(resolution, quantities.in_transit_from, choices),
       key: "#{index}:#{line["item_uuid"]}",
       index: index,
       item_uuid: line["item_uuid"],
@@ -242,13 +257,42 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
     })
   end
 
-  # Lines with something to order and an automatic supplier, grouped by that
-  # supplier in the order the suppliers first appear, each with the draft a
-  # generation writes into (`:new` when there is none).
+  # A line without an automatic supplier, with something to order, whose
+  # item lies in live drafts of this order with an active supplier: the one
+  # `targets/1` would prefer. The reason names the draft the item lies in;
+  # the lines are still appended to the supplier's target, which can be
+  # another draft (a draft of this order alone beats a combined one), the
+  # same as for a line with an automatic supplier.
+  defp preselected(%{supplier_uuid: nil}, in_transit_from, choices) do
+    case Enum.filter(in_transit_from, &(&1.status == "draft" and &1.supplier_uuid in choices)) do
+      [] ->
+        nil
+
+      drafts ->
+        drafts
+        |> Enum.max_by(&{&1.single_source?, &1.number})
+        |> Map.take([:supplier_uuid, :uuid, :number])
+    end
+  end
+
+  defp preselected(_automatic, _in_transit_from, _choices), do: nil
+
+  @doc """
+  The supplier a plan line gets without a choice: its automatic supplier,
+  else the supplier it is preselected to, else `nil`.
+  """
+  @spec default_supplier_uuid(map()) :: Ecto.UUID.t() | nil
+  def default_supplier_uuid(%{auto_supplier_uuid: uuid}) when is_binary(uuid), do: uuid
+  def default_supplier_uuid(%{preselected: %{supplier_uuid: uuid}}), do: uuid
+  def default_supplier_uuid(_line), do: nil
+
+  # Lines with something to order and a supplier without a choice, grouped by
+  # that supplier in the order the suppliers first appear, each with the
+  # draft a generation writes into (`:new` when there is none).
   defp groups(lines, ctx, targets) do
     lines
-    |> Enum.filter(&(&1.auto_supplier_uuid && Decimal.gt?(&1.to_order, 0)))
-    |> Enum.group_by(& &1.auto_supplier_uuid)
+    |> Enum.filter(&(default_supplier_uuid(&1) && Decimal.gt?(&1.to_order, 0)))
+    |> Enum.group_by(&default_supplier_uuid/1)
     |> Enum.map(fn {supplier_uuid, [first | _] = grouped} ->
       {first.index,
        %{
@@ -519,7 +563,8 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
     )
   end
 
-  # `%{item_uuid => {Decimal, [%{uuid, number, status, supplier_uuid, quantity}]}}`.
+  # `%{item_uuid => {Decimal, [%{uuid, number, status, supplier_uuid,
+  # single_source?, quantity}]}}`.
   defp in_transit_for(io_uuid, orders) do
     posted_uuids = for %{status: "posted", uuid: uuid} <- orders, do: uuid
 
@@ -538,6 +583,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
            number: order.number,
            status: order.status,
            supplier_uuid: order.supplier_uuid,
+           single_source?: SupplierOrders.single_source?(order, io_uuid),
            quantity: qty
          }}
       end)
@@ -720,7 +766,7 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
     {line.key, line.item_uuid, canon(line.need), canon(line.issued), canon(line.on_hand),
      canon(line.in_transit), canon(line.to_order),
      line.candidates |> Enum.map(& &1.uuid) |> Enum.sort(), line.auto_supplier_uuid, line.reason,
-     line.reason_source, line.primary_issue}
+     line.reason_source, line.primary_issue, line.preselected && line.preselected.uuid}
   end
 
   defp hash(term), do: :crypto.hash(:sha256, :erlang.term_to_binary(term, [:deterministic]))
@@ -786,12 +832,13 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
       of the internal order is one line; `target_lines/2` gives the target's
       lines after the write);
     * `unplaced` - lines with something to order that get no supplier: the
-      choice is "skip", or the line has no automatic supplier and no choice;
+      choice is "skip", or the line has no default supplier and no choice;
     * `not_ordered` - lines that cannot be chosen: nothing to order, or the
       item is not in the catalogue.
 
   A choice for a line that cannot be chosen, or one that is no uuid, is
-  ignored; a choice for a line with an automatic supplier replaces it.
+  ignored; a choice for a line with an automatic or preselected supplier
+  replaces it. Without a choice a line goes to `default_supplier_uuid/1`.
   """
   @spec assemble(plan(), map()) :: %{orders: [map()], unplaced: [map()], not_ordered: [map()]}
   def assemble(%{lines: lines} = plan, choices) when is_map(choices) do
@@ -846,11 +893,11 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
   defp line_supplier(line, choice) when is_binary(choice) do
     case Ecto.UUID.cast(choice) do
       {:ok, uuid} -> uuid
-      :error -> line.auto_supplier_uuid
+      :error -> default_supplier_uuid(line)
     end
   end
 
-  defp line_supplier(line, _no_choice), do: line.auto_supplier_uuid
+  defp line_supplier(line, _no_choice), do: default_supplier_uuid(line)
 
   # One supplier order line per item, in the order of its first line; the
   # quantities of an item's lines add up, their explanations are merged.

@@ -20,6 +20,7 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
 
   alias Phoenix.LiveView.JS
   alias PhoenixKitWarehouse.StockLedger
+  alias PhoenixKitWarehouse.SupplierOrderPlan
   alias PhoenixKitWarehouse.Web.Components.WarehouseBrowser
   alias PhoenixKitWarehouse.Web.SupplierOrderPreview
 
@@ -58,11 +59,13 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
         <span>{dgettext("default", "The data has changed — check and press again")}</span>
       </div>
 
+      <%!-- The modal's scroll area has no padding of its own: without this
+           one the headings and focus rings touch its edge. --%>
       <form
         id="io-generation-preview-form"
         phx-change="preview_change"
         phx-submit="preview_confirm"
-        class="flex flex-col gap-5"
+        class="flex flex-col gap-5 p-2"
       >
         <section id="io-preview-suppliers" class="flex flex-col gap-3">
           <h3 class="font-semibold text-base">{dgettext("default", "Suppliers")}</h3>
@@ -381,7 +384,7 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
 
   defp current_choice(line, choices) do
     case Map.get(choices, line.key) do
-      nil -> line.auto_supplier_uuid || "skip"
+      nil -> SupplierOrderPlan.default_supplier_uuid(line) || "skip"
       choice -> choice
     end
   end
@@ -399,6 +402,9 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
       _uuid -> dgettext("default", "Chosen by hand")
     end
   end
+
+  defp supplier_reason(%{preselected: %{number: number}}),
+    do: dgettext("default", "As in %{number}", number: "#SO-#{number}")
 
   defp supplier_reason(%{reason: :primary}),
     do: dgettext("default", "Primary supplier of the item")
