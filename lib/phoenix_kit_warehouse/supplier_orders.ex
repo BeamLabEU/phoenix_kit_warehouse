@@ -35,6 +35,7 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   alias PhoenixKitWarehouse.LineExplanation
   alias PhoenixKitWarehouse.StockLedger
   alias PhoenixKitWarehouse.SupplierOrder
+  alias PhoenixKitWarehouse.SupplierOrderPlan
 
   defp repo, do: PhoenixKit.RepoHelper.repo()
 
@@ -374,6 +375,27 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
     |> SupplierOrder.storage_changeset(%{storage_folder_uuid: storage_folder_uuid})
     |> repo().update()
   end
+
+  # ---------------------------------------------------------------------------
+  # Plan of a generation
+  # ---------------------------------------------------------------------------
+
+  @doc """
+  The plan of generating supplier orders from a posted internal order: the
+  supplier of every line and why, the quantity still to order, the choices a
+  human may make and a fingerprint of it all. Reads only. See
+  `PhoenixKitWarehouse.SupplierOrderPlan`.
+  """
+  defdelegate plan_from_internal_order(internal_order_uuid, opts \\ []),
+    to: SupplierOrderPlan,
+    as: :build
+
+  @doc """
+  Checks manual supplier choices (`%{line_key => supplier_uuid | "skip"}`)
+  against a plan of `plan_from_internal_order/2`: `:ok` or
+  `{:error, {:invalid_choice, key}}`.
+  """
+  defdelegate validate_plan_choices(plan, choices), to: SupplierOrderPlan, as: :validate_choices
 
   # ---------------------------------------------------------------------------
   # Generate from internal order
