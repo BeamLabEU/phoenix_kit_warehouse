@@ -63,6 +63,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
       assert text =~ "Count packages only when their inside cannot be seen"
     end
 
+    test "an item kept in packs is counted in packs, also through a transparent bag" do
+      assert Prompt.template() =~ "has the unit `pack` is counted in packs"
+      assert Prompt.template() =~ "also when its pieces can be seen through it"
+    end
+
     test "a bag of several kinds is one entry per kind" do
       assert Prompt.template() =~ "gives one entry per kind"
     end

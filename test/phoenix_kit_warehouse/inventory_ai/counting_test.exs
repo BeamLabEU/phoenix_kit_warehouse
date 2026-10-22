@@ -28,7 +28,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
 
   describe "a piece unit with only loose units" do
     test "the loose units are the count" do
-      for unit <- ~w(piece pair set sheet pack) do
+      for unit <- ~w(piece pair set sheet) do
         assert {:counted, qty, _formula} = Counting.count(object(%{"loose_units" => 14}), unit)
         assert eq?(qty, "14")
       end
@@ -108,7 +108,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
     end
   end
 
-  describe "pack with packages and no units per package" do
+  describe "pack: counted in packs, never in pieces" do
     test "closed + open × fill, rounded down to 0.1" do
       obj = object(%{"closed_packages" => 4, "open_packages" => 1, "open_fill" => "0.37"})
       assert {:counted, qty, _} = Counting.count(obj, "pack")
@@ -119,10 +119,28 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
       assert {:counted, _, "4 = 4"} = Counting.count(object(%{"closed_packages" => 4}), "pack")
     end
 
-    test "with the packs printed on the box it is the n row" do
-      obj = object(%{"closed_packages" => 2, "units_per_package" => 10})
-      assert {:counted, qty, _} = Counting.count(obj, "pack")
-      assert eq?(qty, "20")
+    test "the pieces printed on the label do not turn the packs into pieces" do
+      obj = object(%{"closed_packages" => 2, "units_per_package" => 100})
+      assert {:counted, qty, "2 = 2"} = Counting.count(obj, "pack")
+      assert eq?(qty, "2")
+    end
+
+    test "pieces seen outside a pack are not added to the packs" do
+      obj = object(%{"closed_packages" => 3, "loose_units" => 23})
+      assert {:counted, qty, "3 = 3"} = Counting.count(obj, "pack")
+      assert eq?(qty, "3")
+    end
+
+    test "pieces alone make no number of packs: the quantity is typed" do
+      assert Counting.count(object(%{"loose_units" => 23}), "pack") == {:needs, :quantity}
+      assert Counting.count(object(%{}), "pack") == {:needs, :quantity}
+      assert Counting.seen(object(%{"loose_units" => 23})) == "23"
+    end
+
+    test "the units per package a person typed do not count for packs" do
+      obj = object(%{"closed_packages" => 2})
+      assert {:counted, qty, _} = Counting.count(obj, "pack", Decimal.new(50))
+      assert eq?(qty, "2")
     end
   end
 
