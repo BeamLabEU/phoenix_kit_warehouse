@@ -16,6 +16,18 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   the live drafts of the restored draft's pair to the trash (soft delete,
   restorable with `restore_supplier_order/3`).
 
+  ## The version of a draft
+
+  The supplier order form writes a draft's lines, refs and note whole, from
+  what it read. So that a write from a form opened before generation appended
+  to the draft does not wipe what was appended, `update_draft/3`,
+  `post_supplier_order/3`, `add_source_ref/4`, `remove_source_ref/4` and
+  `import_from_internal_orders/4` take `expected_version:` - the
+  `draft_version/1` of the draft the caller saw. Under the row lock it is
+  compared with the row's: when it differs, `{:error, :stale}` and nothing is
+  written (a missing, trashed or posted document answers that first). Without
+  the option they write as before.
+
   Moves to the trash and back are logged as `warehouse.supplier_order.trashed`
   and `warehouse.supplier_order.restored` activities, written after the
   transaction has committed and subject to the `:inventory_activity_logging`
@@ -144,17 +156,51 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   end
 
   @doc """
+  The version of a supplier order: a hash of what the form writes and shows -
+  `lines`, `source_refs`, `supplier_uuid`, `note`, `status`, `deleted_at`.
+
+  The values go through JSON first, the way the database stores them (a
+  `Decimal` becomes its string), and map keys are hashed in order, so the
+  struct a write returns and the same row read back have one version. Pass it
+  as `expected_version:` to the writes of a draft (see the moduledoc).
+  """
+  @spec draft_version(SupplierOrder.t()) :: String.t()
+  def draft_version(%SupplierOrder{} = order) do
+    order
+    |> Map.take([:lines, :source_refs, :supplier_uuid, :note, :status, :deleted_at])
+    |> Jason.encode!()
+    |> Jason.decode!()
+    |> :erlang.term_to_binary([:deterministic])
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  # The locked row against the `expected_version:` of the caller, if any.
+  defp check_version(%SupplierOrder{} = row, opts) do
+    case Keyword.get(opts, :expected_version) do
+      nil -> :ok
+      version -> if draft_version(row) == version, do: :ok, else: {:error, :stale}
+    end
+  end
+
+  @doc """
   Updates a draft supplier order. Returns `{:error, :not_draft}` when not in
   draft status, `{:error, :deleted}` when it is in the trash.
 
   Locks the row FOR UPDATE and re-checks status == "draft" in the DB (not
   just the in-memory struct) so a stale tab cannot overwrite an order that
   was posted concurrently by another tab/user.
+
+  `opts`:
+    * `:expected_version` - the `draft_version/1` the caller saw; when the
+      row's differs, `{:error, :stale}` and nothing is written (`nil` checks
+      nothing).
   """
-  def update_draft(%SupplierOrder{uuid: uuid}, attrs) do
+  def update_draft(%SupplierOrder{uuid: uuid}, attrs, opts \\ []) do
     multi =
       uuid
       |> lock_status_step("draft", :not_draft)
+      |> version_step(opts)
       |> Ecto.Multi.update(:update, fn %{lock_status: locked} ->
         SupplierOrder.changeset(locked, attrs)
       end)
@@ -171,35 +217,40 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
   Pure metadata — does not touch `lines` and is not gated to draft status.
   A duplicate `{type, uuid}` pair is a no-op. Returns `{:error, :deleted}` for
-  a document in the trash.
+  a document in the trash; with `expected_version:` (see `update_draft/3`),
+  `{:error, :stale}` when the row's version differs.
   """
-  def add_source_ref(%SupplierOrder{} = order, type, uuid) when type in ["internal_order"] do
+  def add_source_ref(%SupplierOrder{} = order, type, uuid, opts \\ [])
+      when type in ["internal_order"] do
     new_ref = %{"type" => type, "uuid" => uuid}
 
     refs =
       ((order.source_refs || []) ++ [new_ref])
       |> Enum.uniq_by(&{&1["type"], &1["uuid"]})
 
-    update_source_refs(order, refs)
+    update_source_refs(order, refs, opts)
   end
 
   @doc """
   Detaches a traceability reference from a supplier order. No-op when the
   `{type, uuid}` pair isn't present. Returns `{:error, :deleted}` for a
-  document in the trash.
+  document in the trash; with `expected_version:` (see `update_draft/3`),
+  `{:error, :stale}` when the row's version differs.
   """
-  def remove_source_ref(%SupplierOrder{} = order, type, uuid) do
+  def remove_source_ref(%SupplierOrder{} = order, type, uuid, opts \\ []) do
     refs = Enum.reject(order.source_refs || [], &(&1["type"] == type and &1["uuid"] == uuid))
 
-    update_source_refs(order, refs)
+    update_source_refs(order, refs, opts)
   end
 
-  # The trash is read from the row (locked), not from the struct, which may be
-  # a tab behind.
-  defp update_source_refs(order, refs) do
+  # The trash and the version are read from the row (locked), not from the
+  # struct, which may be a tab behind.
+  defp update_source_refs(order, refs, opts) do
     order
     |> SupplierOrder.changeset(%{source_refs: refs})
-    |> then(&DraftTrash.update_unless_trashed(SupplierOrder, &1))
+    |> then(
+      &DraftTrash.update_unless_trashed(SupplierOrder, &1, fn row -> check_version(row, opts) end)
+    )
   end
 
   # ---------------------------------------------------------------------------
@@ -216,17 +267,21 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   - Does NOT write any stock rows.
 
   Returns `{:error, :not_draft}` for non-draft orders and `{:error, :deleted}`
-  for one in the trash.
+  for one in the trash; with `expected_version:` (see `update_draft/3`),
+  `{:error, :stale}` when the row's version differs - nothing is posted.
   """
-  def post_supplier_order(%SupplierOrder{status: status}, _performed_by_uuid)
+  def post_supplier_order(order, performed_by_uuid, opts \\ [])
+
+  def post_supplier_order(%SupplierOrder{status: status}, _performed_by_uuid, _opts)
       when status != "draft" do
     {:error, :not_draft}
   end
 
-  def post_supplier_order(%SupplierOrder{} = order, performed_by_uuid) do
+  def post_supplier_order(%SupplierOrder{} = order, performed_by_uuid, opts) do
     multi =
       order.uuid
       |> lock_status_step("draft", :not_draft)
+      |> version_step(opts)
       |> Ecto.Multi.run(:order, fn repo, %{lock_status: locked} ->
         lines = Enum.uniq_by(locked.lines, & &1["item_uuid"])
 
@@ -689,22 +744,33 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   - `{:error, :no_supplier}` when the order has no supplier.
   - `{:error, :not_draft}` when the order is not a draft, `{:error, :deleted}`
     when it is in the trash.
+  - `{:error, :stale}` when `opts` has `expected_version:` (see
+    `update_draft/3`) and the locked row's version differs; nothing is
+    imported.
   - `{:error, reason}` on DB failure.
   """
-  def import_from_internal_orders(%SupplierOrder{supplier_uuid: nil}, _io_uuids, _actor_uuid) do
+  def import_from_internal_orders(supplier_order, io_uuids, actor_uuid, opts \\ [])
+
+  def import_from_internal_orders(
+        %SupplierOrder{supplier_uuid: nil},
+        _io_uuids,
+        _actor_uuid,
+        _opts
+      ) do
     {:error, :no_supplier}
   end
 
   def import_from_internal_orders(
         %SupplierOrder{status: status},
         _io_uuids,
-        _actor_uuid
+        _actor_uuid,
+        _opts
       )
       when status != "draft" do
     {:error, :not_draft}
   end
 
-  def import_from_internal_orders(%SupplierOrder{} = supplier_order, io_uuids, _actor_uuid)
+  def import_from_internal_orders(%SupplierOrder{} = supplier_order, io_uuids, _actor_uuid, opts)
       when is_list(io_uuids) do
     repo().transaction(fn ->
       # The internal orders' locks first, then the row: the order of
@@ -714,9 +780,13 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
       |> Enum.sort()
       |> Enum.each(&lock_internal_order!/1)
 
-      case lock_status(repo(), supplier_order.uuid, "draft", :not_draft) do
-        {:ok, %SupplierOrder{supplier_uuid: nil}} -> repo().rollback(:no_supplier)
-        {:ok, locked} -> import_into(locked, load_posted_internal_orders(io_uuids))
+      with {:ok, locked} <- lock_status(repo(), supplier_order.uuid, "draft", :not_draft),
+           :ok <- check_version(locked, opts) do
+        case locked do
+          %SupplierOrder{supplier_uuid: nil} -> repo().rollback(:no_supplier)
+          _draft -> import_into(locked, load_posted_internal_orders(io_uuids))
+        end
+      else
         {:error, reason} -> repo().rollback(reason)
       end
     end)
@@ -1007,6 +1077,13 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   defp lock_status_step(uuid, expected_status, error) do
     Ecto.Multi.run(Ecto.Multi.new(), :lock_status, fn repo, _changes ->
       lock_status(repo, uuid, expected_status, error)
+    end)
+  end
+
+  # After `lock_status_step/3`: the locked row against `expected_version:`.
+  defp version_step(multi, opts) do
+    Ecto.Multi.run(multi, :version, fn _repo, %{lock_status: locked} ->
+      with :ok <- check_version(locked, opts), do: {:ok, :current}
     end)
   end
 

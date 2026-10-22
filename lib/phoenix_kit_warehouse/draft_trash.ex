@@ -54,13 +54,22 @@ defmodule PhoenixKitWarehouse.DraftTrash do
   trash by then (`{:error, :deleted}`; `{:error, :not_found}` when it is gone).
   For the writes that are not gated to drafts, which the status lock of the
   documents does not cover.
+
+  `check` sees the locked live row before the write; anything but `:ok`
+  (an `{:error, reason}`) rolls back with that reason.
   """
-  def update_unless_trashed(schema, %Ecto.Changeset{data: %{uuid: uuid}} = changeset) do
+  def update_unless_trashed(
+        schema,
+        %Ecto.Changeset{data: %{uuid: uuid}} = changeset,
+        check \\ fn _row -> :ok end
+      ) do
     repo().transaction(fn ->
       case lock_rows(schema, [uuid]) do
-        [%{deleted_at: nil}] ->
-          case repo().update(changeset) do
-            {:ok, updated} -> updated
+        [%{deleted_at: nil} = row] ->
+          with :ok <- check.(row),
+               {:ok, updated} <- repo().update(changeset) do
+            updated
+          else
             {:error, reason} -> repo().rollback(reason)
           end
 
