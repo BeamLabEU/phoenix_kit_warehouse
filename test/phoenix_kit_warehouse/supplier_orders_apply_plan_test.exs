@@ -1048,5 +1048,38 @@ defmodule PhoenixKitWarehouse.SupplierOrdersApplyPlanTest do
       {:ok, imported} = SupplierOrders.import_from_internal_orders(draft, [io.uuid], nil)
       assert Enum.map(imported.lines, & &1["item_uuid"]) == [keeper.uuid, item.uuid]
     end
+
+    test "a combined draft linked without \"lines\" keeps that ref; generation orders nothing again" do
+      sup = supplier!()
+      a = item_of!(sup)
+      b = item_of!(sup)
+      c = item_of!(sup)
+      y = posted_io!([io_line(c, "2")])
+      x = posted_io!([io_line(a, "5"), io_line(b, "3")])
+
+      combined =
+        draft!(sup, %{
+          internal_order_uuid: y.uuid,
+          lines: [so_line(c, "2"), so_line(a, "5")],
+          source_refs: [io_ref(y.uuid, %{c.uuid => "2"}), io_ref(x.uuid)]
+        })
+
+      {:ok, imported} = SupplierOrders.import_from_internal_orders(combined, [x.uuid], nil)
+      # A is covered by the whole draft; only B is missing.
+      assert_dec(ordered(imported, a), "5")
+      assert_dec(ordered(imported, b), "3")
+      assert Enum.find(imported.source_refs, &(&1["uuid"] == x.uuid)) == io_ref(x.uuid)
+
+      assert %{supplier_orders: [], appended: []} = generate!(x)
+      updated_at = reload(combined).updated_at
+      assert %{supplier_orders: [], appended: []} = generate!(x)
+
+      written = reload(combined)
+      assert written.updated_at == updated_at
+      assert_dec(ordered(written, a), "5")
+      assert_dec(ordered(written, b), "3")
+      assert_dec(ordered(written, c), "2")
+      assert length(written.lines) == 3
+    end
   end
 end

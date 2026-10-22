@@ -864,10 +864,16 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
 
     final_lines = merge_import_lines(supplier_order.lines || [], new_lines_by_item)
 
+    # A ref without `"lines"` was netted as the whole draft, which now holds
+    # the imported lines too, so it stays as it is (see `appended_refs/4`).
     merged_refs =
       Enum.reduce(internal_orders, supplier_order.source_refs || [], fn io, acc_refs ->
-        lines_map = Map.get(io_contributions, io.uuid, %{})
-        CommittedQuantities.merge_ref(acc_refs, "internal_order", io.uuid, lines_map)
+        if Enum.any?(acc_refs, &whole_document_ref?(&1, io.uuid)) do
+          acc_refs
+        else
+          lines_map = Map.get(io_contributions, io.uuid, %{})
+          CommittedQuantities.merge_ref(acc_refs, "internal_order", io.uuid, lines_map)
+        end
       end)
 
     # Primary internal_order_uuid — first selected IO (back-compat)
