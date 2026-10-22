@@ -76,6 +76,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
       text = Prompt.template()
       assert text =~ "several packs of one kind and you can count every piece in one of them"
       assert text =~ "count the packs in `closed_packages`, with `units_per_package` as above"
+      assert text =~ "or when there are several packs of one kind."
+      assert text =~ "then `count_confidence` is at most `medium`"
     end
 
     test "the template it replaced is a shipped one, so an unedited prompt follows it" do
