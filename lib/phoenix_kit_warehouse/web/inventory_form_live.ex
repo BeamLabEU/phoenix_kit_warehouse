@@ -1253,6 +1253,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
           selected={selected_items(@lines)}
           locale={@locale}
           qty_precision={6}
+          include_internal={true}
           show_tray={true}
         />
       <% end %>

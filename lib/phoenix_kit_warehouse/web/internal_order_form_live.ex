@@ -44,6 +44,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
     WarehouseBrowser
   }
 
+  alias PhoenixKitWarehouse.Web.Components.LineExplanations
+
   alias PhoenixKitWarehouse.Web.ItemSelectorScope
   alias PhoenixKitWarehouse.Web.TrashActions
   alias PhoenixKitWarehouse.Web.TrashMessages
@@ -1212,6 +1214,11 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
               posted?={@read_only?}
               locale={@locale}
             />
+            <LineExplanations.explanations
+              id="internal-order-explanations"
+              lines={@lines}
+              names={@names}
+            />
           </div>
         </div>
 
@@ -1224,6 +1231,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderFormLive do
           selected={selected_items(@lines)}
           locale={@locale}
           qty_precision={6}
+          include_internal={true}
           show_tray={true}
         />
       <% end %>
