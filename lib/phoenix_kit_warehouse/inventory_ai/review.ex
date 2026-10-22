@@ -408,8 +408,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Review do
 
   defp tick(_entry, default, _reasons), do: default
 
-  defp count(%{item: nil}, _proposed),
-    do: %{"kind" => "item", "quantity" => nil, "formulas" => []}
+  defp count(%{item: nil}, proposed),
+    do: proposed |> Enum.flat_map(&(&1["objects"] || [])) |> Proposal.waiting_for_item()
 
   defp count(entry, proposed) do
     objects = Enum.flat_map(proposed, &(&1["objects"] || []))

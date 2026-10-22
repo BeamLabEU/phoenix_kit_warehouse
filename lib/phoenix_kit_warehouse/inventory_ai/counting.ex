@@ -6,10 +6,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
 
   | Unit of the item                          | Known                              | Result |
   |-------------------------------------------|------------------------------------|--------|
-  | piece, pair, set, sheet, pack             | only loose units                   | the loose units |
-  | piece, pair, set, sheet, pack             | packages and units per package `n` | `closed × n + floor(open × n × fill) + loose` |
+  | piece, pair, set, sheet                   | only loose units                   | the loose units |
+  | piece, pair, set, sheet                   | packages and units per package `n` | `closed × n + floor(open × n × fill) + loose` |
   | piece, pair, set, sheet                   | packages, `n` unknown              | `{:needs, :package_size}` - `n` or the quantity typed by a person |
-  | pack                                      | packages, `n` unknown              | `closed + open × fill`, down to 0.1, `+ loose` |
+  | pack                                      | packages                           | `closed + open × fill`, down to 0.1 |
+  | pack                                      | no packages                        | `{:needs, :quantity}` |
   | m2, running_meter, kg, litre, m3          | the model's quantity               | `{:measured, quantity}` - never checked by default |
   | m2, running_meter, kg, litre, m3          | no quantity                        | `{:needs, :quantity}` |
 
@@ -18,11 +19,15 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
   the table does not name (`roll`, a service unit) and an object with
   nothing counted need the quantity typed. `n` from the label wins over
   the one a person typed for the row.
+
+  An item kept in packs is counted in packs and never turned into pieces:
+  its units per package and its loose units (pieces seen outside a pack)
+  are not used, and pieces alone cannot make a number of packs.
   """
 
   alias PhoenixKitWarehouse.StockLedger
 
-  @piece_units ~w(piece pair set sheet pack)
+  @piece_units ~w(piece pair set sheet)
   @measured_units ~w(m2 running_meter kg litre m3)
 
   @zero Decimal.new(0)
@@ -40,6 +45,16 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
   @spec count(map(), String.t() | nil, Decimal.t() | nil) :: outcome()
   def count(object, unit, package_size \\ nil)
 
+  def count(object, "pack", _package_size) do
+    closed = number(object["closed_packages"]) || @zero
+    open = number(object["open_packages"]) || @zero
+    fill = number(object["open_fill"]) || @zero
+
+    if Decimal.eq?(Decimal.add(closed, open), 0),
+      do: {:needs, :quantity},
+      else: packs(closed, open, fill)
+  end
+
   def count(object, unit, package_size) when unit in @piece_units do
     closed = number(object["closed_packages"]) || @zero
     open = number(object["open_packages"]) || @zero
@@ -53,9 +68,6 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
 
       per_package ->
         by_package(closed, open, fill, per_package, loose)
-
-      unit == "pack" ->
-        packs(closed, open, fill, loose)
 
       true ->
         {:needs, :package_size}
@@ -99,6 +111,45 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
     end
   end
 
+  @doc """
+  What was seen on `object`, as a formula without a result: the packages
+  with their units per package (`?` when unknown), the loose units, a
+  measured quantity (only when there is nothing else). For a row whose
+  quantity cannot be counted yet, so the person still sees what the model
+  saw. `nil` when nothing was seen.
+  """
+  @spec seen(map()) :: String.t() | nil
+  def seen(object) do
+    closed = number(object["closed_packages"]) || @zero
+    open = number(object["open_packages"]) || @zero
+    fill = number(object["open_fill"]) || @zero
+    loose = number(object["loose_units"])
+    quantity = number(object["quantity"])
+
+    n =
+      case number(object["units_per_package"]) do
+        nil -> "?"
+        per_package -> format(per_package)
+      end
+
+    shown =
+      Enum.filter(
+        [
+          nonzero(closed) && "#{format(closed)}×#{n}",
+          nonzero(open) && "⌊#{format(open)}×#{n}×#{format(fill)}⌋",
+          nonzero(loose) && format(loose)
+        ],
+        & &1
+      )
+
+    # a measured quantity only when nothing was counted in packages or pieces
+    cond do
+      shown != [] -> Enum.join(shown, " + ")
+      nonzero(quantity) -> format(quantity)
+      true -> nil
+    end
+  end
+
   # closed × n + floor(open × n × fill) + loose
   defp by_package(closed, open, fill, per_package, loose) do
     share = open |> Decimal.mult(per_package) |> Decimal.mult(fill) |> Decimal.round(0, :floor)
@@ -115,16 +166,14 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
     {:counted, total, formula}
   end
 
-  # closed + open × fill, down to 0.1 (+ loose)
-  defp packs(closed, open, fill, loose) do
-    packages = closed |> Decimal.add(Decimal.mult(open, fill)) |> Decimal.round(1, :floor)
-    total = Decimal.add(packages, loose || @zero)
+  # closed + open × fill, down to 0.1
+  defp packs(closed, open, fill) do
+    total = closed |> Decimal.add(Decimal.mult(open, fill)) |> Decimal.round(1, :floor)
 
     formula =
       terms([
         nonzero(closed) && format(closed),
-        nonzero(open) && "#{format(open)}×#{format(fill)}",
-        nonzero(loose) && format(loose)
+        nonzero(open) && "#{format(open)}×#{format(fill)}"
       ]) <> " = #{format(total)}"
 
     {:counted, total, formula}

@@ -55,6 +55,35 @@ defmodule PhoenixKitWarehouse.InventoryAI.PromptTest do
       refute text =~ "nothing you can recognise"
     end
 
+    test "counts the pieces it can see; packages only when the inside cannot be seen" do
+      text = Prompt.template()
+
+      assert text =~ "In a transparent bag"
+      assert text =~ "`closed_packages` and `open_packages` are then 0"
+      assert text =~ "Count packages only when their inside cannot be seen"
+    end
+
+    test "an item kept in packs is counted in packs, also through a transparent bag" do
+      assert Prompt.template() =~ "has the unit `pack` is counted in packs"
+      assert Prompt.template() =~ "also when its pieces can be seen through it"
+    end
+
+    test "a bag of several kinds is one entry per kind, each with its own key" do
+      assert Prompt.template() =~ "gives one entry per kind, each with its own `object_key`"
+    end
+
+    test "several packs of one kind are packs times the pieces of one, not loose pieces" do
+      text = Prompt.template()
+      assert text =~ "several packs of one kind and you can count every piece in one of them"
+      assert text =~ "count the packs in `closed_packages`, with `units_per_package` as above"
+      assert text =~ "or when there are several packs of one kind."
+      assert text =~ "then `count_confidence` is at most `medium`"
+    end
+
+    test "the template it replaced is a shipped one, so an unedited prompt follows it" do
+      assert "b5df51bf350074448dace13205dff7f7edc5a91492d7c87987110fb96f6e9f3e" in Prompt.previous_template_shas()
+    end
+
     test "has no placeholders" do
       refute Prompt.template() =~ "{{"
     end

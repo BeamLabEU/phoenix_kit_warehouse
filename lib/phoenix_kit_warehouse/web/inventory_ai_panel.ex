@@ -1334,6 +1334,13 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
             </option>
           </select>
         </form>
+        <div
+          :if={@row.alternatives != []}
+          id={"inventory-ai-alternatives-#{@row.key}"}
+          class="text-xs text-base-content/60 mt-1"
+        >
+          {dgettext("default", "Also possible:")} {Enum.map_join(@row.alternatives, "; ", &item_text/1)}
+        </div>
         <%= if @ai.picking == @row.key do %>
           <div class="mt-1 flex items-center gap-1">
             <div class="flex-1">
@@ -1426,7 +1433,7 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
           </span>
         </form>
       </td>
-      <td class="text-xs max-w-56">
+      <td id={"inventory-ai-formulas-#{@row.key}"} class="text-xs max-w-56">
         <div :for={formula <- @row.formulas} class="font-mono">{formula}</div>
         <div :if={@row.ai_basis != ""} class="text-base-content/60">{@row.ai_basis}</div>
       </td>
@@ -1601,6 +1608,9 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanel do
   end
 
   defp sku_suffix(_sku), do: nil
+
+  defp item_text(item),
+    do: Enum.join(Enum.reject([item["name"], sku_suffix(item["sku"])], &is_nil/1), " ")
 
   @doc """
   Before Conduct (spec §11.4, §11.5): the lines the photos counted below

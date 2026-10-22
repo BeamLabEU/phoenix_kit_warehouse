@@ -28,7 +28,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
 
   describe "a piece unit with only loose units" do
     test "the loose units are the count" do
-      for unit <- ~w(piece pair set sheet pack) do
+      for unit <- ~w(piece pair set sheet) do
         assert {:counted, qty, _formula} = Counting.count(object(%{"loose_units" => 14}), unit)
         assert eq?(qty, "14")
       end
@@ -108,7 +108,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
     end
   end
 
-  describe "pack with packages and no units per package" do
+  describe "pack: counted in packs, never in pieces" do
     test "closed + open × fill, rounded down to 0.1" do
       obj = object(%{"closed_packages" => 4, "open_packages" => 1, "open_fill" => "0.37"})
       assert {:counted, qty, _} = Counting.count(obj, "pack")
@@ -119,10 +119,28 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
       assert {:counted, _, "4 = 4"} = Counting.count(object(%{"closed_packages" => 4}), "pack")
     end
 
-    test "with the packs printed on the box it is the n row" do
-      obj = object(%{"closed_packages" => 2, "units_per_package" => 10})
-      assert {:counted, qty, _} = Counting.count(obj, "pack")
-      assert eq?(qty, "20")
+    test "the pieces printed on the label do not turn the packs into pieces" do
+      obj = object(%{"closed_packages" => 2, "units_per_package" => 100})
+      assert {:counted, qty, "2 = 2"} = Counting.count(obj, "pack")
+      assert eq?(qty, "2")
+    end
+
+    test "pieces seen outside a pack are not added to the packs" do
+      obj = object(%{"closed_packages" => 3, "loose_units" => 23})
+      assert {:counted, qty, "3 = 3"} = Counting.count(obj, "pack")
+      assert eq?(qty, "3")
+    end
+
+    test "pieces alone make no number of packs: the quantity is typed" do
+      assert Counting.count(object(%{"loose_units" => 23}), "pack") == {:needs, :quantity}
+      assert Counting.count(object(%{}), "pack") == {:needs, :quantity}
+      assert Counting.seen(object(%{"loose_units" => 23})) == "23"
+    end
+
+    test "the units per package a person typed do not count for packs" do
+      obj = object(%{"closed_packages" => 2})
+      assert {:counted, qty, _} = Counting.count(obj, "pack", Decimal.new(50))
+      assert eq?(qty, "2")
     end
   end
 
@@ -203,6 +221,32 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
 
       assert {:counted, qty, _} = Counting.count_all([stored], "piece")
       assert eq?(qty, "235")
+    end
+  end
+
+  describe "seen/1 — what was seen, when the quantity cannot be counted" do
+    test "packages with the units per package unknown: each one with a ?" do
+      assert Counting.seen(object(%{"closed_packages" => 2})) == "2×?"
+
+      assert Counting.seen(object(%{"closed_packages" => 2, "open_packages" => 1})) ==
+               "2×? + ⌊1×?×0.35⌋"
+    end
+
+    test "the units per package and the loose units are shown as they are" do
+      obj = object(%{"closed_packages" => 1, "units_per_package" => 50, "loose_units" => 7})
+      assert Counting.seen(obj) == "1×50 + 7"
+      assert Counting.seen(object(%{"loose_units" => 23})) == "23"
+    end
+
+    test "a measured quantity alone; nothing seen is nil" do
+      assert Counting.seen(object(%{"quantity" => "12.5"})) == "12.5"
+      assert Counting.seen(object(%{"closed_packages" => 2, "quantity" => "30"})) == "2×?"
+      assert Counting.seen(object(%{})) == nil
+    end
+
+    test "stored objects (numbers as text) read the same" do
+      stored = %{"closed_packages" => "3", "open_packages" => "0", "loose_units" => nil}
+      assert Counting.seen(stored) == "3×?"
     end
   end
 end

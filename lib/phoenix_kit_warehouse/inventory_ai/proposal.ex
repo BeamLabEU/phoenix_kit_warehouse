@@ -21,7 +21,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Proposal do
     * `"count"` - `%{"kind", "quantity", "formulas"}`, `kind` one of
       `"counted"`, `"measured"`, `"package_size"` (the units per package or
       the quantity to be typed), `"quantity"` (to be typed), `"item"` (an
-      item to be chosen first).
+      item to be chosen first). While nothing is counted, `"formulas"` show
+      what each object showed (`Counting.seen/1`), so a row is never blank.
   """
 
   alias PhoenixKitWarehouse.InventoryAI.Counting
@@ -45,6 +46,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Proposal do
   """
   @spec recount(map(), String.t() | nil, Decimal.t() | nil) :: map()
   def recount(row, unit, package_size), do: count(row["objects"], unit, package_size)
+
+  @doc "The count of a row whose item is still to be chosen: what its `objects` showed."
+  @spec waiting_for_item([map()]) :: map()
+  def waiting_for_item(objects),
+    do: %{"kind" => "item", "quantity" => nil, "formulas" => seen(objects)}
 
   # Objects of one catalogue number together, in the order the first of each
   # came; an object without a number alone.
@@ -79,7 +85,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Proposal do
       "ai_basis" => join(objects, "basis"),
       "match_confidence" => weakest(objects, "match_confidence"),
       "count_confidence" => weakest(objects, "count_confidence"),
-      "count" => if(item, do: count(objects, item["unit"], nil), else: waiting_for_item())
+      "count" => if(item, do: count(objects, item["unit"], nil), else: waiting_for_item(objects))
     }
   end
 
@@ -89,11 +95,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Proposal do
         %{"kind" => Atom.to_string(kind), "quantity" => quantity, "formulas" => formulas}
 
       {:needs, need} ->
-        %{"kind" => Atom.to_string(need), "quantity" => nil, "formulas" => []}
+        %{"kind" => Atom.to_string(need), "quantity" => nil, "formulas" => seen(objects)}
     end
   end
 
-  defp waiting_for_item, do: %{"kind" => "item", "quantity" => nil, "formulas" => []}
+  defp seen(objects), do: objects |> Enum.map(&Counting.seen/1) |> Enum.reject(&is_nil/1)
 
   defp alternatives(objects, no, items) do
     objects

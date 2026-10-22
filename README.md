@@ -256,7 +256,9 @@ In a draft stocktake a person can count from photos: **Count from photos** on
 the Items tab uploads the photos of one place (one upload is one batch of one
 place, up to `warehouse_inventory_ai_max_photos`, 10 by default, at most 20 MB
 each, HEIC included), the AI proposes the catalogue items it sees and how many
-(packages and their fill turned into the item's unit), and the person reviews
+(pieces counted where they can be seen, as in a transparent bag; closed
+packages and their fill turned into the item's unit; an item kept in packs
+counted in packs, never in pieces), and the person reviews
 the proposal as a table, corrects it and applies the ticked rows. **Nothing is
 written to the lines without Apply**; the document stays a draft and is
 conducted as usual. What the module does around that:
