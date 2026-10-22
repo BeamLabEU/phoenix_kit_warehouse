@@ -82,28 +82,102 @@ Hosts that want **one draft per source** use these functions:
   transaction. Posted documents, combined drafts (several sources) and other
   sources are never touched. `InternalOrders.list_for_source/2` and
   `multi_source?/1` help a host show what exists.
-- `SupplierOrders.generate_from_internal_order/3` takes `supersede_drafts: true`:
-  the live drafts of the same (internal order, supplier) pair, other than the
-  new ones, go to the trash. Drafts of suppliers the generation made nothing
-  for, posted ones and imported ones that refer to another internal order stay.
+- `SupplierOrders.generate_from_internal_order/3` (and `apply_plan/5`, which
+  writes a plan a person has seen) always keeps one draft per (internal order,
+  supplier): what is still missing is appended to the live draft the supplier
+  already has for the internal order - a draft of this order alone, else a
+  combined draft that refers to it, the one with the highest number - and a
+  new draft is made only when there is none. Nothing goes to the trash; the
+  old `supersede_drafts: true` option is accepted and does nothing. The quantity
+  appended is what the internal order needs minus what was issued for it,
+  what is on hand and what its live supplier orders already bring, so a line
+  the keeper reduced or removed is offered again; the keeper's other edits
+  and the note stay.
 - `restore_internal_order/3` and `restore_supplier_order/3` bring a trashed
   draft back; with `swap: true` the live one-source drafts of its source (pair)
   go to the trash, so the rule holds after the restore too.
 
-All of this is opt-in by call; without it the module behaves as before. The
-admin UI follows one switch, off by default:
+The restore swap is opt-in by call. The admin UI follows one switch, off by
+default:
 
 ```elixir
 config :phoenix_kit_warehouse, one_draft_per_source: true
 ```
 
-With it on, *Generate supplier orders* passes `supersede_drafts: true` (the
-button asks for confirmation when live drafts could be moved, and the flash
-names the ones that were), and *Restore* passes `swap: true`. Moves to the
+With it on, *Restore* passes `swap: true`. Moves to the
 trash and back are logged as `warehouse.<kind>.trashed|restored` activities
 (`internal_order`, `supplier_order`, `goods_receipt`, `goods_issue`,
 `inventory`, `transfer`; after the transaction commits, subject to
 `:inventory_activity_logging`).
+
+### Supplier orders from an internal order
+
+*Generate supplier orders* on a posted internal order opens a preview first
+and writes nothing until *Generate* is pressed. The window is drawn from the
+plan (`SupplierOrders.plan_from_internal_order/2`) and `assemble/2`, so it
+shows exactly what will be written:
+
+- the supplier groups - a new order, or the live draft the supplier already
+  has for this internal order, with the warning that what is missing will be
+  added to it and, per line, "now N → N+k" in that draft;
+- per line the item, SKU, required, issued, on hand, already ordered and to
+  order, the reason for its supplier (primary supplier of the item, the only
+  supplier of the item, the only supplier of the manufacturer, chosen by
+  hand) and a *Why* with the line's explanation (its comment);
+- the lines without a supplier or with several: a supplier is chosen per line
+  or for all ticked lines at once (candidates of the item first, then every
+  active supplier; the default is not to order); any automatic supplier can be
+  replaced as well. A choice is for this generation only. Such a line whose
+  item already lies in a live draft of this internal order with an active
+  supplier is preselected to that supplier ("as in `#SO-…`"; of several such
+  drafts, a draft of this order alone, then the highest number), so the
+  missing rest goes into that draft - also when `generate_from_internal_order/3`
+  runs without the window; "do not order" or another supplier can still be
+  chosen;
+- the lines with nothing to order, with the reason (issued, covered by stock,
+  already ordered in `#SO-…`, item not in the catalogue).
+
+*Generate* calls `SupplierOrders.apply_plan/5` with the plan's fingerprint and
+the choices. When anything the plan decides on changed meanwhile (stock,
+supplier links, the supplier orders of the internal order, an active
+supplier), nothing is written and the window shows the new plan with the
+message to check and press again; a choice is kept when its line still allows
+it, the other lines are marked as changed. A second press of a plan already
+written is such a stale plan, so it writes nothing twice.
+
+One document per supplier: what is missing is appended to the supplier's
+live draft for the internal order (see above), never as a second draft, and
+nothing is moved to the trash. The quantity of a line is
+
+    to order = required - issued for this internal order - on hand at its
+               location - already ordered for it
+
+where *already ordered* is what its live supplier orders still bring: a draft
+counts its lines, a posted order what it has not delivered yet
+(`ordered - received`), a combined order the share its `source_refs` give this
+internal order. A line the keeper reduced or removed from the draft is
+therefore offered again by the next generation. Not counted: reservations of
+other internal orders and `min_stock`; a receipt to another location still
+counts as delivered.
+
+Generated supplier orders carry a `source_refs` entry to the internal order
+with the ordered quantities per item, so the supplier order form shows them
+under *Source documents* and an import from internal orders subtracts them.
+The import does not subtract what was issued for the internal order, so
+importing it into a draft generated from it orders the issued quantity again.
+When that ref is removed, a generation still counts the supplier order for
+the internal order by `internal_order_uuid`, by its actual lines.
+
+A supplier that is a CRM company in the catalogue is matched to the local
+supplier row projecting it (`crm_company_uuid`); a link that resolves to no
+local, active supplier is no candidate.
+
+The supplier order form writes a draft only if it is still the version the
+form loaded (`SupplierOrders.draft_version/1`, the `expected_version:` option
+of `update_draft/3`, `post_supplier_order/3`, `add_source_ref/4`,
+`remove_source_ref/4` and `import_from_internal_orders/4`): a draft a
+generation appended to meanwhile answers `{:error, :stale}`, and the form
+shows the current version instead of overwriting the appended lines.
 
 ### Programmatic posting
 

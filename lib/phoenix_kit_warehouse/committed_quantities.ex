@@ -82,6 +82,19 @@ defmodule PhoenixKitWarehouse.CommittedQuantities do
     end
   end
 
+  @doc """
+  Whether `refs` hold a `{ref_type, source_uuid}` ref without a `"lines"`
+  breakdown. `compute/5` nets such a ref as the whole document, so a later
+  import must leave it as it is: `merge_ref/4` would turn it into "only what
+  was imported", and the rest of the document would stop counting.
+  """
+  def whole_document_ref?(refs, ref_type, source_uuid) do
+    Enum.any?(
+      refs,
+      &(&1["type"] == ref_type and &1["uuid"] == source_uuid and not is_map(&1["lines"]))
+    )
+  end
+
   defp legacy_fallback_lines(doc, field) do
     Map.new(doc.lines || [], fn line -> {line["item_uuid"], line[field]} end)
   end

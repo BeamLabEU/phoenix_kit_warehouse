@@ -40,12 +40,13 @@ defmodule PhoenixKitWarehouse do
   ## Configuration
 
     * `config :phoenix_kit_warehouse, one_draft_per_source: true` (default
-      `false`) - the admin UI keeps one draft per source: generating supplier
-      orders from an internal order sends the live drafts of the same supplier
-      to the trash, and restoring a draft from the trash sends the live drafts
-      of its source (pair) there. Documents can always be restored from the
-      "Trash" tab of the internal and supplier order lists; the setting only
-      adds the replacement. See `one_draft_per_source?/0`.
+      `false`) - restoring a draft from the trash in the admin UI sends the
+      live drafts of its source (pair) there. Generating supplier orders from
+      an internal order keeps one draft per (internal order, supplier) with or
+      without it: what is missing is appended to the live draft, nothing goes
+      to the trash. Documents can always be restored from the "Trash" tab of
+      the internal and supplier order lists; the setting only adds the
+      replacement on restore. See `one_draft_per_source?/0`.
   """
 
   use PhoenixKit.Module

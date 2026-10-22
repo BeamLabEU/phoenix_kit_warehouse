@@ -32,7 +32,7 @@ defmodule PhoenixKitWarehouse.Web.Components.LineExplanations do
         <p :if={@quantity_logic?} id={"#{@id}-quantity-logic"} class="text-base-content/70">
           {dgettext(
             "default",
-            "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
+            "The order is what the internal order still lacks: the requirement minus what was already issued for it, minus the stock on hand at the warehouse location, minus what is already ordered for it in supplier orders (drafts, and what posted orders have not delivered yet). A generation adds what is missing to the supplier's existing draft for this internal order instead of making a second one. The supplier is the primary supplier of the item, else its only supplier (of the item or of its manufacturer), or the one chosen by hand in the generation window. If the quantity in the order was edited by hand, it may differ from the calculation."
           )}
         </p>
         <div :for={{name, text} <- @entries} class="space-y-1">

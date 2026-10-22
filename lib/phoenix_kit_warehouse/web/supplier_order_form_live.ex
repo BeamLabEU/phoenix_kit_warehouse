@@ -57,6 +57,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
                     save_correction open_source_picker open_link_picker source_picker_confirm
                     remove_source_ref)
 
+  # Events that write the draft on the version the form keeps (`expected_version`).
+  @versioned ~w(set_supplier add_reserve save_draft post source_picker_confirm remove_source_ref)
+
   # ---------------------------------------------------------------------------
   # Lifecycle
   # ---------------------------------------------------------------------------
@@ -76,6 +79,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       |> assign(:order, nil)
       |> assign(:lines, [])
       |> assign(:note, "")
+      |> assign(:draft_version, nil)
       |> assign(:active_tab, :general)
       |> assign(:files_scope_folder_uuid, nil)
       |> assign(:files_folder_loading, false)
@@ -230,10 +234,42 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   # say so and draw the stored document, not the unsaved buffer.
   defp trashed_meanwhile(socket), do: TrashActions.trashed_meanwhile(socket, &reload_order/1)
 
+  # The version goes with the buffer: it is the draft the buffer was read
+  # from, never the `@order` a tab switch reads again (that one would let the
+  # old buffer overwrite what was written meanwhile).
   defp assign_edit_buffer(socket, order) do
     socket
     |> assign(:lines, order.lines)
     |> assign(:note, order.note || "")
+    |> assign(:draft_version, SupplierOrders.draft_version(order))
+  end
+
+  # After a write of the form: the document as written is what the buffer
+  # stands on now.
+  defp assign_written(socket, order) do
+    socket
+    |> assign(:order, order)
+    |> assign(:draft_version, SupplierOrders.draft_version(order))
+  end
+
+  # The writes go out with a version or not at all (see the `@versioned` clause).
+  defp version!(%{assigns: %{draft_version: version}}) when is_binary(version), do: version
+
+  defp version_opts(socket), do: [expected_version: version!(socket)]
+
+  # The draft changed after the form read it (generation appended to it): the
+  # write was refused; draw the stored draft, buffer included.
+  defp changed_elsewhere(socket) do
+    socket
+    |> assign(:show_source_picker, false)
+    |> put_flash(
+      :error,
+      dgettext(
+        "default",
+        "The draft was changed elsewhere — the current version is shown, repeat the action"
+      )
+    )
+    |> reload_order()
   end
 
   defp maybe_subscribe_and_refresh_comments(socket) do
@@ -332,6 +368,12 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
         {:noreply,
          TrashActions.refuse_trashed(socket, :order, &reload_order/1, &resume_files_tab/1)}
 
+  # A form without a version never read its buffer from the draft: it does not
+  # write unchecked, it reads the draft again, as on a stale write.
+  def handle_event(event, _params, %{assigns: %{order: %{uuid: _}, draft_version: nil}} = socket)
+      when event in @versioned,
+      do: {:noreply, changed_elsewhere(socket)}
+
   # "Move to trash" of the form's own document (TrashActions); the uuid is the
   # form's, not the browser's. After the move the form is drawn as trashed.
   def handle_event("request_trash", _params, %{assigns: %{order: nil}} = socket) do
@@ -393,17 +435,20 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
           supplier_uuid: supplier_uuid_val
         }
 
-        case SupplierOrders.update_draft(order, attrs) do
+        case SupplierOrders.update_draft(order, attrs, version_opts(socket)) do
           {:ok, updated_order} ->
             supplier_name = resolve_supplier_name(supplier_uuid_val)
 
             {:noreply,
              socket
-             |> assign(:order, updated_order)
+             |> assign_written(updated_order)
              |> assign(:supplier_name, supplier_name)}
 
           {:error, :deleted} ->
             {:noreply, trashed_meanwhile(socket)}
+
+          {:error, :stale} ->
+            {:noreply, changed_elsewhere(socket)}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to set supplier"))}
@@ -454,16 +499,19 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     attrs = %{note: socket.assigns.note, lines: lines}
     order = socket.assigns.order
 
-    case SupplierOrders.update_draft(order, attrs) do
+    case SupplierOrders.update_draft(order, attrs, version_opts(socket)) do
       {:ok, updated_order} ->
         {:noreply,
          socket
-         |> assign(:order, updated_order)
+         |> assign_written(updated_order)
          |> assign(:lines, lines)
          |> put_flash(:info, dgettext("default", "10% reserve applied"))}
 
       {:error, :deleted} ->
         {:noreply, trashed_meanwhile(socket)}
+
+      {:error, :stale} ->
+        {:noreply, changed_elsewhere(socket)}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to apply reserve"))}
@@ -497,15 +545,18 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
     case socket.assigns.order do
       %PhoenixKitWarehouse.SupplierOrder{status: "draft"} = order ->
-        case SupplierOrders.update_draft(order, attrs) do
+        case SupplierOrders.update_draft(order, attrs, version_opts(socket)) do
           {:ok, updated_order} ->
             {:noreply,
              socket
-             |> assign(:order, updated_order)
+             |> assign_written(updated_order)
              |> put_flash(:info, dgettext("default", "Draft saved"))}
 
           {:error, :deleted} ->
             {:noreply, trashed_meanwhile(socket)}
+
+          {:error, :stale} ->
+            {:noreply, changed_elsewhere(socket)}
 
           {:error, _changeset} ->
             {:noreply, put_flash(socket, :error, dgettext("default", "Failed to save draft"))}
@@ -533,31 +584,25 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
     order = socket.assigns.order
 
-    with {:ok, saved_order} <- ensure_saved(order, save_attrs),
-         {:ok, _posted_order} <- SupplierOrders.post_supplier_order(saved_order, user_uuid) do
-      {:noreply,
-       socket
-       |> put_flash(:info, dgettext("default", "Supplier order posted"))
-       |> push_navigate(to: Routes.path("/admin/warehouse/supplier-orders"))}
-    else
-      {:error, :deleted} ->
-        {:noreply, trashed_meanwhile(socket)}
+    case ensure_saved(order, save_attrs, version!(socket)) do
+      # Posted is the version the save wrote: whatever got appended between
+      # the two transactions is not posted unseen.
+      {:ok, saved_order, version} ->
+        socket = assign_written(socket, saved_order)
 
-      {:error, :not_draft} ->
-        {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
+        case SupplierOrders.post_supplier_order(saved_order, user_uuid, expected_version: version) do
+          {:ok, _posted_order} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, dgettext("default", "Supplier order posted"))
+             |> push_navigate(to: Routes.path("/admin/warehouse/supplier-orders"))}
 
-      {:error, changeset} when is_map(changeset) ->
-        # Likely a changeset with supplier_uuid required error
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           dgettext("default", "Cannot post: please set a supplier first")
-         )}
+          {:error, reason} ->
+            post_failed(socket, reason)
+        end
 
-      {:error, _reason} ->
-        {:noreply,
-         put_flash(socket, :error, dgettext("default", "Failed to post supplier order"))}
+      {:error, reason} ->
+        post_failed(socket, reason)
     end
   end
 
@@ -612,7 +657,7 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
       {:ok, corrected_order} ->
         {:noreply,
          socket
-         |> assign(:order, corrected_order)
+         |> assign_written(corrected_order)
          |> put_flash(:info, dgettext("default", "Correction saved"))}
 
       {:error, _changeset} ->
@@ -722,19 +767,26 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
     order = socket.assigns.order
     selected_uuids = socket.assigns.source_picker_selected
 
+    # Each link is written on the version the previous one left.
     result =
-      Enum.reduce_while(selected_uuids, {:ok, order}, fn uuid, {:ok, current_order} ->
-        case SupplierOrders.add_source_ref(current_order, "internal_order", uuid) do
-          {:ok, updated} -> {:cont, {:ok, updated}}
-          error -> {:halt, error}
+      Enum.reduce_while(
+        selected_uuids,
+        {:ok, order, version!(socket)},
+        fn uuid, {:ok, current_order, version} ->
+          case SupplierOrders.add_source_ref(current_order, "internal_order", uuid,
+                 expected_version: version
+               ) do
+            {:ok, updated} -> {:cont, {:ok, updated, SupplierOrders.draft_version(updated)}}
+            error -> {:halt, error}
+          end
         end
-      end)
+      )
 
     case result do
-      {:ok, updated_order} ->
+      {:ok, updated_order, _version} ->
         socket =
           socket
-          |> assign(:order, updated_order)
+          |> assign_written(updated_order)
           |> assign(:source_refs, DocRefs.refs_for(updated_order.source_refs || []))
           |> assign(:show_source_picker, false)
           |> assign(:source_picker_selected, [])
@@ -744,6 +796,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
       {:error, :deleted} ->
         {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
+      {:error, :stale} ->
+        {:noreply, changed_elsewhere(socket)}
 
       {:error, _reason} ->
         {:noreply,
@@ -770,13 +825,18 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
          )}
 
       %PhoenixKitWarehouse.SupplierOrder{status: "draft"} ->
-        case SupplierOrders.import_from_internal_orders(order, selected_uuids, user_uuid) do
+        case SupplierOrders.import_from_internal_orders(
+               order,
+               selected_uuids,
+               user_uuid,
+               version_opts(socket)
+             ) do
           {:ok, updated_order} ->
             source_refs = DocRefs.refs_for(updated_order.source_refs || [])
 
             {:noreply,
              socket
-             |> assign(:order, updated_order)
+             |> assign_written(updated_order)
              |> assign(:lines, updated_order.lines)
              |> assign(:source_refs, source_refs)
              |> assign(:show_source_picker, false)
@@ -794,6 +854,9 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
 
           {:error, :deleted} ->
             {:noreply, socket |> assign(:show_source_picker, false) |> trashed_meanwhile()}
+
+          {:error, :stale} ->
+            {:noreply, changed_elsewhere(socket)}
 
           {:error, _reason} ->
             {:noreply,
@@ -814,17 +877,20 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   def handle_event("remove_source_ref", %{"type" => type, "uuid" => uuid}, socket) do
     order = socket.assigns.order
 
-    case SupplierOrders.remove_source_ref(order, type, uuid) do
+    case SupplierOrders.remove_source_ref(order, type, uuid, version_opts(socket)) do
       {:ok, updated_order} ->
         socket =
           socket
-          |> assign(:order, updated_order)
+          |> assign_written(updated_order)
           |> assign(:source_refs, DocRefs.refs_for(updated_order.source_refs || []))
 
         {:noreply, socket}
 
       {:error, :deleted} ->
         {:noreply, trashed_meanwhile(socket)}
+
+      {:error, :stale} ->
+        {:noreply, changed_elsewhere(socket)}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("default", "Failed to remove link"))}
@@ -1398,13 +1464,34 @@ defmodule PhoenixKitWarehouse.Web.SupplierOrderFormLive do
   # Private helpers
   # ---------------------------------------------------------------------------
 
-  defp ensure_saved(%PhoenixKitWarehouse.SupplierOrder{status: "draft"} = order, attrs) do
-    SupplierOrders.update_draft(order, attrs)
+  # Saves the buffer before a post; answers the version it wrote, the one the
+  # post must find.
+  defp ensure_saved(%PhoenixKitWarehouse.SupplierOrder{status: "draft"} = order, attrs, version) do
+    with {:ok, saved} <- SupplierOrders.update_draft(order, attrs, expected_version: version) do
+      {:ok, saved, SupplierOrders.draft_version(saved)}
+    end
   end
 
-  defp ensure_saved(%PhoenixKitWarehouse.SupplierOrder{} = order, _attrs) do
-    {:ok, order}
+  defp ensure_saved(%PhoenixKitWarehouse.SupplierOrder{} = order, _attrs, version) do
+    {:ok, order, version}
   end
+
+  defp post_failed(socket, :deleted), do: {:noreply, trashed_meanwhile(socket)}
+
+  defp post_failed(socket, :stale), do: {:noreply, changed_elsewhere(socket)}
+
+  defp post_failed(socket, :not_draft),
+    do: {:noreply, put_flash(socket, :error, dgettext("default", "Document is already posted"))}
+
+  # Likely a changeset with supplier_uuid required error
+  defp post_failed(socket, changeset) when is_map(changeset),
+    do:
+      {:noreply,
+       put_flash(socket, :error, dgettext("default", "Cannot post: please set a supplier first"))}
+
+  defp post_failed(socket, _reason),
+    do:
+      {:noreply, put_flash(socket, :error, dgettext("default", "Failed to post supplier order"))}
 
   defp clamp_non_negative(%Decimal{} = d) do
     zero = Decimal.new("0")

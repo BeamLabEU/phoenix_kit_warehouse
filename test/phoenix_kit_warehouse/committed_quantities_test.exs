@@ -263,4 +263,19 @@ defmodule PhoenixKitWarehouse.CommittedQuantitiesTest do
                Enum.find(refs, &(&1["type"] == "order"))
     end
   end
+
+  describe "whole_document_ref?/3" do
+    test "true only for a ref of that type and uuid without lines" do
+      source_uuid = Ecto.UUID.generate()
+      other_uuid = Ecto.UUID.generate()
+      whole = %{"type" => "internal_order", "uuid" => source_uuid}
+      with_lines = Map.put(whole, "lines", %{Ecto.UUID.generate() => "0"})
+
+      assert CommittedQuantities.whole_document_ref?([whole], "internal_order", source_uuid)
+      refute CommittedQuantities.whole_document_ref?([with_lines], "internal_order", source_uuid)
+      refute CommittedQuantities.whole_document_ref?([whole], "internal_order", other_uuid)
+      refute CommittedQuantities.whole_document_ref?([whole], "order", source_uuid)
+      refute CommittedQuantities.whole_document_ref?([], "internal_order", source_uuid)
+    end
+  end
 end

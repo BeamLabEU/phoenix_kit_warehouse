@@ -189,14 +189,40 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftConcurrencyTest do
     )
   end
 
-  defp wait_for_row_lock_waiter do
+  defp wait_for_row_lock_waiter(expected \\ 1) do
     wait_until(
-      "a session waiting for a supplier order row lock",
+      "#{expected} session(s) waiting for a supplier order row lock",
       "SELECT count(*) FROM pg_stat_activity WHERE datname = current_database() " <>
         "AND wait_event_type = 'Lock' " <>
         "AND query ILIKE '%phoenix_kit_warehouse_supplier_orders%'",
-      1
+      expected
     )
+  end
+
+  defp plan!(io) do
+    {:ok, plan} = unboxed(fn -> SupplierOrders.plan_from_internal_order(io.uuid) end)
+    plan
+  end
+
+  defp apply_task(io, fingerprint) do
+    Task.async(fn ->
+      unboxed(fn -> SupplierOrders.apply_plan(io.uuid, fingerprint, %{}, nil) end)
+    end)
+  end
+
+  # Gives a supplier order a uuid of the caller's choice, so a test knows the
+  # order rows are locked in.
+  defp with_uuid!(order, prefix) do
+    new_uuid = prefix <> Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)
+
+    unboxed(fn ->
+      {1, _} =
+        Repo.update_all(from(o in SupplierOrder, where: o.uuid == ^order.uuid),
+          set: [uuid: new_uuid]
+        )
+
+      Repo.get!(SupplierOrder, new_uuid)
+    end)
   end
 
   describe "generation with supersede_drafts racing a posting" do
@@ -233,7 +259,7 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftConcurrencyTest do
       assert Enum.sort(Enum.map(live_for(fx), & &1.uuid)) == Enum.sort([draft.uuid, new.uuid])
     end
 
-    test "a draft that is still a draft when the generation gets its row is trashed" do
+    test "a draft that is still a draft when the generation gets its row is appended to" do
       fx = new_order()
       draft = insert_draft!(fx)
       parent = self()
@@ -251,10 +277,14 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftConcurrencyTest do
       send(holder_task.pid, :commit)
 
       assert {:ok, :ok} = Task.await(holder_task, 15_000)
-      assert {:ok, %{superseded: [gone]}} = Task.await(generator, 15_000)
 
-      assert gone.uuid == draft.uuid
-      assert fetch(draft).deleted_at != nil
+      assert {:ok, %{supplier_orders: [], appended: [appended], superseded: []}} =
+               Task.await(generator, 15_000)
+
+      assert appended.uuid == draft.uuid
+      written = fetch(draft)
+      assert written.deleted_at == nil
+      assert [%{"ordered_quantity" => "10"}] = written.lines
     end
   end
 
@@ -281,31 +311,32 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftConcurrencyTest do
       assert {:ok, first_result} = Task.await(a, 15_000)
       assert {:ok, second_result} = Task.await(b, 15_000)
 
-      # One of them ran second and saw the other's committed draft.
-      [earlier, later] = Enum.sort_by([first_result, second_result], &length(&1.superseded))
-      assert earlier.superseded == []
-      assert [trashed] = later.superseded
+      # One of them ran second, saw the other's committed draft and found
+      # nothing missing.
+      [later, earlier] = Enum.sort_by([first_result, second_result], &length(&1.supplier_orders))
+      assert later.supplier_orders == [] and later.appended == []
       assert [earlier_order] = earlier.supplier_orders
-      assert trashed.uuid == earlier_order.uuid
+      assert earlier.superseded == [] and later.superseded == []
 
       assert [only] = live_for(fx)
-      assert [later_order] = later.supplier_orders
-      assert only.uuid == later_order.uuid
-      assert fetch(earlier_order).deleted_at != nil
+      assert only.uuid == earlier_order.uuid
     end
 
-    test "a generation without the option does not wait for the lock" do
+    test "a generation without the option waits for the lock too" do
       fx = new_order()
       parent = self()
 
       lock_holder = hold_advisory(parent, fx.io)
       assert_receive :locked, 10_000
 
-      assert {:ok, %{supplier_orders: [_], superseded: []}} =
-               Task.await(generate_task(fx.io, []), 15_000)
+      generator = generate_task(fx.io, [])
+      wait_for_advisory_waiters(1)
+      assert Task.yield(generator, 0) == nil
 
       send(lock_holder.pid, :commit)
       assert {:ok, :ok} = Task.await(lock_holder, 15_000)
+
+      assert {:ok, %{supplier_orders: [_], superseded: []}} = Task.await(generator, 15_000)
     end
 
     test "a generation for another internal order does not wait for this one's lock" do
@@ -374,13 +405,16 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftConcurrencyTest do
   describe "activity is written after the commit" do
     @describetag :capture_log
 
-    test "a log that fails does not undo the supersede" do
+    test "a log that fails does not undo a restore with a swap" do
       fx = new_order()
       first = insert_draft!(fx)
 
+      to_trash = insert_draft!(fx)
+      {:ok, trashed} = unboxed(fn -> SupplierOrders.soft_delete_supplier_order(to_trash, nil) end)
+
       # The database refuses every "trashed" activity row; the entry cannot be
       # written, whatever the module does. Were it written inside the
-      # transaction, the refusal would abort it and the generation with it.
+      # transaction, the refusal would abort it and the restore with it.
       unboxed(fn ->
         Repo.query!("""
         CREATE OR REPLACE FUNCTION pkw_test_refuse_so_trashed_entry() RETURNS trigger AS $$
@@ -407,17 +441,111 @@ defmodule PhoenixKitWarehouse.SupplierOrdersOneDraftConcurrencyTest do
         end)
       end)
 
-      assert {:ok, %{supplier_orders: [new], superseded: [gone]}} =
-               Task.await(generate_task(fx.io), 15_000)
+      assert {:ok, %{order: restored, superseded: [gone]}} =
+               unboxed(fn -> SupplierOrders.restore_supplier_order(trashed, nil, swap: true) end)
 
       assert gone.uuid == first.uuid
       assert fetch(first).deleted_at != nil
       assert [only] = live_for(fx)
-      assert only.uuid == new.uuid
+      assert only.uuid == restored.uuid
 
       assert unboxed(fn ->
                Repo.aggregate(from(e in Entry, where: e.resource_uuid == ^first.uuid), :count)
              end) == 0
+    end
+  end
+
+  describe "apply_plan under the internal order lock" do
+    test "two applies of one plan: one writes, the other answers a stale plan" do
+      fx = new_order()
+      plan = plan!(fx.io)
+      parent = self()
+
+      lock_holder = hold_advisory(parent, fx.io)
+      assert_receive :locked, 10_000
+
+      a = apply_task(fx.io, plan.fingerprint)
+      b = apply_task(fx.io, plan.fingerprint)
+      wait_for_advisory_waiters(2)
+      assert live_for(fx) == []
+
+      send(lock_holder.pid, :commit)
+      assert {:ok, :ok} = Task.await(lock_holder, 15_000)
+
+      results =
+        Enum.sort_by([Task.await(a, 15_000), Task.await(b, 15_000)], &match?({:ok, _}, &1))
+
+      assert [{:error, {:stale, new_plan}}, {:ok, %{supplier_orders: [written]}}] = results
+
+      refute new_plan.fingerprint == plan.fingerprint
+      assert [%{to_order: to_order}] = new_plan.lines
+      assert Decimal.eq?(to_order, 0)
+      assert [only] = live_for(fx)
+      assert only.uuid == written.uuid
+    end
+
+    test "posting a draft of the order, started after apply locked it, waits for apply" do
+      fx = new_order()
+      # apply locks the order's rows in uuid order: the target, then the blocker
+      target = fx |> insert_draft!() |> with_uuid!("00000000-0000-4000-8000-")
+
+      blocker =
+        fx
+        |> insert_draft!(%{supplier_uuid: Ecto.UUID.generate()})
+        |> with_uuid!("ffffffff-ffff-4fff-bfff-")
+
+      plan = plan!(fx.io)
+      parent = self()
+
+      holder_task =
+        holder(parent, fn ->
+          Repo.all(from(o in SupplierOrder, where: o.uuid == ^blocker.uuid, lock: "FOR UPDATE"))
+        end)
+
+      assert_receive :locked, 10_000
+
+      applier = apply_task(fx.io, plan.fingerprint)
+      wait_for_row_lock_waiter(1)
+
+      poster =
+        Task.async(fn -> unboxed(fn -> SupplierOrders.post_supplier_order(target, nil) end) end)
+
+      wait_for_row_lock_waiter(2)
+      assert Task.yield(poster, 0) == nil
+
+      send(holder_task.pid, :commit)
+      assert {:ok, :ok} = Task.await(holder_task, 15_000)
+
+      assert {:ok, %{appended: [appended], supplier_orders: []}} = Task.await(applier, 15_000)
+      assert appended.uuid == target.uuid
+
+      # Posted after the append: what was appended is in it.
+      assert {:ok, posted} = Task.await(poster, 15_000)
+      assert posted.status == "posted"
+      assert [%{"ordered_quantity" => "10"}] = posted.lines
+    end
+
+    test "an import from the order waits for the order's lock" do
+      fx = new_order()
+      draft = insert_draft!(fx)
+      parent = self()
+
+      lock_holder = hold_advisory(parent, fx.io)
+      assert_receive :locked, 10_000
+
+      importer =
+        Task.async(fn ->
+          unboxed(fn -> SupplierOrders.import_from_internal_orders(draft, [fx.io.uuid], nil) end)
+        end)
+
+      wait_for_advisory_waiters(1)
+      assert Task.yield(importer, 0) == nil
+
+      send(lock_holder.pid, :commit)
+      assert {:ok, :ok} = Task.await(lock_holder, 15_000)
+
+      assert {:ok, imported} = Task.await(importer, 15_000)
+      assert [%{"ordered_quantity" => "10"}] = fetch(imported).lines
     end
   end
 end
