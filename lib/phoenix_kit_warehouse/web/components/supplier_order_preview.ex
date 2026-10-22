@@ -189,32 +189,35 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
       </form>
 
       <:actions>
-        <div id="io-preview-summary" class="mr-auto text-sm">
-          {dgettext(
-            "default",
-            "New orders: %{created}, appended: %{appended} (lines: %{lines}); not ordered: %{not_ordered}",
-            @summary
-          )}
+        <%!-- Wraps on a phone: the summary takes its own line above the buttons. --%>
+        <div class="flex flex-wrap items-center justify-end gap-2 w-full">
+          <div id="io-preview-summary" class="grow w-full sm:w-auto min-w-0 text-sm">
+            {dgettext(
+              "default",
+              "New orders: %{created}, appended: %{appended} (lines: %{lines}); not ordered: %{not_ordered}",
+              @summary
+            )}
+          </div>
+          <button
+            type="button"
+            id="io-preview-cancel"
+            phx-click="cancel_generation_preview"
+            class="btn btn-sm btn-ghost"
+          >
+            {dgettext("default", "Cancel")}
+          </button>
+          <button
+            type="submit"
+            id="io-preview-submit"
+            form="io-generation-preview-form"
+            disabled={@preview.assembled.orders == []}
+            phx-disable-with={dgettext("default", "Generating...")}
+            class="btn btn-sm btn-primary"
+          >
+            <.icon name="hero-truck" class="w-4 h-4" />
+            {dgettext("default", "Generate")}
+          </button>
         </div>
-        <button
-          type="button"
-          id="io-preview-cancel"
-          phx-click="cancel_generation_preview"
-          class="btn btn-sm btn-ghost"
-        >
-          {dgettext("default", "Cancel")}
-        </button>
-        <button
-          type="submit"
-          id="io-preview-submit"
-          form="io-generation-preview-form"
-          disabled={@preview.assembled.orders == []}
-          phx-disable-with={dgettext("default", "Generating...")}
-          class="btn btn-sm btn-primary"
-        >
-          <.icon name="hero-truck" class="w-4 h-4" />
-          {dgettext("default", "Generate")}
-        </button>
       </:actions>
     </.modal>
     """
@@ -267,7 +270,7 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
                 class="checkbox checkbox-sm"
               />
             </td>
-            <td class="min-w-48">
+            <td class="min-w-40 break-words">
               <div class="font-medium">{line.name || "—"}</div>
               <span
                 :if={line.key in @preview.changed}
@@ -359,7 +362,7 @@ defmodule PhoenixKitWarehouse.Web.Components.SupplierOrderPreview do
     <select
       id={"io-preview-choice-#{@line.index}"}
       name={"choice[#{@line.key}]"}
-      class="select select-xs w-56"
+      class="select select-xs w-full min-w-32"
     >
       <option value="skip" selected={@current == "skip"}>
         {dgettext("default", "— do not order —")}
