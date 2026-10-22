@@ -1061,7 +1061,7 @@ msgstr "Laos"
 #: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:658
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can create goods issues"
-msgstr "Kauba väljastamisi saab luua ainult sisestatud sistellimustest"
+msgstr "Kauba väljastamisi saab luua ainult sisestatud sisetellimustest"
 
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:38
 #, elixir-autogen, elixir-format
@@ -1170,7 +1170,7 @@ msgstr "Prügikast (%{count})"
 #: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:614
 #, elixir-autogen, elixir-format
 msgid "Only posted internal orders can generate supplier orders"
-msgstr "Tarnijatellimusi saab genereerida ainult sisestatud sistellimustest"
+msgstr "Tarnijatellimusi saab genereerida ainult sisestatud sisetellimustest"
 
 #: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:1047
 #, elixir-autogen, elixir-format
@@ -1500,7 +1500,7 @@ msgstr "See kauba vastuvõtt on sisestatud ja laoseis on uuendatud."
 #: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:853
 #, elixir-autogen, elixir-format
 msgid "This internal order has been conducted and is now read-only."
-msgstr "See sistellimus on sisestatud ja on nüüd kirjutuskaitstud."
+msgstr "See sisetellimus on sisestatud ja on nüüd kirjutuskaitstud."
 
 #: lib/phoenix_kit_warehouse/web/inventory_form_live.ex:869
 #, elixir-autogen, elixir-format
