@@ -824,6 +824,22 @@ defmodule PhoenixKitWarehouse.SupplierOrderPlan do
     %{orders: orders, unplaced: Enum.reverse(unplaced), not_ordered: Enum.reverse(not_ordered)}
   end
 
+  @doc """
+  The lines of an `assemble/2` result with something to order that are not
+  ordered: the `unplaced` ones and the ones whose item is not in the
+  catalogue, in line order. What a generation reports as unassigned and the
+  preview window counts as "not ordered".
+  """
+  @spec unassigned(%{
+          required(:unplaced) => [map()],
+          required(:not_ordered) => [map()],
+          optional(atom()) => any()
+        }) :: [map()]
+  def unassigned(%{unplaced: unplaced, not_ordered: not_ordered}) do
+    missing = Enum.filter(not_ordered, &(&1.reason == :no_item and Decimal.gt?(&1.to_order, 0)))
+    Enum.sort_by(unplaced ++ missing, & &1.index)
+  end
+
   defp line_supplier(%{choosable?: false}, _choice), do: :not_ordered
   defp line_supplier(_line, "skip"), do: nil
 

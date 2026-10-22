@@ -669,11 +669,25 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
 
   defp so_tag(so), do: "#SO-#{so.number}"
 
+  # The button opens the preview window (no browser confirmation); a
+  # generation appends to the live draft of the pair and trashes nothing, with
+  # the switch or without it. The window itself is covered in
+  # InternalOrderGenerationPreviewLiveTest.
+  defp open_preview!(lv) do
+    lv |> element("#io-generate-supplier-orders") |> render_click()
+    assert has_element?(lv, "#io-generation-preview")
+    lv
+  end
+
+  defp generate!(lv, conn) do
+    {:ok, _lv, html} =
+      lv |> element("#io-generation-preview-form") |> render_submit() |> follow_redirect(conn)
+
+    html
+  end
+
   describe "generating supplier orders" do
-    # The generation appends to the live draft of the pair now (no second
-    # draft, nothing trashed); the button and its flash are rewritten with the
-    # preview window (B2), these only follow the new behaviour.
-    test "without the switch: no confirmation and the old draft is appended to",
+    test "without the switch: no browser confirmation, the window names the draft it appends to",
          %{conn: conn} do
       conn = log_in(conn, admin!())
       %{io: io, supplier: supplier} = posted_io_with_item!()
@@ -681,12 +695,19 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
 
       {:ok, lv, _html} = live(conn, form_path(io))
 
-      assert has_element?(lv, "#io-generate-supplier-orders")
       refute has_element?(lv, "#io-generate-supplier-orders[data-confirm]")
 
-      result = lv |> element("#io-generate-supplier-orders") |> render_click()
-      {:ok, _lv, html} = follow_redirect(result, conn)
+      open_preview!(lv)
 
+      assert has_element?(
+               lv,
+               "#io-preview-group-#{supplier.uuid}-target",
+               "There is already a draft #{so_tag(old)}"
+             )
+
+      html = generate!(lv, conn)
+
+      assert html =~ "Appended to: #{so_tag(old)}."
       refute html =~ "Moved to the trash"
       assert so_reload(old).deleted_at == nil
       assert [%{"item_uuid" => _}] = so_reload(old).lines
@@ -695,7 +716,8 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
              |> Repo.aggregate(:count) == 1
     end
 
-    test "with the switch and a live draft: the confirmation names it", %{conn: conn} do
+    test "with the switch and a live draft: no browser confirmation, the window names it",
+         %{conn: conn} do
       enable!()
       conn = log_in(conn, admin!())
       %{io: io, supplier: supplier} = posted_io_with_item!()
@@ -703,31 +725,35 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
 
       {:ok, lv, _html} = live(conn, form_path(io))
 
-      assert has_element?(lv, "#io-generate-supplier-orders[data-confirm*='#{so_tag(old)}']")
+      refute has_element?(lv, "#io-generate-supplier-orders[data-confirm]")
+      open_preview!(lv)
+
+      assert has_element?(lv, "#io-preview-group-#{supplier.uuid}-target", so_tag(old))
     end
 
-    test "with the switch and no drafts: no confirmation", %{conn: conn} do
+    test "with the switch and no drafts: the window shows a new order", %{conn: conn} do
       enable!()
       conn = log_in(conn, admin!())
-      %{io: io} = posted_io_with_item!()
+      %{io: io, supplier: supplier} = posted_io_with_item!()
 
       {:ok, lv, _html} = live(conn, form_path(io))
+      open_preview!(lv)
 
-      assert has_element?(lv, "#io-generate-supplier-orders")
-      refute has_element?(lv, "#io-generate-supplier-orders[data-confirm]")
+      assert has_element?(lv, "#io-preview-group-#{supplier.uuid}-new")
+      refute has_element?(lv, "#io-preview-group-#{supplier.uuid}-target")
     end
 
-    test "with the switch the confirmation skips a posted, a combined and a trashed draft",
+    test "with the switch the window appends to the combined draft, never a posted or a trashed one",
          %{conn: conn} do
       enable!()
       admin = admin!()
       conn = log_in(conn, admin)
       %{io: io, supplier: supplier} = posted_io_with_item!()
 
-      {:ok, _posted} =
+      {:ok, posted} =
         io |> old_supplier_draft!(supplier) |> SupplierOrders.post_supplier_order(admin.uuid)
 
-      _combined =
+      combined =
         io
         |> old_supplier_draft!(supplier)
         |> Ecto.Changeset.change(
@@ -738,15 +764,18 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
         )
         |> Repo.update!()
 
-      {:ok, _trashed} =
+      {:ok, trashed} =
         io
         |> old_supplier_draft!(supplier)
         |> SupplierOrders.soft_delete_supplier_order(admin.uuid)
 
       {:ok, lv, _html} = live(conn, form_path(io))
+      open_preview!(lv)
 
-      assert has_element?(lv, "#io-generate-supplier-orders")
-      refute has_element?(lv, "#io-generate-supplier-orders[data-confirm]")
+      target = "#io-preview-group-#{supplier.uuid}-target"
+      assert has_element?(lv, target, so_tag(combined))
+      refute has_element?(lv, target, so_tag(posted))
+      refute has_element?(lv, target, so_tag(trashed))
     end
 
     test "with the switch the generation appends to the old draft, nothing is trashed",
@@ -758,9 +787,7 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
       old = old_supplier_draft!(io, supplier)
 
       {:ok, lv, _html} = live(conn, form_path(io))
-
-      result = lv |> element("#io-generate-supplier-orders") |> render_click()
-      {:ok, _lv, html} = follow_redirect(result, conn)
+      html = lv |> open_preview!() |> generate!(conn)
 
       refute html =~ "Moved to the trash"
 
@@ -787,8 +814,9 @@ defmodule PhoenixKitWarehouse.Web.InternalOrderTrashLiveTest do
         io |> old_supplier_draft!(supplier) |> SupplierOrders.post_supplier_order(admin.uuid)
 
       {:ok, lv, _html} = live(conn, form_path(io))
-      lv |> element("#io-generate-supplier-orders") |> render_click()
+      html = lv |> open_preview!() |> generate!(conn)
 
+      assert html =~ "Supplier orders created: 1."
       assert so_reload(posted).deleted_at == nil
       assert so_reload(posted).status == "posted"
     end

@@ -636,16 +636,6 @@ msgstr "Üldine"
 msgid "Generate supplier orders"
 msgstr "Genereeri tarnijatellimused"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:584
-#, elixir-autogen, elixir-format
-msgid "Generated %{n} supplier order(s)."
-msgstr "Genereeritud %{n} tarnijatellimus(t)."
-
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:576
-#, elixir-autogen, elixir-format
-msgid "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
-msgstr "Genereeritud %{n} tarnijatellimus(t). %{m} rida ei saanud tarnijale määrata."
-
 #: lib/phoenix_kit_warehouse.ex:698
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:67
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:70
@@ -970,11 +960,6 @@ msgstr "Ridu pole veel. Lisa kaupu allpool olevast kataloogist."
 msgid "No stocktakes yet"
 msgstr "Inventuure pole veel"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:587
-#, elixir-autogen, elixir-format
-msgid "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
-msgstr "Tarnijatellimusi ei loodud. %{m} rida ei saanud määrata (0 või mitu tarnijat)."
-
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:420
 #, elixir-autogen, elixir-format
 msgid "No supplier orders yet"
@@ -1098,11 +1083,6 @@ msgstr "Dokument viidi prügikasti"
 #, elixir-autogen, elixir-format
 msgid "Document not found"
 msgstr "Dokumenti ei leitud"
-
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1212
-#, elixir-autogen, elixir-format
-msgid "Draft supplier orders %{numbers} for the same suppliers may be moved to the trash. Continue?"
-msgstr "Samade tarnijate tarnijatellimuste mustandid %{numbers} võidakse viia prügikasti. Jätka?"
 
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:35
 #, elixir-autogen, elixir-format
@@ -2195,10 +2175,230 @@ msgstr "Põhjendus"
 
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:33
 #, elixir-autogen, elixir-format
-msgid "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
-msgstr "Tellimus on sisetellimuse vajadus miinus laoseis laokohas koostamise hetkel. Impordil lahutatakse ka see, mis on juba teistes tarnijatellimustes tellitud. Tarnija on kauba jaoks leitud tarnija: põhitarnija või tootja kaudu. Kaubad, millel pole ühte tarnijat, sellesse tellimusse ei satu. Kui tellimuse kogust on käsitsi muudetud, võib see arvutusest erineda."
+msgid "The order is what the internal order still lacks: the requirement minus what was already issued for it, minus the stock on hand at the warehouse location, minus what is already ordered for it in supplier orders (drafts, and what posted orders have not delivered yet). A generation adds what is missing to the supplier's existing draft for this internal order instead of making a second one. The supplier is the primary supplier of the item, else its only supplier (of the item or of its manufacturer), or the one chosen by hand in the generation window. If the quantity in the order was edited by hand, it may differ from the calculation."
+msgstr "Tellimus on see, mis sisetellimusel veel puudu on: vajadus miinus sellele juba väljastatud kogus, miinus laoseis laokohas, miinus see, mis on sellele juba tarnijatellimustes tellitud (mustandites ning sisestatud tellimustes see, mis pole veel saabunud). Koostamisel lisatakse puuduv selle tarnija olemasolevasse mustandisse selle sisetellimuse kohta, teist mustandit ei looda. Tarnija on kauba põhitarnija, muidu selle ainus tarnija (kauba või tootja oma) või koostamisaknas käsitsi valitud tarnija. Kui tellimuse kogust on käsitsi muudetud, võib see arvutusest erineda."
 
 #: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:267
 #, elixir-autogen, elixir-format
 msgid "The draft was changed elsewhere — the current version is shown, repeat the action"
 msgstr "Mustandit muudeti mujal — näidatakse kehtivat versiooni, korrake toimingut"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:58
+#, elixir-autogen, elixir-format
+msgid "The data has changed — check and press again"
+msgstr "Andmed on muutunud — kontrolli ja vajuta uuesti"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:70
+#, elixir-autogen, elixir-format
+msgid "Suppliers"
+msgstr "Tarnijad"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:75
+#, elixir-autogen, elixir-format
+msgid "Nothing is ordered yet."
+msgstr "Praegu ei tellita midagi."
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:89
+#, elixir-autogen, elixir-format
+msgid "new order"
+msgstr "uus tellimus"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:101
+#, elixir-autogen, elixir-format
+msgid "There is already a draft %{number} for this supplier — what is missing will be added to it"
+msgstr "Sellel tarnijal on juba mustand %{number} — puuduv lisatakse sellesse"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:117
+#, elixir-autogen, elixir-format
+msgid "Choose a supplier"
+msgstr "Vali tarnija"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:135
+#, elixir-autogen, elixir-format
+msgid "Selected: %{n}"
+msgstr "Valitud: %{n}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:137
+#, elixir-autogen, elixir-format
+msgid "Assign to the selected:"
+msgstr "Määra valitutele:"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:159
+#, elixir-autogen, elixir-format
+msgid "Assign"
+msgstr "Määra"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:176
+#, elixir-autogen, elixir-format
+msgid "Nothing to order (%{n})"
+msgstr "Pole vaja tellida (%{n})"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:192
+#, elixir-autogen, elixir-format
+msgid "New orders: %{created}, appended: %{appended} (lines: %{lines}); not ordered: %{not_ordered}"
+msgstr "Uusi tellimusi: %{created}, täiendatakse: %{appended} (ridu: %{lines}); ei tellita: %{not_ordered}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:211
+#, elixir-autogen, elixir-format
+msgid "Generating..."
+msgstr "Genereerimine..."
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:215
+#, elixir-autogen, elixir-format
+msgid "Generate"
+msgstr "Genereeri"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:244
+#, elixir-autogen, elixir-format
+msgid "Issued"
+msgstr "Väljastatud"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:246
+#, elixir-autogen, elixir-format
+msgid "Already ordered"
+msgstr "Juba tellitud"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:247
+#, elixir-autogen, elixir-format
+msgid "To order"
+msgstr "Tellida"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:276
+#, elixir-autogen, elixir-format
+msgid "changed"
+msgstr "muutus"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:315
+#, elixir-autogen, elixir-format
+msgid "in %{number}: now %{now} → %{after}"
+msgstr "%{number}: praegu %{now} → saab %{after}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:337
+#, elixir-autogen, elixir-format
+msgid "Already ordered in %{number} (%{status}): %{quantity}"
+msgstr "Juba tellitud %{number} (%{status}): %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:370
+#, elixir-autogen, elixir-format
+msgid "— do not order —"
+msgstr "— ära telli —"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:372
+#, elixir-autogen, elixir-format
+msgid "Suppliers of the item"
+msgstr "Toote tarnijad"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:381
+#, elixir-autogen, elixir-format
+msgid "All suppliers"
+msgstr "Kõik tarnijad"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:405
+#, elixir-autogen, elixir-format
+msgid "Not ordered: chosen by hand"
+msgstr "Ei tellita: valitud käsitsi"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:407
+#, elixir-autogen, elixir-format
+msgid "Chosen by hand"
+msgstr "Valitud käsitsi"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:412
+#, elixir-autogen, elixir-format
+msgid "Primary supplier of the item"
+msgstr "Toote põhitarnija"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:415
+#, elixir-autogen, elixir-format
+msgid "The only supplier of the item"
+msgstr "Toote ainus tarnija"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:418
+#, elixir-autogen, elixir-format
+msgid "The only supplier of the manufacturer"
+msgstr "Tootja ainus tarnija"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:421
+#, elixir-autogen, elixir-format
+msgid "Several suppliers — choose one"
+msgstr "Mitu tarnijat — vali üks"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:425
+#, elixir-autogen, elixir-format
+msgid "No supplier: the primary supplier is not among the warehouse suppliers"
+msgstr "Tarnija puudub: põhitarnijat pole lao tarnijate hulgas"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:431
+#, elixir-autogen, elixir-format
+msgid "No supplier: the primary supplier is inactive"
+msgstr "Tarnija puudub: põhitarnija pole aktiivne"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:434
+#, elixir-autogen, elixir-format
+msgid "No supplier found for the item"
+msgstr "Toote tarnijat ei leitud"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:437 lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:440
+#, elixir-autogen, elixir-format
+msgid "The item is not in the catalogue"
+msgstr "Toodet pole kataloogis"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:442
+#, elixir-autogen, elixir-format
+msgid "Already issued"
+msgstr "Juba väljastatud"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:443
+#, elixir-autogen, elixir-format
+msgid "Covered by stock"
+msgstr "Kaetud laoseisuga"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:444
+#, elixir-autogen, elixir-format
+msgid "Nothing required"
+msgstr "Midagi pole vaja"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:447
+#, elixir-autogen, elixir-format
+msgid "Already ordered in %{numbers}"
+msgstr "Juba tellitud: %{numbers}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:456
+#, elixir-autogen, elixir-format
+msgid "primary"
+msgstr "põhitarnija"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:457
+#, elixir-autogen, elixir-format
+msgid "item's supplier"
+msgstr "toote tarnija"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:458
+#, elixir-autogen, elixir-format
+msgid "manufacturer's supplier"
+msgstr "tootja tarnija"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:742
+#, elixir-autogen, elixir-format
+msgid "A chosen supplier cannot be used for a line — choose again"
+msgstr "Valitud tarnijat ei saa reale määrata — vali uuesti"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1262
+#, elixir-autogen, elixir-format
+msgid "Supplier orders created: %{n}."
+msgstr "Loodud tarnijatellimusi: %{n}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1264
+#, elixir-autogen, elixir-format
+msgid "Appended to: %{numbers}."
+msgstr "Täiendatud: %{numbers}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1268
+#, elixir-autogen, elixir-format
+msgid "Lines not ordered: %{n}."
+msgstr "Tellimata ridu: %{n}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:724
+#, elixir-autogen, elixir-format
+msgid "Nothing to generate: no line is ordered from a supplier"
+msgstr "Pole midagi genereerida: ühtegi rida ei tellita tarnijalt"

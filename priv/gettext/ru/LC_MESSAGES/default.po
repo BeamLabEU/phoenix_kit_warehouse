@@ -636,16 +636,6 @@ msgstr "Общие"
 msgid "Generate supplier orders"
 msgstr "Сформировать заказы поставщику"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:584
-#, elixir-autogen, elixir-format
-msgid "Generated %{n} supplier order(s)."
-msgstr "Сформировано заказов поставщику: %{n}."
-
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:576
-#, elixir-autogen, elixir-format
-msgid "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
-msgstr "Сформировано заказов поставщику: %{n}. Строк не удалось назначить поставщику: %{m}."
-
 #: lib/phoenix_kit_warehouse.ex:698
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:67
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:70
@@ -970,11 +960,6 @@ msgstr "Строк пока нет. Добавьте позиции из кат�
 msgid "No stocktakes yet"
 msgstr "Инвентаризаций пока нет"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:587
-#, elixir-autogen, elixir-format
-msgid "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
-msgstr "Заказы поставщику не созданы. Строк не удалось назначить (0 или несколько поставщиков): %{m}."
-
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:420
 #, elixir-autogen, elixir-format
 msgid "No supplier orders yet"
@@ -1098,11 +1083,6 @@ msgstr "Документ перемещён в корзину"
 #, elixir-autogen, elixir-format
 msgid "Document not found"
 msgstr "Документ не найден"
-
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1212
-#, elixir-autogen, elixir-format
-msgid "Draft supplier orders %{numbers} for the same suppliers may be moved to the trash. Continue?"
-msgstr "Черновики заказов поставщику %{numbers} для тех же поставщиков могут быть перемещены в корзину. Продолжить?"
 
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:35
 #, elixir-autogen, elixir-format
@@ -2195,10 +2175,230 @@ msgstr "Почему"
 
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:33
 #, elixir-autogen, elixir-format
-msgid "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
-msgstr "Заказ — это потребность по внутреннему заказу минус остаток на складской локации на момент формирования. При импорте из внутреннего заказа дополнительно вычитается количество этой позиции, уже заказанное в других заказах поставщику. Поставщик — найденный для позиции: основной поставщик или поставщик через производителя. Позиции без единственного поставщика в этот заказ не попадают. Если количество в заказе правили вручную, оно может отличаться от расчёта."
+msgid "The order is what the internal order still lacks: the requirement minus what was already issued for it, minus the stock on hand at the warehouse location, minus what is already ordered for it in supplier orders (drafts, and what posted orders have not delivered yet). A generation adds what is missing to the supplier's existing draft for this internal order instead of making a second one. The supplier is the primary supplier of the item, else its only supplier (of the item or of its manufacturer), or the one chosen by hand in the generation window. If the quantity in the order was edited by hand, it may differ from the calculation."
+msgstr "Заказ — это то, чего внутреннему заказу ещё не хватает: потребность минус уже выданное по нему, минус остаток на складской локации, минус уже заказанное для него в заказах поставщикам (в черновиках, а в проведённых — то, что ещё не пришло). При формировании недостающее дописывается в уже существующий черновик этого поставщика по этому внутреннему заказу, второй черновик не создаётся. Поставщик — основной поставщик позиции, иначе её единственный поставщик (позиции или производителя) или выбранный вручную в окне формирования. Если количество в заказе правили вручную, оно может отличаться от расчёта."
 
 #: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:267
 #, elixir-autogen, elixir-format
 msgid "The draft was changed elsewhere — the current version is shown, repeat the action"
 msgstr "Черновик изменился в другом месте — показана актуальная версия, повторите действие"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:58
+#, elixir-autogen, elixir-format
+msgid "The data has changed — check and press again"
+msgstr "Данные изменились — проверьте и нажмите ещё раз"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:70
+#, elixir-autogen, elixir-format
+msgid "Suppliers"
+msgstr "Поставщики"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:75
+#, elixir-autogen, elixir-format
+msgid "Nothing is ordered yet."
+msgstr "Пока ничего не заказывается."
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:89
+#, elixir-autogen, elixir-format
+msgid "new order"
+msgstr "новый заказ"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:101
+#, elixir-autogen, elixir-format
+msgid "There is already a draft %{number} for this supplier — what is missing will be added to it"
+msgstr "Для этого поставщика уже есть черновик %{number} — недостающее будет дописано в него"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:117
+#, elixir-autogen, elixir-format
+msgid "Choose a supplier"
+msgstr "Выберите поставщика"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:135
+#, elixir-autogen, elixir-format
+msgid "Selected: %{n}"
+msgstr "Выбрано: %{n}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:137
+#, elixir-autogen, elixir-format
+msgid "Assign to the selected:"
+msgstr "Назначить выбранным:"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:159
+#, elixir-autogen, elixir-format
+msgid "Assign"
+msgstr "Назначить"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:176
+#, elixir-autogen, elixir-format
+msgid "Nothing to order (%{n})"
+msgstr "Не нужно заказывать (%{n})"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:192
+#, elixir-autogen, elixir-format
+msgid "New orders: %{created}, appended: %{appended} (lines: %{lines}); not ordered: %{not_ordered}"
+msgstr "Будет создано заказов: %{created}, дополнено: %{appended} (строк: %{lines}); не заказывается: %{not_ordered}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:211
+#, elixir-autogen, elixir-format
+msgid "Generating..."
+msgstr "Формирование..."
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:215
+#, elixir-autogen, elixir-format
+msgid "Generate"
+msgstr "Сформировать"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:244
+#, elixir-autogen, elixir-format
+msgid "Issued"
+msgstr "Выдано"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:246
+#, elixir-autogen, elixir-format
+msgid "Already ordered"
+msgstr "Уже заказано"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:247
+#, elixir-autogen, elixir-format
+msgid "To order"
+msgstr "Заказать"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:276
+#, elixir-autogen, elixir-format
+msgid "changed"
+msgstr "изменилось"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:315
+#, elixir-autogen, elixir-format
+msgid "in %{number}: now %{now} → %{after}"
+msgstr "в %{number} сейчас %{now} → станет %{after}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:337
+#, elixir-autogen, elixir-format
+msgid "Already ordered in %{number} (%{status}): %{quantity}"
+msgstr "Уже заказано в %{number} (%{status}): %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:370
+#, elixir-autogen, elixir-format
+msgid "— do not order —"
+msgstr "— не заказывать —"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:372
+#, elixir-autogen, elixir-format
+msgid "Suppliers of the item"
+msgstr "Поставщики позиции"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:381
+#, elixir-autogen, elixir-format
+msgid "All suppliers"
+msgstr "Все поставщики"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:405
+#, elixir-autogen, elixir-format
+msgid "Not ordered: chosen by hand"
+msgstr "Не заказывается: выбрано вручную"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:407
+#, elixir-autogen, elixir-format
+msgid "Chosen by hand"
+msgstr "Выбран вручную"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:412
+#, elixir-autogen, elixir-format
+msgid "Primary supplier of the item"
+msgstr "Основной поставщик позиции"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:415
+#, elixir-autogen, elixir-format
+msgid "The only supplier of the item"
+msgstr "Единственный поставщик позиции"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:418
+#, elixir-autogen, elixir-format
+msgid "The only supplier of the manufacturer"
+msgstr "Единственный поставщик производителя"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:421
+#, elixir-autogen, elixir-format
+msgid "Several suppliers — choose one"
+msgstr "Несколько поставщиков — выберите одного"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:425
+#, elixir-autogen, elixir-format
+msgid "No supplier: the primary supplier is not among the warehouse suppliers"
+msgstr "Нет поставщика: основной поставщик не найден среди поставщиков склада"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:431
+#, elixir-autogen, elixir-format
+msgid "No supplier: the primary supplier is inactive"
+msgstr "Нет поставщика: основной поставщик неактивен"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:434
+#, elixir-autogen, elixir-format
+msgid "No supplier found for the item"
+msgstr "Поставщик позиции не найден"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:437 lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:440
+#, elixir-autogen, elixir-format
+msgid "The item is not in the catalogue"
+msgstr "Позиции нет в каталоге"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:442
+#, elixir-autogen, elixir-format
+msgid "Already issued"
+msgstr "Уже выдано"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:443
+#, elixir-autogen, elixir-format
+msgid "Covered by stock"
+msgstr "Покрыто остатком"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:444
+#, elixir-autogen, elixir-format
+msgid "Nothing required"
+msgstr "Ничего не требуется"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:447
+#, elixir-autogen, elixir-format
+msgid "Already ordered in %{numbers}"
+msgstr "Уже заказано в %{numbers}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:456
+#, elixir-autogen, elixir-format
+msgid "primary"
+msgstr "основной"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:457
+#, elixir-autogen, elixir-format
+msgid "item's supplier"
+msgstr "поставщик позиции"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:458
+#, elixir-autogen, elixir-format
+msgid "manufacturer's supplier"
+msgstr "поставщик производителя"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:742
+#, elixir-autogen, elixir-format
+msgid "A chosen supplier cannot be used for a line — choose again"
+msgstr "Выбранного поставщика нельзя назначить строке — выберите заново"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1262
+#, elixir-autogen, elixir-format
+msgid "Supplier orders created: %{n}."
+msgstr "Создано заказов поставщикам: %{n}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1264
+#, elixir-autogen, elixir-format
+msgid "Appended to: %{numbers}."
+msgstr "Дополнено: %{numbers}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1268
+#, elixir-autogen, elixir-format
+msgid "Lines not ordered: %{n}."
+msgstr "Не заказано строк: %{n}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:724
+#, elixir-autogen, elixir-format
+msgid "Nothing to generate: no line is ordered from a supplier"
+msgstr "Нечего формировать: ни одна строка не заказывается у поставщика"

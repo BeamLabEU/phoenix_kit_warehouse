@@ -699,11 +699,9 @@ defmodule PhoenixKitWarehouse.SupplierOrders do
   # The lines with something to order that got no supplier, plus the lines
   # of an item missing from the catalogue, as supplier order lines with the
   # reason.
-  defp unassigned_lines(%{unplaced: unplaced, not_ordered: not_ordered}, choices) do
-    missing = Enum.filter(not_ordered, &(&1.reason == :no_item and Decimal.gt?(&1.to_order, 0)))
-
-    (unplaced ++ missing)
-    |> Enum.sort_by(& &1.index)
+  defp unassigned_lines(assembled, choices) do
+    assembled
+    |> SupplierOrderPlan.unassigned()
     |> Enum.map(fn line ->
       line
       |> SupplierOrderPlan.order_line()

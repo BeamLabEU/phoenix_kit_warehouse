@@ -636,16 +636,6 @@ msgstr "General"
 msgid "Generate supplier orders"
 msgstr "Generate supplier orders"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:584
-#, elixir-autogen, elixir-format
-msgid "Generated %{n} supplier order(s)."
-msgstr "Generated %{n} supplier order(s)."
-
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:576
-#, elixir-autogen, elixir-format
-msgid "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
-msgstr "Generated %{n} supplier order(s). %{m} line(s) could not be assigned to a supplier."
-
 #: lib/phoenix_kit_warehouse.ex:698
 #: lib/phoenix_kit_warehouse/web/components/warehouse_header.ex:67
 #: lib/phoenix_kit_warehouse/web/goods_issue_form_live.ex:70
@@ -970,11 +960,6 @@ msgstr "No lines yet. Add items from the catalogue below."
 msgid "No stocktakes yet"
 msgstr "No stocktakes yet"
 
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:587
-#, elixir-autogen, elixir-format
-msgid "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
-msgstr "No supplier orders created. %{m} line(s) could not be assigned (0 or multiple suppliers)."
-
 #: lib/phoenix_kit_warehouse/web/supplier_order_index_live.ex:420
 #, elixir-autogen, elixir-format
 msgid "No supplier orders yet"
@@ -1098,11 +1083,6 @@ msgstr "Document moved to the trash"
 #, elixir-autogen, elixir-format
 msgid "Document not found"
 msgstr "Document not found"
-
-#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1212
-#, elixir-autogen, elixir-format
-msgid "Draft supplier orders %{numbers} for the same suppliers may be moved to the trash. Continue?"
-msgstr "Draft supplier orders %{numbers} for the same suppliers may be moved to the trash. Continue?"
 
 #: lib/phoenix_kit_warehouse/web/trash_messages.ex:35
 #, elixir-autogen, elixir-format
@@ -2195,10 +2175,230 @@ msgstr "Why"
 
 #: lib/phoenix_kit_warehouse/web/components/line_explanations.ex:33
 #, elixir-autogen, elixir-format
-msgid "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
-msgstr "The order is the requirement of the internal order minus the stock on hand at the warehouse location at the moment of generation. On import, the quantity already ordered in other supplier orders is subtracted as well. The supplier is the one found for the item: the primary supplier or one through the manufacturer. Items without a single supplier do not get into this order. If the quantity in the order was edited by hand, it may differ from the calculation."
+msgid "The order is what the internal order still lacks: the requirement minus what was already issued for it, minus the stock on hand at the warehouse location, minus what is already ordered for it in supplier orders (drafts, and what posted orders have not delivered yet). A generation adds what is missing to the supplier's existing draft for this internal order instead of making a second one. The supplier is the primary supplier of the item, else its only supplier (of the item or of its manufacturer), or the one chosen by hand in the generation window. If the quantity in the order was edited by hand, it may differ from the calculation."
+msgstr "The order is what the internal order still lacks: the requirement minus what was already issued for it, minus the stock on hand at the warehouse location, minus what is already ordered for it in supplier orders (drafts, and what posted orders have not delivered yet). A generation adds what is missing to the supplier's existing draft for this internal order instead of making a second one. The supplier is the primary supplier of the item, else its only supplier (of the item or of its manufacturer), or the one chosen by hand in the generation window. If the quantity in the order was edited by hand, it may differ from the calculation."
 
 #: lib/phoenix_kit_warehouse/web/supplier_order_form_live.ex:267
 #, elixir-autogen, elixir-format
 msgid "The draft was changed elsewhere — the current version is shown, repeat the action"
 msgstr "The draft was changed elsewhere — the current version is shown, repeat the action"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:58
+#, elixir-autogen, elixir-format
+msgid "The data has changed — check and press again"
+msgstr "The data has changed — check and press again"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:70
+#, elixir-autogen, elixir-format
+msgid "Suppliers"
+msgstr "Suppliers"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:75
+#, elixir-autogen, elixir-format
+msgid "Nothing is ordered yet."
+msgstr "Nothing is ordered yet."
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:89
+#, elixir-autogen, elixir-format
+msgid "new order"
+msgstr "new order"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:101
+#, elixir-autogen, elixir-format
+msgid "There is already a draft %{number} for this supplier — what is missing will be added to it"
+msgstr "There is already a draft %{number} for this supplier — what is missing will be added to it"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:117
+#, elixir-autogen, elixir-format
+msgid "Choose a supplier"
+msgstr "Choose a supplier"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:135
+#, elixir-autogen, elixir-format
+msgid "Selected: %{n}"
+msgstr "Selected: %{n}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:137
+#, elixir-autogen, elixir-format
+msgid "Assign to the selected:"
+msgstr "Assign to the selected:"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:159
+#, elixir-autogen, elixir-format
+msgid "Assign"
+msgstr "Assign"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:176
+#, elixir-autogen, elixir-format
+msgid "Nothing to order (%{n})"
+msgstr "Nothing to order (%{n})"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:192
+#, elixir-autogen, elixir-format
+msgid "New orders: %{created}, appended: %{appended} (lines: %{lines}); not ordered: %{not_ordered}"
+msgstr "New orders: %{created}, appended: %{appended} (lines: %{lines}); not ordered: %{not_ordered}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:211
+#, elixir-autogen, elixir-format
+msgid "Generating..."
+msgstr "Generating..."
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:215
+#, elixir-autogen, elixir-format
+msgid "Generate"
+msgstr "Generate"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:244
+#, elixir-autogen, elixir-format
+msgid "Issued"
+msgstr "Issued"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:246
+#, elixir-autogen, elixir-format
+msgid "Already ordered"
+msgstr "Already ordered"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:247
+#, elixir-autogen, elixir-format
+msgid "To order"
+msgstr "To order"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:276
+#, elixir-autogen, elixir-format
+msgid "changed"
+msgstr "changed"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:315
+#, elixir-autogen, elixir-format
+msgid "in %{number}: now %{now} → %{after}"
+msgstr "in %{number}: now %{now} → %{after}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:337
+#, elixir-autogen, elixir-format
+msgid "Already ordered in %{number} (%{status}): %{quantity}"
+msgstr "Already ordered in %{number} (%{status}): %{quantity}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:370
+#, elixir-autogen, elixir-format
+msgid "— do not order —"
+msgstr "— do not order —"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:372
+#, elixir-autogen, elixir-format
+msgid "Suppliers of the item"
+msgstr "Suppliers of the item"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:381
+#, elixir-autogen, elixir-format
+msgid "All suppliers"
+msgstr "All suppliers"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:405
+#, elixir-autogen, elixir-format
+msgid "Not ordered: chosen by hand"
+msgstr "Not ordered: chosen by hand"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:407
+#, elixir-autogen, elixir-format
+msgid "Chosen by hand"
+msgstr "Chosen by hand"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:412
+#, elixir-autogen, elixir-format
+msgid "Primary supplier of the item"
+msgstr "Primary supplier of the item"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:415
+#, elixir-autogen, elixir-format
+msgid "The only supplier of the item"
+msgstr "The only supplier of the item"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:418
+#, elixir-autogen, elixir-format
+msgid "The only supplier of the manufacturer"
+msgstr "The only supplier of the manufacturer"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:421
+#, elixir-autogen, elixir-format
+msgid "Several suppliers — choose one"
+msgstr "Several suppliers — choose one"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:425
+#, elixir-autogen, elixir-format
+msgid "No supplier: the primary supplier is not among the warehouse suppliers"
+msgstr "No supplier: the primary supplier is not among the warehouse suppliers"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:431
+#, elixir-autogen, elixir-format
+msgid "No supplier: the primary supplier is inactive"
+msgstr "No supplier: the primary supplier is inactive"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:434
+#, elixir-autogen, elixir-format
+msgid "No supplier found for the item"
+msgstr "No supplier found for the item"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:437 lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:440
+#, elixir-autogen, elixir-format
+msgid "The item is not in the catalogue"
+msgstr "The item is not in the catalogue"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:442
+#, elixir-autogen, elixir-format
+msgid "Already issued"
+msgstr "Already issued"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:443
+#, elixir-autogen, elixir-format
+msgid "Covered by stock"
+msgstr "Covered by stock"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:444
+#, elixir-autogen, elixir-format
+msgid "Nothing required"
+msgstr "Nothing required"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:447
+#, elixir-autogen, elixir-format
+msgid "Already ordered in %{numbers}"
+msgstr "Already ordered in %{numbers}"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:456
+#, elixir-autogen, elixir-format
+msgid "primary"
+msgstr "primary"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:457
+#, elixir-autogen, elixir-format
+msgid "item's supplier"
+msgstr "item's supplier"
+
+#: lib/phoenix_kit_warehouse/web/components/supplier_order_preview.ex:458
+#, elixir-autogen, elixir-format
+msgid "manufacturer's supplier"
+msgstr "manufacturer's supplier"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:742
+#, elixir-autogen, elixir-format
+msgid "A chosen supplier cannot be used for a line — choose again"
+msgstr "A chosen supplier cannot be used for a line — choose again"
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1262
+#, elixir-autogen, elixir-format
+msgid "Supplier orders created: %{n}."
+msgstr "Supplier orders created: %{n}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1264
+#, elixir-autogen, elixir-format
+msgid "Appended to: %{numbers}."
+msgstr "Appended to: %{numbers}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:1268
+#, elixir-autogen, elixir-format
+msgid "Lines not ordered: %{n}."
+msgstr "Lines not ordered: %{n}."
+
+#: lib/phoenix_kit_warehouse/web/internal_order_form_live.ex:724
+#, elixir-autogen, elixir-format
+msgid "Nothing to generate: no line is ordered from a supplier"
+msgstr "Nothing to generate: no line is ordered from a supplier"
