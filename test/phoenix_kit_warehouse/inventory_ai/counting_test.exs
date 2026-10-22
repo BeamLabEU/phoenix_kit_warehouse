@@ -240,6 +240,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.CountingTest do
 
     test "a measured quantity alone; nothing seen is nil" do
       assert Counting.seen(object(%{"quantity" => "12.5"})) == "12.5"
+      assert Counting.seen(object(%{"closed_packages" => 2, "quantity" => "30"})) == "2×?"
       assert Counting.seen(object(%{})) == nil
     end
 

@@ -48,7 +48,7 @@ defmodule PhoenixKitWarehouse.InventoryAI.Prompt do
   @template """
   You count stock on photos for a warehouse. The request has the photos, numbered 1..N in the order given, then a `CATALOGUE` block and a `LANGUAGE` line (for example et, ru, uk or en). The `CATALOGUE` has one line per catalogue item: `No|name|sku|unit|catalogue > category path`. A ★ in front of the number means the item is held on this warehouse.
 
-  The photos are taken in one place and may overlap. One entry is one kind of item in one place: give it a short `object_key` and list in `photos` every photo it is visible on. Never count the same thing twice. Say in `overlap` which photos show the same things. A bag, a box or a blister that holds several kinds of items (dowels, a hook and screws) gives one entry per kind, each with the photos of that bag.
+  The photos are taken in one place and may overlap. One entry is one kind of item in one place: give it a short `object_key` and list in `photos` every photo it is visible on. Never count the same thing twice. Say in `overlap` which photos show the same things. A bag, a box or a blister that holds several kinds of items (dowels, a hook and screws) gives one entry per kind, each with its own `object_key` and the photos of that bag.
 
   Choose the item of every entry:
   - `catalogue_no` is the number of a `CATALOGUE` line and nothing else. If no line fits, or the variant you need (a size, a colour) cannot be seen, answer `null` and give up to 3 numbers in `alternatives`. `null` is better than a wrong number: a person will choose.
@@ -57,13 +57,13 @@ defmodule PhoenixKitWarehouse.InventoryAI.Prompt do
 
   Count only what is visible:
   - An entry whose `CATALOGUE` line has the unit `pack` is counted in packs: every bag or pack of it goes to `closed_packages` (an opened one to `open_packages` with `open_fill`), also when its pieces can be seen through it; `units_per_package` and `loose_units` stay `null`.
-  - For every other entry, first look whether you can see the items themselves. In a transparent bag, an open box or bin, a blister with clear windows, or a loose pile, count the pieces you see and put them in `loose_units`; `closed_packages` and `open_packages` are then 0. Pieces counted through the plastic are better than a package count. When some pieces hide others, count what you see and set `count_confidence` to `medium` or `low`.
+  - For every other entry, first look whether you can see the items themselves. In a transparent bag, an open box or bin, a blister with clear windows, or a loose pile, count the pieces you see and put them in `loose_units`; `closed_packages` and `open_packages` are then 0. Several packs of one kind are counted as packs (see `units_per_package`). Pieces counted through the plastic are better than a package count. When some pieces hide others, count what you see and set `count_confidence` to `medium` or `low`.
   - Count packages only when their inside cannot be seen (a carton, an opaque bag, a box with a lid). A closed package is full: count it in `closed_packages`. An open package is counted in `open_packages`, and `open_fill` is how full it is - estimate it by its look, honestly, from 0 to 0.4 (almost empty 0.05; half full or more 0.4). Use 0.35 only when the fill cannot be seen at all.
   - `closed_packages` and `open_packages` are whole numbers.
-  - `units_per_package` only when it is printed on the label, otherwise `null`.
+  - `units_per_package` only when it is printed on the label, or when there are several packs of one kind and you can count every piece in one of them; otherwise `null`. Then the packs go to `closed_packages`, not the pieces to `loose_units`.
   - The sheets of a stack, the boards of a pile, and a product that is alone in its own box (one product per package) also go to `loose_units`: count the products, not the boxes.
   - `quantity` is only for measured units (`m2`, `running_meter`, `kg`, `litre`, `m3` - the unit code is in the `CATALOGUE` line), in the unit of that line. For items counted in pieces it is `null`; it is never a share of a package.
-  - Dense rows of small packages (blister packs on hooks): count what you see and set `count_confidence` to `low` when a stack goes deep behind the first one.
+  - Dense rows of small packages (blister packs on hooks): count the packs in `closed_packages`, with `units_per_package` as above, and set `count_confidence` to `low` when a stack goes deep behind the first one.
 
   Write `description` and `basis` in the language named in `LANGUAGE`, each at most 120 characters. `basis` says how the count was made.
 

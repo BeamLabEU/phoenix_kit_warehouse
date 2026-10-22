@@ -114,8 +114,9 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
   @doc """
   What was seen on `object`, as a formula without a result: the packages
   with their units per package (`?` when unknown), the loose units, a
-  measured quantity. For a row whose quantity cannot be counted yet, so the
-  person still sees what the model saw. `nil` when nothing was seen.
+  measured quantity (only when there is nothing else). For a row whose
+  quantity cannot be counted yet, so the person still sees what the model
+  saw. `nil` when nothing was seen.
   """
   @spec seen(map()) :: String.t() | nil
   def seen(object) do
@@ -136,13 +137,17 @@ defmodule PhoenixKitWarehouse.InventoryAI.Counting do
         [
           nonzero(closed) && "#{format(closed)}×#{n}",
           nonzero(open) && "⌊#{format(open)}×#{n}×#{format(fill)}⌋",
-          nonzero(loose) && format(loose),
-          nonzero(quantity) && format(quantity)
+          nonzero(loose) && format(loose)
         ],
         & &1
       )
 
-    if shown == [], do: nil, else: Enum.join(shown, " + ")
+    # a measured quantity only when nothing was counted in packages or pieces
+    cond do
+      shown != [] -> Enum.join(shown, " + ")
+      nonzero(quantity) -> format(quantity)
+      true -> nil
+    end
   end
 
   # closed × n + floor(open × n × fill) + loose
