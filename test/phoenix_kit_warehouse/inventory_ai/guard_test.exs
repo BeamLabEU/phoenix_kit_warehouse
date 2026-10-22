@@ -46,6 +46,17 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
     assert Guard.task_key() == @task
   end
 
+  test "the label and the purpose are msgids translated in every locale of the catalogue" do
+    for locale <- ["et", "ru", "uk"], text <- [Guard.label(), Guard.purpose()] do
+      translated =
+        Gettext.with_locale(PhoenixKitWarehouse.Gettext, locale, fn ->
+          Gettext.dgettext(PhoenixKitWarehouse.Gettext, "default", text)
+        end)
+
+      assert translated != text, "#{inspect(text)} has no #{locale} translation"
+    end
+  end
+
   describe "call_options/1" do
     test "names the task and the attribution of the call" do
       attribution = %{"inventory_uuid" => "i-1", "run_uuid" => "r-1"}
