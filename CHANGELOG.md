@@ -2,6 +2,97 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.6.0 - 2026-10-24
+
+### Added
+
+- **Photo inventory** (#43, #44) — **Count from photos** on a draft stocktake's
+  Items tab uploads the photos of one place (up to
+  `warehouse_inventory_ai_max_photos`, 10 by default, 20 MB each, HEIC
+  included); one `PhoenixKitAI.describe_image/3` call per batch, run in a
+  background task, proposes the catalogue items seen and how many. The person
+  reviews and corrects the proposal as a table and applies the ticked rows;
+  nothing reaches the lines without Apply. Pieces are counted through
+  transparent bags (one entry per kind in a mixed bag), packages and their fill
+  are turned into the item's unit, an item kept in packs is counted in packs,
+  objects no catalogue line fits are listed, and a typed quantity far below the
+  stock is unticked and flagged. Runs are kept with their photos (in the
+  stocktake's Storage folder), model, answer and who applied what in
+  `phoenix_kit_warehouse_inventory_ai_runs`, added by migration chain V3 — run
+  `mix phoenix_kit.update`; rolling back only re-stamps the marker and keeps
+  the table. A failed run can be retried on the same photos and a late answer
+  is shown on request.
+  Settings: `warehouse_inventory_ai_endpoint_uuid` (chosen only by an `ai`
+  permission holder or an administrator), `_prompt_uuid` (the module's own
+  prompt, never overwritten once edited), `_max_photos`, `_max_items` (3000).
+  The module declares its AI task (`ai_tasks/0`) for phoenix_kit_ai's task
+  guard where the ai has one, with its purpose translated (#45). Thanks to
+  timujinne.
+- **Lines record who gave each number** (`"counted_by"`: `stock`, `manual`,
+  `ai`, plus `"ai_parts"` per photographed place), kept on posting.
+- **Move to trash and a Trash view for every warehouse document** (#39, #41) —
+  internal and supplier orders, goods receipts, goods issues, stocktakes and
+  transfers: draft-only, with restore, a banner on a trashed document's form
+  and activity entries. `trashed: true` list option and `count_trashed_*`
+  counters.
+- **One draft per source** (#39) — `config :phoenix_kit_warehouse,
+  one_draft_per_source: true` (off by default) sends the live drafts of the
+  same internal order (or internal order and supplier) to the trash when a new
+  one is made, and restore can swap.
+- **Supplier order preview and plan** (#47) — `SupplierOrderPlan` shows the
+  supplier of every line and why, and the quantity still to order (required −
+  issued − on hand − already ordered), before generating. Generation appends to
+  a supplier's existing live draft instead of replacing it, under the internal
+  order's lock; draft writes take `expected_version:` so a form opened before an
+  append cannot wipe it.
+- **Line explanations** are carried from internal orders into supplier orders
+  and shown on the forms (#40).
+- `Inventories.fingerprint/2` and `base_fingerprint:` on `update_draft/3` and
+  `post_document/3`: a stocktake tab whose warehouse or lines another tab has
+  changed is refused (`{:error, :stale}`) instead of writing over them.
+
+### Changed
+
+- **⚠️ Requires `phoenix_kit ~> 2.57`** (was `~> 2.26 and >= 2.26.1`): the photo
+  inventory prepares each photo with
+  `PhoenixKit.Modules.Storage.ImageProcessor.preview_jpeg/3`, first shipped in
+  2.57.0.
+- **⚠️ Requires `phoenix_kit_catalogue ~> 0.46`** (was `~> 0.18`): the photo
+  inventory lists only goods (the `item_types` filter) and counts in the pack,
+  kilogram, litre and cubic metre units, both first shipped in 0.46.0.
+- **New direct dependency `phoenix_kit_ai ~> 0.25`** (`describe_image/3` with a
+  strict `schema:`). The catalogue already requires it, so no new package is
+  installed; it is not in `required_modules/0` — with the ai module off, the
+  photo inventory button is simply not shown.
+- **`warehouse.set_stock` with every line already at the counted quantity**
+  answers `"unchanged"` and posts no document (no number drawn), and a
+  stocktake whose counted lines are all unchanged posts nothing (#37).
+- The item pickers of the stocktake, internal order and transfer forms show
+  internal-category items (`include_internal`, honoured by catalogue 0.49+)
+  (#38).
+- Whole-document refs are kept when importing an internal order into a draft,
+  a combined draft or a goods issue; the draft a line already lies in
+  preselects its supplier.
+- "Internal order" is "sisetellimus" throughout the Estonian translation (#42).
+- Dependencies refreshed to PhoenixKit 2.64.1 and phoenix_kit_ai 0.26.1.
+
+### Fixed
+
+- **The photo inventory's settings offered no endpoint with `phoenix_kit_ai`
+  0.26.** ai 0.26's `Tasks.endpoint_options/1` answers
+  `%{endpoint: _, fitness: _}` per endpoint, a shape the endpoint list did not
+  read, so the list came out empty and no model could be chosen. It now reads
+  it (and still falls back to every enabled endpoint on an ai without the
+  guard).
+- Conduct saved and posted in two transactions without comparing anything, so
+  an Apply from another tab landing in between was posted unseen; the post now
+  checks the fingerprint its save returned.
+- The stocktake fingerprint includes the warehouse, so counts from a tab on the
+  old warehouse cannot reach the new one; changing the warehouse no longer
+  closes a run just started for the new one.
+- The supplier order plan reads only the goods receipts that can count for the
+  order instead of every posted receipt, under its locks.
+
 ## 0.5.4 - 2026-10-17
 
 ### Added

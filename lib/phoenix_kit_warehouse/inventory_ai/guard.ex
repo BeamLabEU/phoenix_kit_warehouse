@@ -3,11 +3,11 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
   The seams of the photo inventory with the AI task guard of `phoenix_kit_ai`.
 
   The guard (a registry of AI tasks, a fit check of the model for the task,
-  limits, the off-purpose signal) ships in a later `phoenix_kit_ai` than the
-  0.25.5 this module is written against. Every function here works on the ai
-  of today and reaches for the guard only when it is there - by the module
-  being loaded and the function exported, so that no direct call can break
-  the build against an ai without it:
+  limits, the off-purpose signal) ships in `phoenix_kit_ai` 0.26; the
+  `~> 0.25` requirement still admits a 0.25 without it. Every function here
+  works on both and reaches for the guard only when it is there - by the
+  module being loaded and the function exported, so that no direct call can
+  break the build against an ai without it:
 
     * `call_options/1` - `task:` and `attribution:` for `describe_image/3`;
       an option the call does not know is ignored by it;
@@ -123,6 +123,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.Guard do
     :unavailable
   end
 
+  # ai 0.26 answers `%{endpoint: endpoint, fitness: fitness}` per endpoint.
+  defp option(%{endpoint: %{uuid: _} = endpoint}), do: [to_option(endpoint)]
   defp option({%{uuid: _} = endpoint, _fit}), do: [to_option(endpoint)]
   defp option(%{uuid: _} = endpoint), do: [to_option(endpoint)]
   defp option(_other), do: []

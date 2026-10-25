@@ -1,8 +1,9 @@
 defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
-  # The "phoenix_kit_ai task guard" seams (spec §2.1, §13.3): every one works
-  # on the ai module as it is today (no `Tasks`, `Guard`, `TaskSpec`) and
-  # reaches for the guard when a later ai ships it. The later ai is played
-  # by modules defined in the test under the names it will have.
+  # The "phoenix_kit_ai task guard" seams (spec §2.1, §13.3), run against the
+  # real guard of phoenix_kit_ai 0.26 (`Tasks`, `Guard`, `TaskSpec`). The
+  # fallbacks for a 0.25 without it are a `Code.ensure_loaded?` away and can
+  # no longer be played here: redefining a module ai ships would replace it
+  # for the rest of the run.
   use PhoenixKitWarehouse.DataCase, async: false
 
   import ExUnit.CaptureLog
@@ -12,22 +13,10 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
   alias PhoenixKitWarehouse.InventoryAI.Settings, as: AISettings
 
   @task "warehouse.inventory_photo"
-  @source Path.expand("../../../lib/phoenix_kit_warehouse/inventory_ai/guard.ex", __DIR__)
 
   setup do
     Settings.update_setting(AISettings.endpoint_key(), "")
     :ok
-  end
-
-  # Defines the module `source` under the module name `name`, for the length
-  # of the test.
-  defp define_module(name, source) do
-    [{^name, _}] = Code.compile_string(source)
-
-    on_exit(fn ->
-      :code.purge(name)
-      :code.delete(name)
-    end)
   end
 
   defp endpoint!(attrs) do
@@ -78,8 +67,8 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
     end
   end
 
-  describe "endpoint_options/0 without the guard" do
-    test "lists every enabled endpoint" do
+  describe "endpoint_options/0" do
+    test "lists every enabled endpoint, from the guard's own list for the task" do
       on = endpoint!(%{name: "Vision on"})
       off = endpoint!(%{name: "Vision off", enabled: false})
 
@@ -92,86 +81,23 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
       refute Enum.any?(options, &(&1.uuid == off.uuid))
     end
 
+    test "keeps only uuid, name and model: the guard's fit mark is not kept (ai refuses a call)" do
+      endpoint!(%{name: "Marked"})
+
+      # ai 0.26 answers %{endpoint: _, fitness: _} per endpoint.
+      assert [%{endpoint: _, fitness: _} | _] =
+               PhoenixKitAI.Tasks.endpoint_options(Guard.task_key())
+
+      options = Guard.endpoint_options()
+
+      assert options != []
+      assert Enum.all?(options, &(Map.keys(&1) |> Enum.sort() == [:model, :name, :uuid]))
+    end
+
     test "lists more than one page of endpoints" do
       for i <- 1..25, do: endpoint!(%{name: "Many #{i}"})
 
       assert length(Guard.endpoint_options()) >= 25
-    end
-  end
-
-  describe "endpoint_options/0 with the guard" do
-    setup do
-      refute Code.ensure_loaded?(PhoenixKitAI.Tasks),
-             "ai ships PhoenixKitAI.Tasks now: this test plays it and must be rewritten"
-
-      :ok
-    end
-
-    test "asks the guard for the task's endpoints; its fit marks are not kept (ai refuses a call)" do
-      fit = endpoint!(%{name: "Fits"})
-      unfit = endpoint!(%{name: "Does not fit"})
-      Process.put(:endpoints, [{fit, :fit}, {unfit, {:unfit, [:vision]}}])
-
-      define_module(PhoenixKitAI.Tasks, """
-      defmodule PhoenixKitAI.Tasks do
-        def endpoint_options(task), do: send(self(), {:asked, task}) && Process.get(:endpoints)
-      end
-      """)
-
-      options = Guard.endpoint_options()
-
-      assert_received {:asked, @task}
-
-      assert Enum.map(options, & &1.uuid) == [fit.uuid, unfit.uuid]
-      assert Enum.all?(options, &(Map.keys(&1) |> Enum.sort() == [:model, :name, :uuid]))
-    end
-
-    test "takes an endpoint the guard lists without a mark" do
-      bare = endpoint!(%{name: "Bare"})
-      Process.put(:endpoints, [bare])
-
-      define_module(PhoenixKitAI.Tasks, """
-      defmodule PhoenixKitAI.Tasks do
-        def endpoint_options(_task), do: Process.get(:endpoints)
-      end
-      """)
-
-      assert Enum.map(Guard.endpoint_options(), & &1.uuid) == [bare.uuid]
-    end
-
-    test "a guard that raises gives every enabled endpoint and a warning" do
-      on = endpoint!(%{name: "Still offered"})
-
-      define_module(PhoenixKitAI.Tasks, """
-      defmodule PhoenixKitAI.Tasks do
-        def endpoint_options(_task), do: raise("registry is down")
-      end
-      """)
-
-      log =
-        capture_log(fn ->
-          assert on.uuid in Enum.map(Guard.endpoint_options(), & &1.uuid)
-        end)
-
-      assert log =~ "Tasks.endpoint_options/1 raised"
-      assert log =~ "offering every enabled endpoint"
-    end
-
-    test "a guard that exits gives every enabled endpoint and a warning" do
-      on = endpoint!(%{name: "Offered after an exit"})
-
-      define_module(PhoenixKitAI.Tasks, """
-      defmodule PhoenixKitAI.Tasks do
-        def endpoint_options(_task), do: exit(:noproc)
-      end
-      """)
-
-      log =
-        capture_log(fn ->
-          assert on.uuid in Enum.map(Guard.endpoint_options(), & &1.uuid)
-        end)
-
-      assert log =~ "Tasks.endpoint_options/1 exited"
     end
   end
 
@@ -186,116 +112,30 @@ defmodule PhoenixKitWarehouse.InventoryAI.GuardTest do
   end
 
   describe "report_off_purpose/4" do
-    test "is unavailable while ai has no guard" do
-      refute Code.ensure_loaded?(PhoenixKitAI.Guard)
+    test "reaches the guard; a refusal is an error and never breaks the count" do
+      # The task is not in the guard's registry in this suite, so the real
+      # guard refuses it; the seam returns the refusal and logs it.
+      log =
+        capture_log(fn ->
+          assert {:error, :unknown_task} =
+                   Guard.report_off_purpose(@task, nil, "a selfie", Ecto.UUID.generate())
+        end)
 
-      assert Guard.report_off_purpose(@task, "user-1", "a selfie", nil) == :unavailable
-    end
-
-    test "reaches the guard when ai has one" do
-      define_module(PhoenixKitAI.Guard, """
-      defmodule PhoenixKitAI.Guard do
-        def report_off_purpose(task, user, reason, ref) do
-          send(Process.get(:test_pid), {:reported, task, user, reason, ref})
-          :ok
-        end
-      end
-      """)
-
-      Process.put(:test_pid, self())
-
-      assert Guard.report_off_purpose(@task, "user-1", "a selfie", "req-1") == :ok
-      assert_received {:reported, @task, "user-1", "a selfie", "req-1"}
-    end
-
-    test "a guard that raises does not break the count" do
-      define_module(PhoenixKitAI.Guard, """
-      defmodule PhoenixKitAI.Guard do
-        def report_off_purpose(_task, _user, _reason, _ref), do: raise("boom")
-      end
-      """)
-
-      assert {:error, _} = Guard.report_off_purpose(@task, "user-1", "a selfie", nil)
-    end
-
-    test "a guard that exits does not break the count" do
-      define_module(PhoenixKitAI.Guard, """
-      defmodule PhoenixKitAI.Guard do
-        def report_off_purpose(_task, _user, _reason, _ref), do: exit(:noproc)
-      end
-      """)
-
-      assert {:error, _} = Guard.report_off_purpose(@task, "user-1", "a selfie", nil)
+      assert log =~ "the off-purpose signal failed"
+      refute log =~ "a selfie"
     end
   end
 
   describe "ai_tasks/0" do
-    test "is empty while ai has no TaskSpec, and the module compiled all the same" do
-      refute Code.ensure_loaded?(PhoenixKitAI.TaskSpec)
+    test "declares the task, now that ai has the TaskSpec" do
+      assert [spec] = Guard.ai_tasks()
+      assert PhoenixKitWarehouse.ai_tasks() == [spec]
 
-      assert Guard.ai_tasks() == []
-      assert PhoenixKitWarehouse.ai_tasks() == []
-    end
-
-    test "still builds against a TaskSpec that has no typical_tokens yet" do
-      define_module(PhoenixKitAI.TaskSpec, """
-      defmodule PhoenixKitAI.TaskSpec do
-        defstruct [
-          :key, :label, :gettext_backend, :purpose, :needs, :self_flag,
-          :auto_block_threshold, :endpoints, private: false
-        ]
-      end
-      """)
-
-      define_module(
-        PhoenixKitWarehouse.InventoryAI.GuardWithNarrowSpec,
-        String.replace(
-          File.read!(@source),
-          "defmodule PhoenixKitWarehouse.InventoryAI.Guard do",
-          "defmodule PhoenixKitWarehouse.InventoryAI.GuardWithNarrowSpec do"
-        )
-      )
-
-      guard = Module.concat(["PhoenixKitWarehouse", "InventoryAI", "GuardWithNarrowSpec"])
-
-      assert [spec] = guard.ai_tasks()
-      assert spec.key == @task
-      refute Map.has_key?(spec, :typical_tokens)
-    end
-
-    test "declares the task when ai has the TaskSpec" do
-      define_module(PhoenixKitAI.TaskSpec, """
-      defmodule PhoenixKitAI.TaskSpec do
-        defstruct [
-          :key, :label, :gettext_backend, :purpose, :needs, :self_flag,
-          :auto_block_threshold, :typical_tokens, :endpoints, private: false
-        ]
-      end
-      """)
-
-      # The module compiled afresh now that the struct is there.
-      source = File.read!(@source)
-
-      define_module(
-        PhoenixKitWarehouse.InventoryAI.GuardWithSpec,
-        String.replace(
-          source,
-          "defmodule PhoenixKitWarehouse.InventoryAI.Guard do",
-          "defmodule PhoenixKitWarehouse.InventoryAI.GuardWithSpec do"
-        )
-      )
-
-      # Defined at run time just above: named by Module.concat/1, so that a
-      # plain call does not warn at compile time.
-      guard_with_spec = Module.concat(["PhoenixKitWarehouse", "InventoryAI", "GuardWithSpec"])
-
-      assert [spec] = guard_with_spec.ai_tasks()
       assert spec.__struct__ == PhoenixKitAI.TaskSpec
       assert spec.key == @task
       assert spec.needs == [:vision, :json_schema]
       assert spec.self_flag == true
       assert spec.auto_block_threshold == nil
-      assert spec.typical_tokens == {30_000, 4_000}
       assert spec.gettext_backend == PhoenixKitWarehouse.Gettext
       assert spec.label == "Inventory count from photos"
       assert is_binary(spec.purpose) and spec.purpose != ""
