@@ -148,6 +148,13 @@ defmodule PhoenixKitWarehouse do
   @impl PhoenixKit.Module
   def migration_module, do: PhoenixKitWarehouse.Migrations
 
+  @doc """
+  The manifest of this module's tables, for `mix phoenix_kit.repair` and
+  `mix phoenix_kit.doctor`; see `PhoenixKitWarehouse.ExpectedSchema`.
+  """
+  # No `@impl`, so this compiles against a core that lacks the callback.
+  def expected_schema, do: PhoenixKitWarehouse.ExpectedSchema
+
   @impl PhoenixKit.Module
   def required_modules, do: ["catalogue", "locations"]
 
