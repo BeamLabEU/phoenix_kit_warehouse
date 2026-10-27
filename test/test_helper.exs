@@ -48,6 +48,17 @@ repo_available =
       {:ok, _} = PhoenixKitWarehouse.Test.Repo.start_link()
       PhoenixKit.Migration.ensure_current(PhoenixKitWarehouse.Test.Repo, log: false)
 
+      # The tables other modules own (core 3.0 no longer creates them): their real
+      # chains, in dependency order.
+      for chain <- [
+            PhoenixKitAI.Migrations,
+            PhoenixKitBilling.Migrations,
+            PhoenixKitComments.Migrations
+          ],
+          stmt <- chain.up_statements("public") do
+        PhoenixKitWarehouse.Test.Repo.query!(stmt)
+      end
+
       # `phoenix_kit_locations` (>= 0.5) owns a decentralized chain of its own
       # (`PhoenixKitLocations.Migrations`, same `migration_module/0`
       # discovery), and core's `ensure_current/2` above no longer carries it.

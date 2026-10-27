@@ -21,8 +21,8 @@ defmodule PhoenixKitWarehouse.CorePinConformanceTest do
   must never happen is a ceiling below 3.0.
   """
 
-  @must_admit ["2.57.0", "2.60.1", "2.99.0"]
-  @must_reject ["1.7.189", "1.7.236", "1.9.4", "2.0.0", "2.26.1", "2.56.1", "3.0.0"]
+  @must_admit ["2.65.0", "2.65.1", "2.99.4", "3.0.0", "3.9.9"]
+  @must_reject ["1.7.189", "1.7.236", "1.9.4", "2.0.0", "2.26.1", "2.56.1", "2.64.9", "4.0.0"]
 
   test "the :phoenix_kit requirement admits every core 2.x from the floor, nothing else" do
     requirement = core_requirement()

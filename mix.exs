@@ -111,7 +111,9 @@ defmodule PhoenixKitWarehouse.MixProject do
       # with `PhoenixKit.Modules.Storage.ImageProcessor.preview_jpeg/3`,
       # first shipped in 2.57.0. An older core has no such function, so
       # every photo would be skipped and every run would fail.
-      pk_dep(:phoenix_kit, "~> 2.57"),
+      # Floor 2.65.0: the first core with the `file_references/0` and `expected_schema/0`
+      # callbacks this module implements (`@impl`). The ceiling is open through core 3.x.
+      pk_dep(:phoenix_kit, ">= 2.65.0 and < 4.0.0"),
       # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
       # builds from source when MDEX_NATIVE_BUILD=1 is set in the
       # environment; that path requires rustler itself, not just
