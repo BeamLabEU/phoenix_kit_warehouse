@@ -14,10 +14,12 @@ defmodule PhoenixKitWarehouse.CataloguePinConformanceTest do
   services to the model.
   """
 
-  @must_admit ["0.46.0", "0.48.1", "0.99.4"]
-  @must_reject ["0.13.0", "0.18.0", "0.45.1", "1.0.0"]
+  # 0.50 is the floor: the first catalogue whose own chain creates its tables
+  # (core 3.0 creates none). 0.46 is where the item types and units arrived.
+  @must_admit ["0.50.0", "0.50.1", "0.99.4"]
+  @must_reject ["0.13.0", "0.18.0", "0.45.1", "0.46.0", "0.49.1", "1.0.0"]
 
-  test "the :phoenix_kit_catalogue requirement admits 0.46+ and nothing below" do
+  test "the :phoenix_kit_catalogue requirement admits 0.50+ and nothing below" do
     requirement = catalogue_requirement()
 
     assert match?({:ok, _parsed}, Version.parse_requirement(requirement)),
@@ -26,7 +28,7 @@ defmodule PhoenixKitWarehouse.CataloguePinConformanceTest do
     for version <- @must_admit do
       assert Version.match?(version, requirement),
              "`:phoenix_kit_catalogue` requirement #{inspect(requirement)} rejects #{version}. " <>
-               "Keep it a two-segment `~> 0.46` so 0.46+ resolves and 1.0 does not."
+               "Keep it a two-segment `~> 0.50` so 0.50+ resolves and 1.0 does not."
     end
 
     for version <- @must_reject do
