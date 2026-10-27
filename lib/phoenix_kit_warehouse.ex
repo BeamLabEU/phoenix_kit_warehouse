@@ -200,6 +200,21 @@ defmodule PhoenixKitWarehouse do
     }
   end
 
+  # The one error code of this module's API. Core used to answer it for every
+  # module (`PhoenixKit.API.Legacy`, removed in core 3.0); the wire values are
+  # unchanged. phoenix_kit_ecommerce declares the same code for its cart, and
+  # core keeps the first declaration it finds.
+  @impl PhoenixKit.Module
+  def api_problems do
+    %{
+      insufficient_stock: %{
+        status: 422,
+        title: "Insufficient stock",
+        advice: "Reduce the quantities listed in context.lines; nothing was posted."
+      }
+    }
+  end
+
   @impl PhoenixKit.Module
   def admin_tabs do
     [
