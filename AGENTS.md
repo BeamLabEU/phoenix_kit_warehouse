@@ -99,8 +99,7 @@ modules — cf. `phoenix_kit_manufacturing`, `phoenix_kit_legal`):
   IDs are atoms.
 - **`enabled?/0`** rescues *and* `catch :exit`s, returning `false` — the DB
   may be unavailable.
-- **Activity logging** is fire-and-forget: guarded by
-  `Code.ensure_loaded?(PhoenixKit.Activity)`, rescues `Postgrex.Error`
+- **Activity logging** is fire-and-forget: rescues `Postgrex.Error`
   (`:undefined_table`) so a host that hasn't run core's activity migration
   never crashes. Changeset-error metadata records field *names* only (no PII).
 - **LiveViews** wrap context reads in `rescue` and carry a defensive

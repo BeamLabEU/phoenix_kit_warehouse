@@ -2,7 +2,7 @@ defmodule PhoenixKitWarehouse.API do
   @moduledoc """
   The admin API tools of the warehouse module.
 
-  `PhoenixKitWarehouse.api_tools/0` returns `tools/1` to core, which collects
+  `PhoenixKitWarehouse.api_tools/0` returns `tools/0` to core, which collects
   the tools of every **enabled** module (`PhoenixKit.ModuleRegistry.all_api_tools/0`),
   checks the caller's rights, validates the input against the schema, and calls
   the handler as `handler.(input, ctx)`.
@@ -25,13 +25,6 @@ defmodule PhoenixKitWarehouse.API do
 
   alias PhoenixKit.API.Tool
   alias PhoenixKitWarehouse.API.Schemas
-
-  @compile {:no_warn_undefined, [PhoenixKit.API.Tool, PhoenixKit.API.Keys, PhoenixKit.API.Flow]}
-
-  # Core holds a dangerous call for confirmation only when it has both the
-  # confirmation codes and the enforcement; the catalogue's and the shop's
-  # tools judge the same two markers.
-  @markers [{PhoenixKit.API.Keys, :active?, 1}, {PhoenixKit.API.Flow, :gate, 1}]
 
   @permission "warehouse"
   @max_lines Schemas.max_lines()
@@ -62,38 +55,12 @@ defmodule PhoenixKitWarehouse.API do
                           "that you state) " <> @retry_conflict_tail
 
   @doc """
-  The tools for `PhoenixKitWarehouse.api_tools/0`: `[]` on a core without the
-  tool registry, the two read tools on a core that cannot hold a dangerous call
-  for confirmation, all five otherwise. `markers` are the
-  `{module, function, arity}` triples that must exist for the write tools to be
-  offered; none at all means they are not. A core without the confirmation flow
-  would run a 500-line stocktake on the first call.
+  The tools for `PhoenixKitWarehouse.api_tools/0`: the two read tools and the
+  three write tools. Core holds a dangerous call for confirmation, which the
+  write tools depend on.
   """
-  @spec tools([{module(), atom(), arity()}]) :: [struct()]
-  def tools(markers \\ @markers) do
-    cond do
-      not Code.ensure_loaded?(Tool) -> []
-      confirmation_available?(markers) -> all_tools()
-      true -> Enum.filter(all_tools(), & &1.annotations.read_only)
-    end
-  end
-
-  # Whether core enforces the confirmation gate the write tools depend on:
-  # every `{module, function, arity}` of `markers` is loaded and exported. No
-  # markers to judge by is "no": the write tools are offered only on positive
-  # evidence.
-  @doc false
-  @spec confirmation_available?([{module(), atom(), arity()}]) :: boolean()
-  def confirmation_available?(markers \\ @markers)
-  def confirmation_available?([]), do: false
-
-  def confirmation_available?(markers) do
-    Enum.all?(markers, fn {module, function, arity} ->
-      Code.ensure_loaded?(module) and function_exported?(module, function, arity)
-    end)
-  end
-
-  defp all_tools do
+  @spec tools() :: [Tool.t()]
+  def tools do
     [
       Tool.new!(
         name: "warehouse.list_locations",

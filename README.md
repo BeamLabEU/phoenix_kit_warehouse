@@ -216,9 +216,7 @@ are merged by kind, and the host's definition wins on a conflict.
 On a host that runs PhoenixKit core with the shop API and has switched the admin
 API on (Settings -> API), this module offers five tools to API keys. A key sees a
 tool only while the Warehouse module is enabled and only if the key's scopes and
-its owner's `warehouse` permission allow it. The three write tools are offered
-only on a core that can hold a dangerous call for confirmation; on an older core
-only the two read tools are.
+its owner's `warehouse` permission allow it.
 
 | Tool | Scope | What it does |
 |---|---|---|

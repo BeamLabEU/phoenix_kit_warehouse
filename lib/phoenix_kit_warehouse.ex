@@ -161,14 +161,11 @@ defmodule PhoenixKitWarehouse do
   @impl PhoenixKit.Module
   def css_sources, do: [:phoenix_kit_warehouse]
 
-  # PhoenixKit.Module.media_reorganizer/0, an optional callback since core
-  # 2.24.0. No `@impl`: the pin floor (`~> 2.0`) predates the callback, where
-  # `@impl` would warn. `ModuleRegistry.all_media_reorganizers/0` looks the
-  # function up by name, so it is collected on any core that ships the engine.
+  @impl PhoenixKit.Module
   def media_reorganizer, do: PhoenixKitWarehouse.MediaReorganizer
 
   # `ai_tasks/0`, the callback the phoenix_kit_ai task guard collects from
-  # the registered modules by name (as `media_reorganizer/0` above): the AI
+  # the registered modules by name: the AI
   # tasks this module declares. No `@impl` - core has no such callback yet.
   # `[]` while the ai this is built against has no `PhoenixKitAI.TaskSpec`.
   defdelegate ai_tasks, to: PhoenixKitWarehouse.InventoryAI.Guard
@@ -176,10 +173,7 @@ defmodule PhoenixKitWarehouse do
   @impl PhoenixKit.Module
   def children, do: [{Task.Supervisor, name: PhoenixKitWarehouse.TaskSupervisor}]
 
-  # PhoenixKit.Module.api_tools/0, an optional callback of the shop API. No
-  # `@impl`, for the reason `media_reorganizer/0` above gives: on a core
-  # without the callback `@impl` would warn, and core collects the tools of
-  # enabled modules by function name.
+  @impl PhoenixKit.Module
   def api_tools, do: PhoenixKitWarehouse.API.tools()
 
   @impl PhoenixKit.Module

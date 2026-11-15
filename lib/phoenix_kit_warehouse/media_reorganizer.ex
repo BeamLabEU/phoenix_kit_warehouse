@@ -2,13 +2,9 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   @moduledoc """
   Warehouse's media-reorganizer plan source.
 
-  Implements the contract of core's `PhoenixKit.Modules.Storage.Reorganizer.Source`
-  (core ≥ 2.24.0) without declaring `@behaviour`: the `phoenix_kit` pin
-  floor (`~> 2.0`) predates that module, where `@behaviour` would warn. The
-  engine only calls `plan/2` and validates the plain maps it returns, so
-  nothing else is needed; see `PhoenixKitWarehouse.media_reorganizer/0` for
-  the registration side. Once the floor reaches 2.24.0 the only follow-up
-  is adding `@behaviour`/`@impl`.
+  Implements core's `PhoenixKit.Modules.Storage.Reorganizer.Source`. The
+  engine only calls `plan/2` and validates the plain maps it returns; see
+  `PhoenixKitWarehouse.media_reorganizer/0` for the registration side.
 
   Covers all six warehouse documents — `GoodsIssue`, `GoodsReceipt`,
   `InventoryDocument`, `SupplierOrder`, `InternalOrder`, `Transfer` — plus
@@ -118,6 +114,8 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
       `:pending` action kind.
   """
 
+  @behaviour PhoenixKit.Modules.Storage.Reorganizer.Source
+
   import Ecto.Query, warn: false
 
   require Logger
@@ -165,6 +163,7 @@ defmodule PhoenixKitWarehouse.MediaReorganizer do
   contract; this module has nothing to key off `opts[:pending_days]` — it
   stages no pending folders.
   """
+  @impl true
   @spec plan(String.t() | nil, keyword()) :: [map()]
   def plan(actor_uuid, _opts \\ []) do
     prelim = live_prelim_records()

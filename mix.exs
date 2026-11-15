@@ -88,32 +88,10 @@ defmodule PhoenixKitWarehouse.MixProject do
 
   defp deps do
     [
-      # The transfers/min_stock tables ship in core migration V144
-      # (renumbered from V143 at merge time), first published in
-      # phoenix_kit 1.7.190 (1.7.189 tops out at V142).
-      # 1.7.214+ required: Scope.can_access_admin_area?/1 (the rename of the
-      # now-`@deprecated` Scope.admin?/1) — an older core has no such function,
-      # so this is an UndefinedFunctionError at runtime, not a warning.
-      # 1.7.231 is the floor: that release ships
-      # `PhoenixKitWeb.Live.UrlState`, which 7 LiveView files in this
-      # module `use`. Anything below it resolves a core with no such
-      # module, and the failure surfaces in the consumer's build.
-      # Core 2.x only. Keep this a TWO-segment `~> 2.N`: a three-segment
-      # `~> 2.0.x` expands to `< 2.1.0` and would strand host resolution the
-      # moment core ships 2.1 — the same failure the old `~> 1.7.231` pin had
-      # against core 2.0.0, which is what PR #15 was opened to fix.
-      # 2.26.1 was the floor before: 2.26.0 shipped `<.decimal_input>` and
-      # `PhoenixKit.Utils.Number.parse_decimal/2`, which every quantity/price
-      # control and StockLedger's coercers now use (an older core is a
-      # compile error in the consumer), and 2.26.1 stops a whole number
-      # parsing to exponent form (`"10"` -> `1E+1`).
-      # 2.57 is the floor now: the photo inventory makes each photo ready
-      # with `PhoenixKit.Modules.Storage.ImageProcessor.preview_jpeg/3`,
-      # first shipped in 2.57.0. An older core has no such function, so
-      # every photo would be skipped and every run would fail.
-      # Floor 2.65.0: the first core with the `file_references/0` and `expected_schema/0`
-      # callbacks this module implements (`@impl`). The ceiling is open through core 3.x.
-      pk_dep(:phoenix_kit, ">= 2.65.0 and < 4.0.0"),
+      # Floor 3.5.0, ceiling open through every core 3.x. Compound form, never
+      # a three-segment `~>`, which would pin a single core minor (see
+      # test/core_pin_conformance_test.exs).
+      pk_dep(:phoenix_kit, ">= 3.5.0 and < 4.0.0"),
       # mdex_native (pulled in transitively through phoenix_kit's mdex dep)
       # builds from source when MDEX_NATIVE_BUILD=1 is set in the
       # environment; that path requires rustler itself, not just

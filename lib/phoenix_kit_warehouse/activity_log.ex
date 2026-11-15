@@ -335,7 +335,7 @@ defmodule PhoenixKitWarehouse.ActivityLog do
   defp put_unless_nil(map, key, value), do: Map.put(map, key, value)
 
   defp log(attrs, opts) do
-    if enabled?() and Code.ensure_loaded?(PhoenixKit.Activity) do
+    if enabled?() do
       do_log(attrs, opts)
     else
       :ok

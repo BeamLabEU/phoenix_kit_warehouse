@@ -224,7 +224,10 @@ defmodule PhoenixKitWarehouse.Web.InventoryAIPanelLiveTest do
       %{uploads: uploads} = :sys.get_state(lv.pid).socket.assigns
       assert Map.has_key?(uploads, :media_files)
       assert Map.has_key?(uploads, :inventory_ai_photos)
-      assert uploads.media_files.max_entries == 10
+      # Core's own limit for the Files tab (the `storage_max_upload_files`
+      # setting), not the panel's.
+      assert uploads.media_files.max_entries == Storage.max_upload_files()
+      refute Storage.max_upload_files() == Settings.max_photos()
       assert uploads.inventory_ai_photos.max_entries == Settings.max_photos()
 
       render_patch(lv, Routes.path("/admin/warehouse/inventory/#{ctx.doc.uuid}/files"))

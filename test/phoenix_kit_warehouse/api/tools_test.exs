@@ -7,9 +7,6 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
   """
   use PhoenixKitWarehouse.DataCase, async: false
 
-  # Runs only against a core that has the API (see test_helper.exs).
-  @moduletag :core_api
-
   import PhoenixKitWarehouse.Test.ApiFixtures
   import Plug.Conn
 
@@ -25,24 +22,6 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
   alias PhoenixKit.Users.Auth.Scope
   alias PhoenixKit.Users.Permissions
   alias PhoenixKit.Users.Roles
-
-  # Core's API is optional for this package: reached by name only.
-  @compile {:no_warn_undefined,
-            [
-              PhoenixKit.API.Approvals,
-              PhoenixKit.API.Auth,
-              PhoenixKit.API.Executor,
-              PhoenixKit.API.Keys,
-              PhoenixKit.API.Keys.Cache,
-              PhoenixKit.API.Registry,
-              PhoenixKit.API.Tool,
-              PhoenixKit.API.ToolLint,
-              PhoenixKit.Cache,
-              PhoenixKit.Cache.Registry,
-              PhoenixKit.Users.Auth.Scope,
-              PhoenixKit.Users.Permissions,
-              PhoenixKit.Users.Roles
-            ]}
 
   @registry_key {PhoenixKit, :registered_modules}
 
@@ -265,21 +244,6 @@ defmodule PhoenixKitWarehouse.API.ToolsTest do
         description = by_name[name].input_schema["properties"]["catalogue_id"]["description"]
         assert description =~ "more than one active catalogue", name
       end
-    end
-  end
-
-  describe "the confirmation gate" do
-    test "without core's confirmation flow only the read tools are offered" do
-      names = fn tools -> tools |> Enum.map(& &1.name) |> Enum.sort() end
-
-      assert names.(PhoenixKitWarehouse.API.tools([])) ==
-               ["warehouse.get_stock", "warehouse.list_locations"]
-
-      assert names.(PhoenixKitWarehouse.API.tools([{Enum, :no_such_function, 1}])) ==
-               ["warehouse.get_stock", "warehouse.list_locations"]
-
-      assert length(PhoenixKitWarehouse.API.tools()) == 5
-      assert PhoenixKitWarehouse.API.confirmation_available?()
     end
   end
 
