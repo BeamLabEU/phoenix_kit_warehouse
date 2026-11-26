@@ -1588,7 +1588,10 @@ defmodule PhoenixKitWarehouse.Web.InventoryFormLive do
         {@label}
       </label>
       <%= if @admin? do %>
-        <form phx-change="set_responsibility" onsubmit="return false">
+        <%!-- Never submitted: the change event saves. An empty JS command makes
+             LiveView cancel a submit and do nothing (no inline `onsubmit`, which a
+             nonce-based Content-Security-Policy blocks). --%>
+        <form phx-change="set_responsibility" phx-submit={%Phoenix.LiveView.JS{}}>
           <select
             name={@field_name}
             class="select select-sm w-full"

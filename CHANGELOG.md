@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## Unreleased
+
+### Changed
+
+- **No inline event handler is left** (#48), so the module works under a nonce-based Content-Security-Policy (`script-src 'self' 'nonce-…'`). The responsibility select of a stocktake said `onsubmit="return false"`; it now carries `phx-submit={%Phoenix.LiveView.JS{}}`, an empty command with which LiveView cancels a submit and sends nothing. LiveView alone does it, so it works on every supported core; the core requirement is unchanged. `test/phoenix_kit_warehouse/web/csp_inline_tags_test.exs` fails on a new inline handler, or an inline `<script>`/`<style>` without a nonce, in `lib/`.
+
 ## 0.7.0 - 2026-10-27
 
 ### Changed

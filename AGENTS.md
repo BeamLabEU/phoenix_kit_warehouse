@@ -195,6 +195,30 @@ env-var swap from "Local cross-repo development" above:
 PHOENIX_KIT_PATH=../phoenix_kit mix test
 ```
 
+## Content-Security-Policy
+
+The package has to work on a host whose policy allows inline code by nonce only
+(`script-src 'self' 'nonce-…'`; core's `guides/content-security-policy.md`), and
+on the published core, which has no `PhoenixKitWeb.CSP` and no `data-pk-*`
+listeners. The package ships no JavaScript and renders no inline `<script>` or
+`<style>`.
+
+- **No inline event handlers** (`onclick=`, `onsubmit=` …): no nonce covers an
+  attribute. Use a `phx-` binding or a `Phoenix.LiveView.JS` command. A form that
+  saves on `phx-change` and must never be submitted takes
+  `phx-submit={%Phoenix.LiveView.JS{}}` (LiveView cancels the submit and sends
+  nothing), as `responsibility_field/1` does. Not core's `data-pk-no-submit`:
+  the published core does not handle it.
+- **An inline `<style>`/`<script>`, should one be needed, carries the host's
+  nonce** through a helper that feature-detects `PhoenixKitWeb.CSP.nonce/1`
+  (`Code.ensure_loaded?/1` + `function_exported?/3` + `apply/3`; see
+  `PhoenixKitBilling.Web.CSP`), never a direct call, which does not compile
+  against the core floor.
+- `test/phoenix_kit_warehouse/web/csp_inline_tags_test.exs` fails on an inline
+  tag without a nonce and on an inline handler in `lib/`.
+- Out of scope: inline `style="…"` attributes (a host keeps
+  `style-src-attr 'unsafe-inline'`).
+
 ## Testing
 
 Intended two-level suite (see a sibling's `test/test_helper.exs` for the
